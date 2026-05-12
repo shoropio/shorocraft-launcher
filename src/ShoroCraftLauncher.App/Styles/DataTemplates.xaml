@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:ShoroCraftLauncher.App.ViewModels"
+                    xmlns:v="clr-namespace:ShoroCraftLauncher.App.Views">
+
+    <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+        <v:DashboardView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ProfilesViewModel}">
+        <v:ProfilesView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ModsViewModel}">
+        <v:ModsView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ResourcePacksViewModel}">
+        <v:ResourcePacksView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ShaderPacksViewModel}">
+        <v:ShaderPacksView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ScriptsViewModel}">
+        <v:ScriptsView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ConsoleViewModel}">
+        <v:ConsoleView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+        <v:SettingsView />
+    </DataTemplate>
+
+</ResourceDictionary>

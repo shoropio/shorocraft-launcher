@@ -1,0 +1,127 @@
+<UserControl x:Class="ShoroCraftLauncher.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer>
+        <StackPanel>
+            <TextBlock Text="Dashboard" Style="{StaticResource SectionTitle}" />
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="Versión" Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{Binding InstalledVersion}" Style="{StaticResource CardTitle}" FontSize="20" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardBorder}" Margin="4,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="Mods" Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{Binding ModsCount}" Style="{StaticResource CardTitle}" FontSize="20" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource CardBorder}" Margin="4,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="RAM" Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{Binding AllocatedRam}" Style="{StaticResource CardTitle}" FontSize="20" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="0" Grid.Column="3" Style="{StaticResource CardBorder}" Margin="4,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Estado" Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{Binding ReadyStatus}" Style="{StaticResource CardTitle}" FontSize="20"
+                                   Foreground="{StaticResource SuccessBrush}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource CardBorder}" Margin="0,8,0,0" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="Inicio rápido" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="¿Qué deseas hacer?" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                            <WrapPanel>
+                                <Button Content="Instalar Forge" Command="{Binding InstallLoaderCommand}"
+                                        CommandParameter="Forge:latest"
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                                <Button Content="Instalar Fabric" Command="{Binding InstallLoaderCommand}"
+                                        CommandParameter="Fabric:latest"
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                                <Button Content="Instalar Quilt" Command="{Binding InstallLoaderCommand}"
+                                        CommandParameter="Quilt:latest"
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                            </WrapPanel>
+                            <WrapPanel Margin="0,8,0,0">
+                                <ComboBox ItemsSource="{Binding AvailableVersions}"
+                                          SelectedValue="{Binding SelectedVersion}"
+                                          DisplayMemberPath="VersionId"
+                                          SelectedValuePath="VersionId"
+                                          Style="{StaticResource DarkComboBox}"
+                                          ItemContainerStyle="{StaticResource DarkComboBoxItem}"
+                                          Width="200" Margin="0,0,8,0" />
+                                <Button Content="Instalar versión" Command="{Binding InstallVersionCommand}"
+                                        CommandParameter="{Binding SelectedVersion}"
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
+                                <Button Content="Actualizar lista" Command="{Binding RefreshVersionsCommand}"
+                                        Style="{StaticResource SecondaryButton}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <ProgressBar Value="{Binding DownloadProgress}" Style="{StaticResource ProgressBarStyle}"
+                                 Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}"
+                                 Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Últimas Noticias" Style="{StaticResource SectionTitle}" Margin="0,24,0,12" />
+            
+            <ItemsControl ItemsSource="{Binding NewsFeed}" Margin="0,0,0,24">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Margin="4" Height="220">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="120" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" CornerRadius="8,8,0,0">
+                                    <Image Source="{Binding ImageUrl}" Stretch="UniformToFill" />
+                                </Border>
+                                <Border Grid.Row="1" Padding="12">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Date}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" Margin="0,4" />
+                                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="40" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

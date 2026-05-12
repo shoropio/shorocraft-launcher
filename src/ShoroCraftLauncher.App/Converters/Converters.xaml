@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="clr-namespace:ShoroCraftLauncher.App.Converters">
+    <c:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    <c:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+    <c:InverseBoolConverter x:Key="InverseBoolConverter" />
+    <c:FileSizeConverter x:Key="FileSizeConverter" />
+    <c:StatusToBoolConverter x:Key="StatusToBoolConverter" />
+</ResourceDictionary>
