@@ -1,0 +1,226 @@
+using System.IO.Compression;
+using Microsoft.Extensions.Logging;
+using ShoroCraftLauncher.Core.Enums;
+using ShoroCraftLauncher.Core.Interfaces;
+using ShoroCraftLauncher.Core.Models;
+
+namespace ShoroCraftLauncher.Infrastructure.Services;
+
+public class ModService : IModService
+{
+    private readonly IModRepository _modRepository;
+    private readonly IProfileRepository _profileRepository;
+    private readonly IMinecraftService _minecraftService;
+    private readonly ILogger<ModService> _logger;
+    private readonly HttpClient _httpClient;
+
+    public ModService(
+        IModRepository modRepository,
+        IProfileRepository profileRepository,
+        IMinecraftService minecraftService,
+        ILogger<ModService> logger,
+        HttpClient httpClient)
+    {
+        _modRepository = modRepository;
+        _profileRepository = profileRepository;
+        _minecraftService = minecraftService;
+        _logger = logger;
+        _httpClient = httpClient;
+    }
+
+    public async Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType)
+    {
+        _logger.LogInformation("Searching Modrinth: {Query} for MC {Version} on {Loader}", query, minecraftVersion, loaderType);
+        
+        try
+        {
+            var url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets=[[\"versions:{minecraftVersion}\"],[\"categories:{loaderType.ToLower()}\"]]";
+            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+            
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            
+            var results = new List<Mod>();
+            foreach (var item in doc.RootElement.GetProperty("hits").EnumerateArray())
+            {
+                results.Add(new Mod
+                {
+                    Name = item.GetProperty("title").GetString() ?? "Unknown",
+                    Description = item.GetProperty("description").GetString(),
+                    IconPath = item.TryGetProperty("icon_url", out var icon) ? icon.GetString() : null,
+                    FileName = item.GetProperty("project_id").GetString() ?? string.Empty,
+                    ModVersion = (item.TryGetProperty("latest_version", out var v) ? v.GetString() : "latest") ?? "latest"
+                });
+            }
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Modrinth search failed");
+            return new List<Mod>();
+        }
+    }
+
+    public async Task<List<Mod>> GetModsAsync(int profileId) =>
+        await _modRepository.GetByProfileIdAsync(profileId);
+
+    public async Task<Mod> AddModAsync(int profileId, string sourceFilePath)
+    {
+        _logger.LogInformation("Adding mod from {Source} to profile {ProfileId}", sourceFilePath, profileId);
+
+        var profile = await _profileRepository.GetByIdAsync(profileId)
+            ?? throw new Exception($"Profile {profileId} not found");
+
+        var extension = Path.GetExtension(sourceFilePath).ToLowerInvariant();
+        if (extension != ".jar")
+            throw new Exception("Solo se permiten archivos .jar como mods.");
+
+        var modsDir = await GetModsFolderAsync(profileId);
+        Directory.CreateDirectory(modsDir);
+
+        var fileName = Path.GetFileName(sourceFilePath);
+        var destPath = Path.Combine(modsDir, fileName);
+
+        if (File.Exists(destPath))
+            throw new Exception($"El mod '{fileName}' ya existe en este perfil.");
+
+        File.Copy(sourceFilePath, destPath, false);
+
+        var modInfo = await ExtractModInfoAsync(destPath);
+        var mod = new Mod
+        {
+            ProfileId = profileId,
+            Name = modInfo.Name ?? Path.GetFileNameWithoutExtension(fileName),
+            FileName = fileName,
+            FilePath = destPath,
+            FileSizeBytes = new FileInfo(destPath).Length,
+            MinecraftVersion = modInfo.MinecraftVersion ?? profile.MinecraftVersion,
+            ModVersion = modInfo.ModVersion ?? "unknown",
+            Status = ModStatus.Active
+        };
+
+        await _modRepository.CreateAsync(mod);
+        _logger.LogInformation("Mod {Name} added successfully", mod.Name);
+        return mod;
+    }
+
+    public async Task ToggleModAsync(int modId)
+    {
+        var mod = await _modRepository.GetByIdAsync(modId)
+            ?? throw new Exception($"Mod {modId} not found");
+
+        mod.Status = mod.Status == ModStatus.Active ? ModStatus.Inactive : ModStatus.Active;
+        await _modRepository.UpdateAsync(mod);
+        _logger.LogInformation("Mod {Name} toggled to {Status}", mod.Name, mod.Status);
+    }
+
+    public async Task RemoveModAsync(int modId)
+    {
+        var mod = await _modRepository.GetByIdAsync(modId)
+            ?? throw new Exception($"Mod {modId} not found");
+
+        try
+        {
+            if (File.Exists(mod.FilePath))
+                File.Delete(mod.FilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete mod file {Path}", mod.FilePath);
+        }
+
+        await _modRepository.DeleteAsync(modId);
+        _logger.LogInformation("Mod {Name} removed", mod.Name);
+    }
+
+    public async Task<string> GetModsFolderAsync(int profileId)
+    {
+        var profile = await _profileRepository.GetByIdAsync(profileId)
+            ?? throw new Exception($"Profile {profileId} not found");
+        var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
+            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            : profile.GameDirectory;
+        return _minecraftService.GetModsDirectory(gameDir);
+    }
+
+    private async Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(jarPath);
+            var mcmodEntry = archive.GetEntry("mcmod.info");
+            if (mcmodEntry != null)
+            {
+                using var reader = new StreamReader(mcmodEntry.Open());
+                var content = await reader.ReadToEndAsync();
+                return ParseMcmodInfo(content);
+            }
+
+            var fabricEntry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.StartsWith("fabric.mod.json", StringComparison.OrdinalIgnoreCase));
+            if (fabricEntry != null)
+            {
+                using var reader = new StreamReader(fabricEntry.Open());
+                var content = await reader.ReadToEndAsync();
+                return ParseFabricModJson(content);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract mod info from {Jar}", jarPath);
+        }
+
+        return (null, null, null);
+    }
+
+    private (string? Name, string? MinecraftVersion, string? ModVersion) ParseMcmodInfo(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.ValueKind == System.Text.Json.JsonValueKind.Array && root.GetArrayLength() > 0)
+            {
+                var first = root[0];
+                return (
+                    first.TryGetProperty("name", out var n) ? n.GetString() : null,
+                    first.TryGetProperty("mcversion", out var mv) ? mv.GetString() : null,
+                    first.TryGetProperty("version", out var v) ? v.GetString() : null
+                );
+            }
+        }
+        catch { }
+        return (null, null, null);
+    }
+
+    private (string? Name, string? MinecraftVersion, string? ModVersion) ParseFabricModJson(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var name = root.TryGetProperty("name", out var n) ? n.GetString() : null;
+
+            string? mcVersion = null;
+            if (root.TryGetProperty("depends", out var depends))
+            {
+                if (depends.TryGetProperty("minecraft", out var mc))
+                    mcVersion = mc.GetString();
+            }
+
+            string? modVersion = null;
+            if (root.TryGetProperty("version", out var v))
+                modVersion = v.GetString();
+
+            return (name, mcVersion, modVersion);
+        }
+        catch { }
+        return (null, null, null);
+    }
+}
