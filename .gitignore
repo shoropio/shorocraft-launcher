@@ -1,0 +1,33 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+*.dll
+*.pdb
+*.exe
+!installer/**/*.exe
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+.nuget/
+
+# Logs
+logs/
+*.log
+*.slog
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# User data (runtime)
+src/**/AppData/
