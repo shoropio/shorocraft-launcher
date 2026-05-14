@@ -109,7 +109,6 @@ public class LauncherService : ILauncherService
                 {
                     _logger.LogDebug("Minecraft: {Line}", e.Data);
                     _logService?.MinecraftStdout(e.Data);
-                    Log(e.Data);
                 }
             };
 

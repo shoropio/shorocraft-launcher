@@ -96,7 +96,7 @@ public class ConsoleViewModel : BaseViewModel
 
     private void OnLogReceived(object? sender, LogEvent logEvent)
     {
-        App.Current.Dispatcher.Invoke(() =>
+        App.Current.Dispatcher.BeginInvoke(() =>
         {
             AddLogEvent(logEvent);
         });
@@ -113,8 +113,17 @@ public class ConsoleViewModel : BaseViewModel
         if (!ModuleFilters.Contains(logEvent.Module))
             ModuleFilters.Add(logEvent.Module);
 
-        if (refresh)
-            ApplyFilters();
+        if (refresh && PassesFilters(logEvent))
+        {
+            var cleaned = CleanLogLine(FormatLogEvent(logEvent));
+            if (string.IsNullOrWhiteSpace(cleaned)) return;
+
+            LogLines.Add(cleaned);
+            if (LogLines.Count > 1000)
+                LogLines.RemoveAt(0);
+
+            OnPropertyChanged(nameof(FullLogText));
+        }
     }
 
     private void ApplyFilters()
