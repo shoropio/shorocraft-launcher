@@ -37,7 +37,7 @@
             <TextBlock Grid.Row="1" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
 
-            <Border Grid.Row="2" Background="{StaticResource WarningBrush}" CornerRadius="6"
+            <Border Grid.Row="2" Background="{StaticResource WarningBrush}" CornerRadius="0"
                     Padding="12,8" Margin="0,0,0,8"
                     Visibility="{Binding HasShaderSupport, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}">
                 <TextBlock Text="⚠ Este perfil no tiene soporte de shaders. Usa un perfil con OptiFine o Iris."

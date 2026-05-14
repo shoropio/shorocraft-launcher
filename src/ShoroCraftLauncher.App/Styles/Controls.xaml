@@ -5,19 +5,24 @@
         <Setter Property="Background" Value="{StaticResource CardBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Padding" Value="16" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="#000000" Opacity="0.35" BlurRadius="18" ShadowDepth="4" Direction="270" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="SectionTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Margin" Value="0,0,0,16" />
     </Style>
 
     <Style x:Key="CardTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="15" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
@@ -25,11 +30,11 @@
     <Style x:Key="CardSubtitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-        <Setter Property="Margin" Value="0,4,0,0" />
+        <Setter Property="Margin" Value="0,3,0,0" />
     </Style>
 
     <Style x:Key="StatusBadge" TargetType="Border">
-        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
@@ -48,8 +53,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="3">
-                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="3">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="0">
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="0">
                             <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}"
                                        HorizontalAlignment="Left" RadiusX="3" RadiusY="3" />
                         </Border>
@@ -78,7 +83,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBox">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="12">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="0">
                         <ScrollViewer Margin="0" Focusable="false">
                             <ItemsPresenter />
                         </ScrollViewer>
@@ -119,7 +124,7 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
+                            CornerRadius="0">
                         <Grid>
                             <TextBlock Text="{TemplateBinding Tag}"
                                        Foreground="{StaticResource TextSecondaryBrush}"
