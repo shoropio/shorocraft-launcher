@@ -227,7 +227,7 @@ public class MinecraftService : IMinecraftService
 
         var args = loaderType.ToLower() switch
         {
-            "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\" --nogui",
+            "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\"",
             "fabric" => $"-jar \"{installerPath}\" client -dir \"{gameDir}\" -mcversion {versionId} -loader {loaderVersion}",
             "quilt" => $"-jar \"{installerPath}\" install client {versionId} --install-dir=\"{gameDir}\"",
             _ => throw new Exception($"Unknown loader: {loaderType}")
@@ -251,8 +251,19 @@ public class MinecraftService : IMinecraftService
 
         using var process = new Process { StartInfo = psi };
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-        process.OutputDataReceived += (_, e) => { if (e.Data != null) { outputLines.Add(e.Data); onLog?.Invoke($"[{loaderType}] {e.Data}"); } };
-        process.ErrorDataReceived += (_, e) => { if (e.Data != null) { errorLines.Add(e.Data); onLog?.Invoke($"[ERROR] [{loaderType}] {e.Data}"); } };
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data == null) return;
+            AddBoundedLine(outputLines, e.Data);
+            if (ShouldEchoLoaderInstallerLine(e.Data))
+                onLog?.Invoke($"[{loaderType}] {e.Data}");
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data == null) return;
+            AddBoundedLine(errorLines, e.Data);
+            onLog?.Invoke($"[ERROR] [{loaderType}] {e.Data}");
+        };
 
         process.Start();
         process.BeginOutputReadLine();
@@ -273,6 +284,39 @@ public class MinecraftService : IMinecraftService
         _logService?.Info("LoaderInstall", "Completed", "Loader instalado correctamente.", new { loaderType, loaderVersion, versionId });
         onLog?.Invoke($"[INFO] {loaderType} instalado correctamente.");
         onProgress?.Invoke($"{loaderType} instalado correctamente.");
+    }
+
+    private static void AddBoundedLine(List<string> lines, string line, int maxLines = 500)
+    {
+        lines.Add(line);
+        if (lines.Count > maxLines)
+            lines.RemoveRange(0, lines.Count - maxLines);
+    }
+
+    private static bool ShouldEchoLoaderInstallerLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return false;
+
+        var text = line.Trim();
+        if (text.StartsWith("Considering ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Copying ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Reading patch ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Applying: ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("  "))
+        {
+            return false;
+        }
+
+        return text.Contains("exception", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("error", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("failed", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("complete", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("success", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("JVM info", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Target Directory", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Installing", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("Building", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<bool> VerifyInstallationAsync(string gameDir)
@@ -328,9 +372,8 @@ public class MinecraftService : IMinecraftService
         {
             var percentage = e.TotalTasks > 0 ? (double)e.ProgressedTasks / e.TotalTasks * 100 : 0;
             var percent = (int)Math.Floor(percentage);
-            var shouldReport = percent == 0
+            var shouldReport = lastReportedPercent < 0
                 || percent >= 100
-                || lastReportedPercent < 0
                 || percent - lastReportedPercent >= 5;
 
             if (shouldReport)
