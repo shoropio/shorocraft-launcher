@@ -69,19 +69,26 @@ public class JavaService : IJavaService
         if (valid.Count == 0)
             return string.Empty;
 
-        var versionNum = ParseVersion(minecraftVersion);
-        var minJavaVersion = versionNum >= 21 ? 21 : versionNum >= 17 ? 17 : 8;
+        var recommendedJavaVersion = GetRecommendedJavaMajor(minecraftVersion);
 
         var withMajor = valid
             .Select(j => (Info: j, Major: ParseVersion(j.Version)))
-            .OrderByDescending(j => j.Major)
+            .Where(j => j.Major >= 8)
+            .OrderBy(j => j.Major)
             .ToList();
 
-        var best = withMajor.FirstOrDefault(j => j.Major >= minJavaVersion);
+        if (withMajor.Count == 0)
+            return valid[0].Path;
+
+        var best = withMajor.FirstOrDefault(j => j.Major == recommendedJavaVersion);
         if (best.Info != null)
             return best.Info.Path;
 
-        return withMajor.First().Info.Path;
+        best = withMajor.FirstOrDefault(j => j.Major >= recommendedJavaVersion);
+        if (best.Info != null)
+            return best.Info.Path;
+
+        return withMajor.Last().Info.Path;
     }
 
     public async Task<string> DownloadJavaForVersionAsync(string minecraftVersion, IProgress<double>? progress = null)
@@ -219,5 +226,35 @@ public class JavaService : IJavaService
             return major;
 
         return 0;
+    }
+
+    private static int GetRecommendedJavaMajor(string minecraftVersion)
+    {
+        if (!TryParseMinecraftVersion(minecraftVersion, out var minor, out var patch))
+            return 17;
+
+        if (minor >= 21 || (minor == 20 && patch >= 5))
+            return 21;
+
+        if (minor >= 17)
+            return 17;
+
+        return 8;
+    }
+
+    private static bool TryParseMinecraftVersion(string version, out int minor, out int patch)
+    {
+        minor = 0;
+        patch = 0;
+
+        var match = Regex.Match(version, @"^1\.(\d+)(?:\.(\d+))?");
+        if (!match.Success)
+            return false;
+
+        minor = int.Parse(match.Groups[1].Value);
+        if (match.Groups[2].Success)
+            patch = int.Parse(match.Groups[2].Value);
+
+        return true;
     }
 }

@@ -67,4 +67,17 @@ public class ProfileService : IProfileService
             else SelectedProfile = Profiles.FirstOrDefault();
         }
     }
+
+    public async Task UpdateProfileAsync(Profile profile)
+    {
+        await _profileRepo.UpdateAsync(profile);
+        var idx = Profiles.IndexOf(profile);
+        if (idx >= 0)
+        {
+            Profiles.RemoveAt(idx);
+            Profiles.Insert(idx, profile);
+        }
+        if (SelectedProfile?.Id == profile.Id)
+            SelectedProfile = profile;
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ShoroCraftLauncher.Core.Models;
 
@@ -12,7 +13,44 @@ public class DbInitializer
     public void Initialize()
     {
         _context.Database.EnsureCreated();
+        MigrateSchema();
         SeedDefaults();
+    }
+
+    /// <summary>
+    /// Applies incremental schema changes for columns added after the initial DB creation.
+    /// Safe to call on every startup — each ALTER is wrapped in a column-existence check.
+    /// </summary>
+    private void MigrateSchema()
+    {
+        var conn = _context.Database.GetDbConnection();
+        conn.Open();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+
+            // Check and add Description column to Mods
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='Description'";
+            var hasDesc = (long)(cmd.ExecuteScalar() ?? 0L);
+            if (hasDesc == 0)
+            {
+                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN Description TEXT NULL";
+                cmd.ExecuteNonQuery();
+            }
+
+            // Check and add IconPath column to Mods
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='IconPath'";
+            var hasIcon = (long)(cmd.ExecuteScalar() ?? 0L);
+            if (hasIcon == 0)
+            {
+                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN IconPath TEXT NULL";
+                cmd.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            conn.Close();
+        }
     }
 
     private void SeedDefaults()

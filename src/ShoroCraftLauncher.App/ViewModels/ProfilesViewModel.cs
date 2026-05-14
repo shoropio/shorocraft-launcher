@@ -14,6 +14,7 @@ public class ProfilesViewModel : BaseViewModel
     private readonly IProfileRepository _profileRepo;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ProfilesViewModel> _logger;
+    private readonly ILogService _logService;
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
 
@@ -82,12 +83,14 @@ public class ProfilesViewModel : BaseViewModel
         IProfileService profileService,
         IProfileRepository profileRepo,
         IMinecraftService minecraftService,
-        ILogger<ProfilesViewModel> logger)
+        ILogger<ProfilesViewModel> logger,
+        ILogService logService)
     {
         _profileService = profileService;
         _profileRepo = profileRepo;
         _minecraftService = minecraftService;
         _logger = logger;
+        _logService = logService;
 
         _profileService.SelectedProfileChanged += () =>
         {
@@ -176,6 +179,15 @@ public class ProfilesViewModel : BaseViewModel
         IsBusy = true;
         try
         {
+            var validationError = ValidateProfileForm();
+            if (validationError != null)
+            {
+                _logService.Warning("Profile", "ValidationFailed", validationError, new { ProfileName, McVersion, ProfileTypeValue, MinRam, MaxRam, WindowWidth, WindowHeight });
+                StatusMessage = validationError;
+                IsBusy = false;
+                return;
+            }
+
             SelectedProfile.Name = ProfileName;
             SelectedProfile.MinecraftVersion = McVersion;
             SelectedProfile.Type = ProfileTypeValue;
@@ -190,11 +202,13 @@ public class ProfilesViewModel : BaseViewModel
             SelectedProfile.IsFullscreen = IsFullscreen;
 
             await _profileRepo.UpdateAsync(SelectedProfile);
+            _logService.Info("Profile", "Saved", "Perfil actualizado.", new { SelectedProfile.Id, SelectedProfile.Name, SelectedProfile.MinecraftVersion, SelectedProfile.Type });
             await LoadProfilesAsync();
             StatusMessage = "Perfil actualizado.";
         }
         catch (Exception ex)
         {
+            _logService.Error("Profile", "SaveFailed", "Error al guardar perfil.", ex);
             StatusMessage = $"Error: {ex.Message}";
         }
         IsBusy = false;
@@ -267,6 +281,47 @@ public class ProfilesViewModel : BaseViewModel
         JvmArgs = string.Empty;
         LoaderVersion = string.Empty;
         IsFullscreen = false;
+    }
+
+    private string? ValidateProfileForm()
+    {
+        if (string.IsNullOrWhiteSpace(ProfileName))
+            return "El perfil necesita un nombre.";
+
+        if (string.IsNullOrWhiteSpace(McVersion))
+            return "Selecciona una versión de Minecraft.";
+
+        if (MinRam < 512)
+            return "La RAM mínima debe ser al menos 512 MB.";
+
+        if (MaxRam < MinRam)
+            return "La RAM máxima no puede ser menor que la mínima.";
+
+        if (WindowWidth < 320 || WindowHeight < 240)
+            return "La ventana configurada es demasiado pequeña.";
+
+        if (!string.IsNullOrWhiteSpace(JavaPath) && !File.Exists(JavaPath))
+            return "La ruta de Java seleccionada no existe.";
+
+        if (!string.IsNullOrWhiteSpace(GameDir))
+        {
+            try
+            {
+                Directory.CreateDirectory(GameDir);
+                var probe = Path.Combine(GameDir, ".shorocraft-write-test");
+                File.WriteAllText(probe, "ok");
+                File.Delete(probe);
+            }
+            catch
+            {
+                return "El directorio del perfil no se puede escribir.";
+            }
+        }
+
+        if (ProfileTypeValue != ProfileType.Vanilla && string.IsNullOrWhiteSpace(LoaderVersion))
+            return "Este perfil usa loader; instala o define una versión de loader.";
+
+        return null;
     }
 
     private async Task BrowseGameDirectory()

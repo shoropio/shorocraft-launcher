@@ -92,6 +92,7 @@ public class DashboardViewModel : BaseViewModel
     public ICommand RefreshVersionsCommand { get; }
     public ICommand InstallVersionCommand { get; }
     public ICommand InstallLoaderCommand { get; }
+    public ICommand ApplyProfileCommand { get; }
 
     public DashboardViewModel(
         IProfileService profileService,
@@ -117,6 +118,7 @@ public class DashboardViewModel : BaseViewModel
         RefreshVersionsCommand = new RelayCommand(async _ => await LoadVersionsAsync());
         InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"));
         InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""));
+        ApplyProfileCommand = new RelayCommand(_ => ApplyProfile());
     }
 
     public async Task LoadDataAsync()
@@ -202,27 +204,53 @@ public class DashboardViewModel : BaseViewModel
         }
     }
 
+    private void LogStatus(string message)
+    {
+        StatusMessage = message;
+        _launcherService.Log($"[INFO] {message}");
+    }
+
     private async Task LoadVersionsAsync()
     {
         IsBusy = true;
         ReadyStatus = "Obteniendo versiones...";
-        StatusMessage = "Obteniendo versiones...";
+        LogStatus("Obteniendo versiones estables de Minecraft...");
         try
         {
             var versions = await _minecraftService.FetchAvailableVersionsAsync();
+            var stableVersions = versions
+                .Where(v => v.VersionType.Equals("release", StringComparison.OrdinalIgnoreCase))
+                .Take(50)
+                .ToList();
+
             AvailableVersions.Clear();
-            foreach (var v in versions.Take(50))
+            foreach (var v in stableVersions)
                 AvailableVersions.Add(v);
+
+            if (stableVersions.Count > 0 && (string.IsNullOrWhiteSpace(SelectedVersion) || SelectedVersion == "latest"))
+                SelectedVersion = stableVersions[0].VersionId;
+
             ReadyStatus = "Listo";
-            StatusMessage = $"{versions.Count} versiones disponibles.";
+            LogStatus($"{stableVersions.Count} versiones estables disponibles. Más nueva estable: {SelectedVersion}.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch versions");
             ReadyStatus = "Error";
             StatusMessage = "Error al obtener versiones.";
+            _launcherService.Log($"[ERROR] Error al obtener versiones: {ex.Message}");
         }
         IsBusy = false;
+    }
+
+    private void ApplyProfile()
+    {
+        if (SelectedProfile != null)
+        {
+            ReadyStatus = "Listo";
+            StatusMessage = $"Perfil \"{SelectedProfile.Name}\" aplicado.";
+            UpdateProfileDetailsAsync();
+        }
     }
 
     private async Task InstallVersion(string? versionId)
@@ -235,17 +263,26 @@ public class DashboardViewModel : BaseViewModel
 
         try
         {
+            if (versionId.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                LogStatus("Resolviendo la versión estable más nueva de Minecraft...");
+                versionId = await _minecraftService.ResolveVersionIdAsync("latest");
+                ReadyStatus = $"Instalando {versionId}...";
+            }
+
+            LogStatus($"Instalando Minecraft {versionId}...");
             var progress = new Progress<double>(p => DownloadProgress = p);
             await _minecraftService.InstallVersionAsync(versionId, progress);
             InstalledVersion = versionId;
             ReadyStatus = "Listo";
-            StatusMessage = $"Minecraft {versionId} instalado.";
+            LogStatus($"Minecraft {versionId} instalado.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Install failed");
             ReadyStatus = "Error";
             StatusMessage = $"Error: {ex.Message}";
+            _launcherService.Log($"[ERROR] Error instalando Minecraft {versionId}: {ex.Message}");
         }
         IsDownloading = false;
     }
@@ -256,32 +293,76 @@ public class DashboardViewModel : BaseViewModel
         var parts = loaderArg.Split(':');
         if (parts.Length < 2) return;
 
+        var loaderType = parts[0];
+        var loaderVersion = parts[1];
+
         IsDownloading = true;
-        ReadyStatus = $"Instalando {parts[0]}...";
-        StatusMessage = $"Instalando {parts[0]}...";
+        ReadyStatus = $"Preparando {loaderType}...";
+        _launcherService.Log($"[INFO] Preparando instalación de {loaderType}...");
+        StatusMessage = $"Preparando instalación de {loaderType}...";
         try
         {
+            var mcVersion = SelectedProfile.MinecraftVersion;
+            if (mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                LogStatus("Resolviendo la versión estable más nueva de Minecraft...");
+                mcVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            }
+
+            ReadyStatus = $"Instalando {loaderType}...";
+
+            if (loaderVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                StatusMessage = $"Obteniendo última versión de {loaderType}...";
+                _launcherService.Log($"[INFO] Obteniendo la versión estable más nueva de {loaderType} para Minecraft {mcVersion}...");
+                var resolved = await _minecraftService.ResolveLatestLoaderVersionAsync(loaderType, mcVersion);
+                if (resolved.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                    throw new Exception($"No se pudo determinar la última versión de {loaderType} para Minecraft {mcVersion}. Es posible que {loaderType} no tenga soporte para esa versión.");
+                loaderVersion = resolved;
+                StatusMessage = $"{loaderType} {loaderVersion} encontrado.";
+                _launcherService.Log($"[INFO] {loaderType} {loaderVersion} encontrado.");
+            }
+
             var javaPath = SelectedProfile.JavaPath;
             if (string.IsNullOrEmpty(javaPath))
             {
-                javaPath = await _javaService.GetRecommendedJavaPathAsync(SelectedProfile.MinecraftVersion);
+                LogStatus($"Buscando Java recomendado para Minecraft {mcVersion}...");
+                javaPath = await _javaService.GetRecommendedJavaPathAsync(mcVersion);
                 if (string.IsNullOrEmpty(javaPath))
-                    throw new Exception("No se encontró Java instalado.");
+                    throw new Exception("No se encontró Java instalado. Descarga e instala Java 17+ desde adoptium.net");
             }
 
             var progress = new Progress<double>(p => DownloadProgress = p);
+            _launcherService.Log($"[INFO] Java seleccionado: {javaPath}");
             await _minecraftService.InstallLoaderAsync(
-                SelectedProfile.MinecraftVersion, parts[0], parts[1], javaPath,
-                msg => { App.Current.Dispatcher.Invoke(() => StatusMessage = msg); },
-                progress);
+                mcVersion, loaderType, loaderVersion, javaPath,
+                msg => { App.Current.Dispatcher.Invoke(() => LogStatus(msg)); },
+                progress,
+                onLog: _launcherService.Log);
+
+            var loaderEnum = Enum.TryParse<ShoroCraftLauncher.Core.Enums.ProfileType>(loaderType, ignoreCase: true, out var parsed)
+                ? parsed : SelectedProfile.Type;
+            SelectedProfile.Type = loaderEnum;
+            SelectedProfile.LoaderVersion = loaderVersion;
+            SelectedProfile.MinecraftVersion = mcVersion;
+            await _profileService.UpdateProfileAsync(SelectedProfile);
                 
             ReadyStatus = "Listo";
-            StatusMessage = $"{parts[0]} instalado.";
+            StatusMessage = $"{loaderType} {loaderVersion} instalado correctamente.";
+            _launcherService.Log($"[INFO] {loaderType} {loaderVersion} instalado correctamente.");
+        }
+        catch (OperationCanceledException)
+        {
+            ReadyStatus = "Error";
+            StatusMessage = $"La instalación de {loaderType} tardó demasiado y fue cancelada.";
+            _launcherService.Log($"[ERROR] La instalación de {loaderType} tardó demasiado y fue cancelada.");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to install {Loader}", loaderType);
             ReadyStatus = "Error";
             StatusMessage = $"Error: {ex.Message}";
+            _launcherService.Log($"[ERROR] Error instalando {loaderType}: {ex.Message}");
         }
         IsDownloading = false;
     }

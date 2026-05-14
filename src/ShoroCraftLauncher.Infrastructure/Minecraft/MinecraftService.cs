@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -13,12 +14,14 @@ public class MinecraftService : IMinecraftService
 {
     private readonly ILogger<MinecraftService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly ILogService? _logService;
     private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
 
-    public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient)
+    public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _logService = logService;
     }
 
     public string GetDefaultGameDirectory(string profileName)
@@ -62,47 +65,106 @@ public class MinecraftService : IMinecraftService
 
     public async Task InstallVersionAsync(string versionId, IProgress<double>? progress = null)
     {
+        using var operation = _logService?.BeginOperation("MinecraftInstall", "InstallVersion", new { versionId });
         _logger.LogInformation("Installing Minecraft version {Version}", versionId);
+        _logService?.Info("MinecraftInstall", "Started", "Instalando versión de Minecraft.", new { versionId });
         var versionData = await FetchVersionDataAsync(versionId);
         if (versionData == null)
             throw new Exception($"Version {versionId} not found");
 
         var gameDir = GetMinecraftGameDir();
         var versionsDir = Path.Combine(gameDir, "versions", versionId);
-        Directory.CreateDirectory(versionsDir);
-
-        var jarPath = Path.Combine(versionsDir, $"{versionId}.jar");
-        if (!File.Exists(jarPath))
+        var installMarker = Path.Combine(versionsDir, ".shorocraft-installed.json");
+        Directory.CreateDirectory(Path.Combine(gameDir, "versions"));
+        if (IsVersionComplete(versionsDir, versionId))
         {
+            _logService?.Info("MinecraftInstall", "AlreadyComplete", "La versión ya está instalada.", new { versionId, versionsDir });
+            await EnsureLauncherProfileAsync(gameDir, versionId);
+            return;
+        }
+
+        var tempRoot = Path.Combine(gameDir, "versions", ".installing");
+        var tempVersionsDir = Path.Combine(tempRoot, $"{versionId}_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempVersionsDir);
+
+        try
+        {
+            var jarPath = Path.Combine(tempVersionsDir, $"{versionId}.jar");
             var clientUrl = versionData.GetClientUrl();
             if (clientUrl == null) throw new Exception($"No download URL for version {versionId}");
             _logger.LogInformation("Downloading client jar for {Version}", versionId);
+            _logService?.Info("MinecraftInstall", "ClientDownloadStarted", "Descargando cliente de Minecraft.", new { versionId, clientUrl });
             await DownloadFileAsync(clientUrl, jarPath, progress);
+
+            var jsonPath = Path.Combine(tempVersionsDir, $"{versionId}.json");
+            var versionJson = await _httpClient.GetStringAsync(versionData.Url);
+            await File.WriteAllTextAsync(jsonPath, versionJson);
+
+            var libsDir = Path.Combine(gameDir, "libraries");
+            var libCount = await DownloadLibrariesAsync(versionData, libsDir, progress);
+
+            if (Directory.Exists(versionsDir))
+                Directory.Delete(versionsDir, recursive: true);
+            Directory.Move(tempVersionsDir, versionsDir);
+
+            await File.WriteAllTextAsync(installMarker, JsonSerializer.Serialize(new
+            {
+                versionId,
+                installedAt = DateTimeOffset.Now,
+                launcher = "ShoroCraftLauncher"
+            }, new JsonSerializerOptions { WriteIndented = true }));
+
+            await EnsureLauncherProfileAsync(gameDir, versionId);
+
+            _logger.LogInformation("Version {Version} installed ({LibCount} libraries)", versionId, libCount);
+            _logService?.Info("MinecraftInstall", "Completed", "Versión de Minecraft instalada correctamente.", new { versionId, libCount });
         }
-
-        var jsonPath = Path.Combine(versionsDir, $"{versionId}.json");
-        var versionJson = await _httpClient.GetStringAsync(versionData.Url);
-        await File.WriteAllTextAsync(jsonPath, versionJson);
-
-        var libsDir = Path.Combine(gameDir, "libraries");
-        var libCount = await DownloadLibrariesAsync(versionData, libsDir, progress);
-
-        _logger.LogInformation("Version {Version} installed ({LibCount} libraries)", versionId, libCount);
+        catch (Exception ex)
+        {
+            _logService?.Error("MinecraftInstall", "Failed", "Falló la instalación de Minecraft.", ex, new { versionId });
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempVersionsDir))
+                    Directory.Delete(tempVersionsDir, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                _logService?.Warning("MinecraftInstall", "TempCleanupFailed", "No se pudo limpiar carpeta temporal.", new { tempVersionsDir, ex.Message });
+            }
+        }
     }
 
-    public async Task InstallLoaderAsync(string versionId, string loaderType, string loaderVersion, string javaPath, Action<string>? onProgress = null, IProgress<double>? progress = null)
+    public async Task InstallLoaderAsync(string versionId, string loaderType, string loaderVersion, string javaPath, Action<string>? onProgress = null, IProgress<double>? progress = null, Action<string>? onLog = null)
     {
+        using var operation = _logService?.BeginOperation("LoaderInstall", "InstallLoader", new { versionId, loaderType, loaderVersion });
         _logger.LogInformation("Installing loader {Loader} for Minecraft {McVersion}", loaderType, versionId);
+        _logService?.Info("LoaderInstall", "Started", "Instalando loader.", new { versionId, loaderType, loaderVersion });
+        onLog?.Invoke($"[INFO] Preparando instalación de {loaderType} {loaderVersion}...");
         onProgress?.Invoke($"Preparando instalación de {loaderType} {loaderVersion}...");
         
         var gameDir = GetMinecraftGameDir();
         Directory.CreateDirectory(Path.Combine(gameDir, "cache"));
 
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        if (!Directory.Exists(versionDir) || !File.Exists(Path.Combine(versionDir, $"{versionId}.jar")))
+        {
+            _logService?.Warning("LoaderInstall", "BaseVersionMissing", "Minecraft base no está instalado; se instalará antes del loader.", new { versionId });
+            onLog?.Invoke($"[INFO] Minecraft {versionId} no está instalado. Instalando versión base...");
+            onProgress?.Invoke($"Instalando Minecraft {versionId}...");
+            await InstallVersionAsync(versionId, progress);
+        }
+
+        await EnsureLauncherProfileAsync(gameDir, versionId);
+
         var installerUrl = loaderType.ToLower() switch
         {
             "forge" => $"https://maven.minecraftforge.net/net/minecraftforge/forge/{versionId}-{loaderVersion}/forge-{versionId}-{loaderVersion}-installer.jar",
             "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{loaderVersion}/fabric-installer-{loaderVersion}.jar",
-            "quilt" => $"https://maven.quiltmc.org/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
+            "quilt" => $"https://maven.quiltmc.net/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
             _ => throw new Exception($"Unknown loader: {loaderType}")
         };
 
@@ -110,24 +172,63 @@ public class MinecraftService : IMinecraftService
         
         if (!File.Exists(installerPath))
         {
+            _logService?.Info("LoaderInstall", "InstallerDownloadStarted", "Descargando instalador de loader.", new { loaderType, installerUrl });
+            onLog?.Invoke($"[INFO] Descargando instalador de {loaderType}...");
             onProgress?.Invoke($"Descargando instalador de {loaderType}...");
-            await DownloadFileAsync(installerUrl, installerPath, progress);
+            try
+            {
+                await DownloadFileAsync(installerUrl, installerPath, progress);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to download {Loader} installer from {Url}", loaderType, installerUrl);
+                _logService?.Error("LoaderInstall", "InstallerDownloadFailed", "No se pudo descargar el instalador del loader.", ex, new { loaderType, installerUrl });
+                throw new Exception($"No se pudo descargar el instalador de {loaderType} ({(int)(ex.StatusCode ?? 0)}). Verifica que la versión sea correcta: {installerUrl}");
+            }
         }
         
         _logger.LogInformation("Loader installer downloaded to {Path}. Starting installation.", installerPath);
+        onLog?.Invoke($"[INFO] Ejecutando instalador de {loaderType}...");
         onProgress?.Invoke($"Ejecutando instalador de {loaderType}...");
+
+        // Log Java version
+        try
+        {
+            var javaVersionPsi = new ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = "-version",
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            using var jp = Process.Start(javaVersionPsi);
+            if (jp != null)
+            {
+                var javaVer = await jp.StandardError.ReadToEndAsync();
+                _logger.LogInformation("Java version: {JavaVersion}", javaVer.Trim());
+                onLog?.Invoke($"[INFO] Java: {javaVer.Trim()}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not check Java version");
+        }
 
         var args = loaderType.ToLower() switch
         {
-            "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\"",
+            "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\" --nogui",
             "fabric" => $"-jar \"{installerPath}\" client -dir \"{gameDir}\" -mcversion {versionId}",
             "quilt" => $"-jar \"{installerPath}\" install client {versionId} --install-dir=\"{gameDir}\"",
             _ => throw new Exception($"Unknown loader: {loaderType}")
         };
 
+        _logger.LogInformation("Java: {Java} | Args: {Args}", javaPath, args);
+        _logService?.Info("LoaderInstall", "InstallerStarting", "Ejecutando instalador del loader.", new { javaPath, args });
+
         var psi = new ProcessStartInfo
         {
-            FileName = javaPath,
+            FileName = javaPath.Replace("javaw.exe", "java.exe"),
             Arguments = args,
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -135,21 +236,32 @@ public class MinecraftService : IMinecraftService
             CreateNoWindow = true
         };
 
+        var outputLines = new List<string>();
+        var errorLines = new List<string>();
+
         using var process = new Process { StartInfo = psi };
-        process.OutputDataReceived += (_, e) => { if (e.Data != null) onProgress?.Invoke(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data != null) onProgress?.Invoke($"[ERROR] {e.Data}"); };
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) { outputLines.Add(e.Data); onLog?.Invoke($"[{loaderType}] {e.Data}"); } };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) { errorLines.Add(e.Data); onLog?.Invoke($"[ERROR] [{loaderType}] {e.Data}"); } };
 
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
-        await process.WaitForExitAsync();
+        await process.WaitForExitAsync(cts.Token);
 
         if (process.ExitCode != 0)
         {
-            throw new Exception($"El instalador de {loaderType} falló con código {process.ExitCode}");
+            var allOutput = string.Join(Environment.NewLine, outputLines.Concat(errorLines));
+            var detail = !string.IsNullOrEmpty(allOutput) ? $": {allOutput}" : "";
+            _logger.LogError("Installer failed. Exit code: {ExitCode}. Full output: {Output}", process.ExitCode, allOutput);
+            _logService?.Error("LoaderInstall", "InstallerFailed", "El instalador del loader falló.", data: new { loaderType, process.ExitCode, output = allOutput });
+            throw new Exception($"El instalador de {loaderType} falló con código {process.ExitCode}{detail}");
         }
 
+        _logger.LogInformation("Loader {Loader} installed successfully.", loaderType);
+        _logService?.Info("LoaderInstall", "Completed", "Loader instalado correctamente.", new { loaderType, loaderVersion, versionId });
+        onLog?.Invoke($"[INFO] {loaderType} instalado correctamente.");
         onProgress?.Invoke($"{loaderType} instalado correctamente.");
     }
 
@@ -257,6 +369,55 @@ public class MinecraftService : IMinecraftService
         return "1.21";
     }
 
+    public async Task<string> ResolveLatestLoaderVersionAsync(string loaderType, string mcVersion)
+    {
+        try
+        {
+            return loaderType.ToLower() switch
+            {
+                "forge" => await ResolveLatestForgeVersionAsync(mcVersion),
+                "fabric" => await ResolveLatestFabricInstallerVersionAsync(),
+                "quilt" => await ResolveLatestQuiltInstallerVersionAsync(),
+                _ => "latest"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve latest {Loader} version for MC {McVersion}", loaderType, mcVersion);
+            return "latest";
+        }
+    }
+
+    private async Task<string> ResolveLatestForgeVersionAsync(string mcVersion)
+    {
+        var json = await _httpClient.GetStringAsync("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json");
+        var doc = JsonDocument.Parse(json);
+        var promos = doc.RootElement.GetProperty("promos");
+
+        if (promos.TryGetProperty($"{mcVersion}-recommended", out var rec))
+            return rec.GetString() ?? "latest";
+
+        if (promos.TryGetProperty($"{mcVersion}-latest", out var lat))
+            return lat.GetString() ?? "latest";
+
+        _logger.LogWarning("No Forge version found for MC {McVersion}, falling back to 'latest'", mcVersion);
+        return "latest";
+    }
+
+    private async Task<string> ResolveLatestFabricInstallerVersionAsync()
+    {
+        var json = await _httpClient.GetStringAsync("https://meta.fabricmc.net/v2/versions/installer");
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
+    }
+
+    private async Task<string> ResolveLatestQuiltInstallerVersionAsync()
+    {
+        var json = await _httpClient.GetStringAsync("https://meta.quiltmc.org/v3/versions/installer");
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
+    }
+
     private string BuildClassPath(string globalDir, string gameDir, string versionId)
     {
         var entries = new List<string>();
@@ -327,7 +488,7 @@ public class MinecraftService : IMinecraftService
             {
                 await DownloadFileAsync(lib.Url, destPath, null);
                 count++;
-                progress?.Report((double)(i + 1) / libs.Count);
+                progress?.Report((double)(i + 1) / libs.Count * 100);
             }
             catch (Exception ex)
             {
@@ -356,7 +517,7 @@ public class MinecraftService : IMinecraftService
             {
                 await fileStream.WriteAsync(buffer, 0, read);
                 readBytes += read;
-                progress?.Report((double)readBytes / totalBytes);
+                progress?.Report((double)readBytes / totalBytes * 100);
             }
         }
         else
@@ -367,6 +528,65 @@ public class MinecraftService : IMinecraftService
 
     private static string GetMinecraftGameDir() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+
+    private static bool IsVersionComplete(string versionsDir, string versionId)
+    {
+        return Directory.Exists(versionsDir)
+            && File.Exists(Path.Combine(versionsDir, $"{versionId}.jar"))
+            && File.Exists(Path.Combine(versionsDir, $"{versionId}.json"))
+            && File.Exists(Path.Combine(versionsDir, ".shorocraft-installed.json"));
+    }
+
+    private static async Task EnsureLauncherProfileAsync(string gameDir, string versionId)
+    {
+        Directory.CreateDirectory(gameDir);
+
+        var profilesPath = Path.Combine(gameDir, "launcher_profiles.json");
+        JsonObject root;
+
+        if (File.Exists(profilesPath))
+        {
+            try
+            {
+                root = JsonNode.Parse(await File.ReadAllTextAsync(profilesPath))?.AsObject() ?? new JsonObject();
+            }
+            catch
+            {
+                root = new JsonObject();
+            }
+        }
+        else
+        {
+            root = new JsonObject();
+        }
+
+        var profiles = root["profiles"] as JsonObject ?? new JsonObject();
+        root["profiles"] = profiles;
+
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        var profile = profiles["ShoroCraft"] as JsonObject ?? new JsonObject();
+        profile["name"] = "ShoroCraft";
+        profile["type"] = "custom";
+        profile["created"] ??= now;
+        profile["lastUsed"] = now;
+        profile["lastVersionId"] = versionId;
+        profiles["ShoroCraft"] = profile;
+
+        root["selectedProfile"] = "ShoroCraft";
+        root["clientToken"] ??= Guid.NewGuid().ToString("N");
+        root["authenticationDatabase"] ??= new JsonObject();
+        root["settings"] ??= new JsonObject();
+        root["version"] ??= 3;
+        root["launcherVersion"] ??= new JsonObject
+        {
+            ["name"] = "ShoroCraft Launcher",
+            ["format"] = 21
+        };
+
+        await File.WriteAllTextAsync(
+            profilesPath,
+            root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
 
     private static string SanitizeFolderName(string name)
     {

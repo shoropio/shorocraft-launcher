@@ -9,4 +9,5 @@ public interface IProfileService
     ObservableCollection<Profile> Profiles { get; }
     event Action? SelectedProfileChanged;
     Task LoadProfilesAsync();
+    Task UpdateProfileAsync(Profile profile);
 }
