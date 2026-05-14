@@ -403,8 +403,23 @@ public class MinecraftService : IMinecraftService
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
         process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.Arguments = EnsureNativeAccessModules(process.StartInfo.Arguments);
 
         return process;
+    }
+
+    private static string EnsureNativeAccessModules(string arguments)
+    {
+        const string current = "--enable-native-access=ALL-UNNAMED";
+        const string expanded = "--enable-native-access=ALL-UNNAMED,org.lwjgl,org.lwjgl.opengl,org.lwjgl.stb,com.sun.jna";
+
+        if (arguments.Contains(expanded, StringComparison.OrdinalIgnoreCase))
+            return arguments;
+
+        if (arguments.Contains(current, StringComparison.OrdinalIgnoreCase))
+            return arguments.Replace(current, expanded, StringComparison.OrdinalIgnoreCase);
+
+        return $"{expanded} {arguments}";
     }
 
 

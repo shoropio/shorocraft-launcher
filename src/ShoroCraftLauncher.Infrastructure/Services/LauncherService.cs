@@ -114,11 +114,20 @@ public class LauncherService : ILauncherService
 
             process.ErrorDataReceived += (_, e) =>
             {
-                if (e.Data != null)
+                if (!string.IsNullOrWhiteSpace(e.Data))
                 {
-                    _logger.LogError("Minecraft: {Line}", e.Data);
-                    _logService?.MinecraftStderr(e.Data);
-                    Log($"[ERROR] {e.Data}");
+                    if (IsMinecraftStderrWarning(e.Data))
+                    {
+                        _logger.LogWarning("Minecraft: {Line}", e.Data);
+                        _logService?.Warning("Minecraft", "StderrWarning", e.Data);
+                        Log($"[WARN] {e.Data}");
+                    }
+                    else
+                    {
+                        _logger.LogError("Minecraft: {Line}", e.Data);
+                        _logService?.MinecraftStderr(e.Data);
+                        Log($"[ERROR] {e.Data}");
+                    }
                 }
             };
 
@@ -172,6 +181,11 @@ public class LauncherService : ILauncherService
 
         LogOutput?.Invoke(message);
         _logService?.Info("Console", "Message", message);
+    }
+
+    private static bool IsMinecraftStderrWarning(string line)
+    {
+        return line.TrimStart().StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task StopGameAsync()
