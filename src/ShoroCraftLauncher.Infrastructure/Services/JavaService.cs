@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -7,6 +8,8 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class JavaService : IJavaService
 {
+    private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+
     private readonly ILogger<JavaService> _logger;
     private readonly HttpClient _httpClient;
 
@@ -69,7 +72,7 @@ public class JavaService : IJavaService
         if (valid.Count == 0)
             return string.Empty;
 
-        var recommendedJavaVersion = GetRecommendedJavaMajor(minecraftVersion);
+        var recommendedJavaVersion = await GetRecommendedJavaMajorAsync(minecraftVersion);
 
         var withMajor = valid
             .Select(j => (Info: j, Major: ParseVersion(j.Version)))
@@ -228,13 +231,59 @@ public class JavaService : IJavaService
         return 0;
     }
 
-    private static int GetRecommendedJavaMajor(string minecraftVersion)
+    private async Task<int> GetRecommendedJavaMajorAsync(string minecraftVersion)
+    {
+        try
+        {
+            var json = await _httpClient.GetStringAsync(VersionManifestUrl);
+            using var manifest = JsonDocument.Parse(json);
+            var resolvedVersion = minecraftVersion;
+
+            if (minecraftVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                resolvedVersion = manifest.RootElement
+                    .GetProperty("latest")
+                    .GetProperty("release")
+                    .GetString() ?? minecraftVersion;
+            }
+
+            foreach (var version in manifest.RootElement.GetProperty("versions").EnumerateArray())
+            {
+                if (!string.Equals(version.GetProperty("id").GetString(), resolvedVersion, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var versionUrl = version.GetProperty("url").GetString();
+                if (string.IsNullOrWhiteSpace(versionUrl))
+                    break;
+
+                var versionJson = await _httpClient.GetStringAsync(versionUrl);
+                using var versionDoc = JsonDocument.Parse(versionJson);
+                if (versionDoc.RootElement.TryGetProperty("javaVersion", out var javaVersion)
+                    && javaVersion.TryGetProperty("majorVersion", out var major)
+                    && major.TryGetInt32(out var manifestMajor)
+                    && manifestMajor >= 8)
+                {
+                    return manifestMajor;
+                }
+
+                break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not resolve Java version from Minecraft manifest for {Version}", minecraftVersion);
+        }
+
+        return GetFallbackJavaMajor(minecraftVersion);
+    }
+
+    private static int GetFallbackJavaMajor(string minecraftVersion)
     {
         if (!TryParseMinecraftVersion(minecraftVersion, out var major, out var minor, out var patch))
             return 17;
 
         if (major >= 26)
-            return 21;
+            return 25;
 
         if (major > 1)
             return 21;

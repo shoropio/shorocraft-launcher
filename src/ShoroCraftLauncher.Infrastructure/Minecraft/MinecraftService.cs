@@ -323,17 +323,20 @@ public class MinecraftService : IMinecraftService
         var mcPath = new CmlLib.Core.MinecraftPath(globalDir);
         var launcher = new CmlLib.Core.MinecraftLauncher(mcPath);
 
-        int lastProgressed = 0;
-        int logThrottleCounter = 0;
+        int lastReportedPercent = -1;
         launcher.FileProgressChanged += (s, e) =>
         {
-            // Throttle to 1 every 20 events, or when finished, to avoid lagging the UI
-            logThrottleCounter++;
-            if (e.ProgressedTasks - lastProgressed > 20 || e.ProgressedTasks == e.TotalTasks || logThrottleCounter % 20 == 0)
+            var percentage = e.TotalTasks > 0 ? (double)e.ProgressedTasks / e.TotalTasks * 100 : 0;
+            var percent = (int)Math.Floor(percentage);
+            var shouldReport = percent == 0
+                || percent >= 100
+                || lastReportedPercent < 0
+                || percent - lastReportedPercent >= 5;
+
+            if (shouldReport)
             {
-                lastProgressed = e.ProgressedTasks;
-                double percentage = e.TotalTasks > 0 ? (double)e.ProgressedTasks / e.TotalTasks * 100 : 0;
-                onProgress?.Invoke(percentage, $"Procesando: {e.Name} ({e.ProgressedTasks}/{e.TotalTasks})");
+                lastReportedPercent = percent;
+                onProgress?.Invoke(percentage, $"Verificando archivos de Minecraft... {percent}% ({e.ProgressedTasks}/{e.TotalTasks})");
             }
         };
 

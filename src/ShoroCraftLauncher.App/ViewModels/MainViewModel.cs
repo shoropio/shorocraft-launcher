@@ -175,6 +175,8 @@ public class MainViewModel : BaseViewModel
                 IsGameRunning = false;
                 StatusMessage = "Juego cerrado.";
                 IsDownloading = false;
+                DownloadProgress = 0;
+                DownloadStatus = string.Empty;
             });
         };
 
