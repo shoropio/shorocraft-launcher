@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Collections;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -220,8 +221,28 @@ public sealed class LogService : ILogService, IDisposable
 
         if (data != null)
         {
-            foreach (var prop in data.GetType().GetProperties())
-                result[prop.Name] = Sanitize(Convert.ToString(prop.GetValue(data)) ?? "");
+            if (data is IDictionary dictionary)
+            {
+                foreach (DictionaryEntry entry in dictionary)
+                    result[Convert.ToString(entry.Key) ?? "key"] = Sanitize(Convert.ToString(entry.Value) ?? "");
+            }
+            else
+            {
+                foreach (var prop in data.GetType().GetProperties())
+                {
+                    if (prop.GetIndexParameters().Length > 0)
+                        continue;
+
+                    try
+                    {
+                        result[prop.Name] = Sanitize(Convert.ToString(prop.GetValue(data)) ?? "");
+                    }
+                    catch
+                    {
+                        result[prop.Name] = "[UNREADABLE]";
+                    }
+                }
+            }
         }
 
         if (extra != null)

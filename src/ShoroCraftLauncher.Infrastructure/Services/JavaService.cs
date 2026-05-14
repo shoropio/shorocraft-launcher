@@ -230,8 +230,14 @@ public class JavaService : IJavaService
 
     private static int GetRecommendedJavaMajor(string minecraftVersion)
     {
-        if (!TryParseMinecraftVersion(minecraftVersion, out var minor, out var patch))
+        if (!TryParseMinecraftVersion(minecraftVersion, out var major, out var minor, out var patch))
             return 17;
+
+        if (major >= 26)
+            return 21;
+
+        if (major > 1)
+            return 21;
 
         if (minor >= 21 || (minor == 20 && patch >= 5))
             return 21;
@@ -242,18 +248,20 @@ public class JavaService : IJavaService
         return 8;
     }
 
-    private static bool TryParseMinecraftVersion(string version, out int minor, out int patch)
+    private static bool TryParseMinecraftVersion(string version, out int major, out int minor, out int patch)
     {
+        major = 0;
         minor = 0;
         patch = 0;
 
-        var match = Regex.Match(version, @"^1\.(\d+)(?:\.(\d+))?");
+        var match = Regex.Match(version, @"^(\d+)\.(\d+)(?:\.(\d+))?");
         if (!match.Success)
             return false;
 
-        minor = int.Parse(match.Groups[1].Value);
-        if (match.Groups[2].Success)
-            patch = int.Parse(match.Groups[2].Value);
+        major = int.Parse(match.Groups[1].Value);
+        minor = int.Parse(match.Groups[2].Value);
+        if (match.Groups[3].Success)
+            patch = int.Parse(match.Groups[3].Value);
 
         return true;
     }
