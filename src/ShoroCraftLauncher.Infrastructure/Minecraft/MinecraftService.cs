@@ -15,7 +15,13 @@ public class MinecraftService : IMinecraftService
     private readonly ILogger<MinecraftService> _logger;
     private readonly HttpClient _httpClient;
     private readonly ILogService? _logService;
-    private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
+    private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+    private const string ForgePromotionsUrl = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
+    private const string FabricGameVersionsUrl = "https://meta.fabricmc.net/v2/versions/game";
+    private const string FabricLoaderVersionsUrl = "https://meta.fabricmc.net/v2/versions/loader";
+    private const string FabricInstallerVersionsUrl = "https://meta.fabricmc.net/v2/versions/installer";
+    private const string QuiltGameVersionsUrl = "https://meta.quiltmc.org/v3/versions/game";
+    private const string QuiltInstallerVersionsUrl = "https://meta.quiltmc.org/v3/versions/installer";
 
     public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null)
     {
@@ -160,15 +166,19 @@ public class MinecraftService : IMinecraftService
 
         await EnsureLauncherProfileAsync(gameDir, versionId);
 
+        var installerVersion = loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase)
+            ? await ResolveLatestFabricInstallerVersionAsync()
+            : loaderVersion;
+
         var installerUrl = loaderType.ToLower() switch
         {
             "forge" => $"https://maven.minecraftforge.net/net/minecraftforge/forge/{versionId}-{loaderVersion}/forge-{versionId}-{loaderVersion}-installer.jar",
-            "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{loaderVersion}/fabric-installer-{loaderVersion}.jar",
+            "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{installerVersion}/fabric-installer-{installerVersion}.jar",
             "quilt" => $"https://maven.quiltmc.net/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
             _ => throw new Exception($"Unknown loader: {loaderType}")
         };
 
-        var installerPath = Path.Combine(gameDir, "cache", $"{loaderType}-installer-{versionId}.jar");
+        var installerPath = Path.Combine(gameDir, "cache", $"{loaderType}-installer-{versionId}-{installerVersion}.jar");
         
         if (!File.Exists(installerPath))
         {
@@ -218,7 +228,7 @@ public class MinecraftService : IMinecraftService
         var args = loaderType.ToLower() switch
         {
             "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\" --nogui",
-            "fabric" => $"-jar \"{installerPath}\" client -dir \"{gameDir}\" -mcversion {versionId}",
+            "fabric" => $"-jar \"{installerPath}\" client -dir \"{gameDir}\" -mcversion {versionId} -loader {loaderVersion}",
             "quilt" => $"-jar \"{installerPath}\" install client {versionId} --install-dir=\"{gameDir}\"",
             _ => throw new Exception($"Unknown loader: {loaderType}")
         };
@@ -376,8 +386,8 @@ public class MinecraftService : IMinecraftService
             return loaderType.ToLower() switch
             {
                 "forge" => await ResolveLatestForgeVersionAsync(mcVersion),
-                "fabric" => await ResolveLatestFabricInstallerVersionAsync(),
-                "quilt" => await ResolveLatestQuiltInstallerVersionAsync(),
+                "fabric" => await ResolveLatestFabricLoaderVersionAsync(mcVersion),
+                "quilt" => await ResolveLatestQuiltInstallerVersionAsync(mcVersion),
                 _ => "latest"
             };
         }
@@ -390,7 +400,7 @@ public class MinecraftService : IMinecraftService
 
     private async Task<string> ResolveLatestForgeVersionAsync(string mcVersion)
     {
-        var json = await _httpClient.GetStringAsync("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json");
+        var json = await _httpClient.GetStringAsync(ForgePromotionsUrl);
         var doc = JsonDocument.Parse(json);
         var promos = doc.RootElement.GetProperty("promos");
 
@@ -404,18 +414,47 @@ public class MinecraftService : IMinecraftService
         return "latest";
     }
 
-    private async Task<string> ResolveLatestFabricInstallerVersionAsync()
+    private async Task<string> ResolveLatestFabricLoaderVersionAsync(string mcVersion)
     {
-        var json = await _httpClient.GetStringAsync("https://meta.fabricmc.net/v2/versions/installer");
+        if (!await FabricSupportsGameVersionAsync(mcVersion))
+            throw new Exception($"Fabric no reporta soporte para Minecraft {mcVersion}.");
+
+        var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
-    private async Task<string> ResolveLatestQuiltInstallerVersionAsync()
+    private async Task<string> ResolveLatestFabricInstallerVersionAsync()
     {
-        var json = await _httpClient.GetStringAsync("https://meta.quiltmc.org/v3/versions/installer");
+        var json = await _httpClient.GetStringAsync(FabricInstallerVersionsUrl);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
+    }
+
+    private async Task<string> ResolveLatestQuiltInstallerVersionAsync(string mcVersion)
+    {
+        if (!await QuiltSupportsGameVersionAsync(mcVersion))
+            throw new Exception($"Quilt no reporta soporte para Minecraft {mcVersion}.");
+
+        var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl);
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
+    }
+
+    private async Task<bool> FabricSupportsGameVersionAsync(string mcVersion)
+    {
+        var json = await _httpClient.GetStringAsync(FabricGameVersionsUrl);
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement.EnumerateArray().Any(v =>
+            string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<bool> QuiltSupportsGameVersionAsync(string mcVersion)
+    {
+        var json = await _httpClient.GetStringAsync(QuiltGameVersionsUrl);
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement.EnumerateArray().Any(v =>
+            string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
     }
 
     private string BuildClassPath(string globalDir, string gameDir, string versionId)
