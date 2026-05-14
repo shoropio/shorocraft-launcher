@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
@@ -11,6 +12,7 @@ public class SettingsViewModel : BaseViewModel
 {
     private readonly ISettingsRepository _settingsRepo;
     private readonly ILogger<SettingsViewModel> _logger;
+    private readonly ILogService _logService;
 
     private bool _closeOnLaunch;
     public bool CloseOnLaunch
@@ -78,20 +80,26 @@ public class SettingsViewModel : BaseViewModel
     public ICommand SaveGameDirCommand { get; }
     public ICommand CleanTempCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
+    public ICommand OpenLogsFolderCommand { get; }
+    public ICommand ExportDiagnosticsCommand { get; }
 
     public List<string> Languages { get; } = new() { "es", "en", "fr", "de", "pt" };
 
     public SettingsViewModel(
         ISettingsRepository settingsRepo,
-        ILogger<SettingsViewModel> logger)
+        ILogger<SettingsViewModel> logger,
+        ILogService logService)
     {
         _settingsRepo = settingsRepo;
         _logger = logger;
+        _logService = logService;
 
         BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDir());
         SaveGameDirCommand = new RelayCommand(async _ => await SaveGameDir());
         CleanTempCommand = new RelayCommand(async _ => await CleanTemp());
         CheckUpdatesCommand = new RelayCommand(async _ => await CheckUpdates());
+        OpenLogsFolderCommand = new RelayCommand(_ => OpenLogsFolder());
+        ExportDiagnosticsCommand = new RelayCommand(async _ => await ExportDiagnostics());
 
         _ = LoadSettingsAsync();
     }
@@ -115,6 +123,7 @@ public class SettingsViewModel : BaseViewModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load settings");
+            _logService.Error("Settings", "LoadFailed", "Error al cargar configuración.", ex);
             StatusMessage = "Error al cargar configuración.";
         }
         IsBusy = false;
@@ -133,6 +142,7 @@ public class SettingsViewModel : BaseViewModel
         if (!string.IsNullOrEmpty(GameDir))
         {
             await _settingsRepo.SetAsync("game_directory", GameDir);
+            _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
             StatusMessage = "Directorio guardado.";
         }
     }
@@ -171,6 +181,48 @@ public class SettingsViewModel : BaseViewModel
         StatusMessage = "Buscando actualizaciones...";
         await Task.Delay(1000);
         StatusMessage = "No hay actualizaciones disponibles.";
+    }
+
+    private void OpenLogsFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(_logService.SessionDirectory);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = _logService.SessionDirectory,
+                UseShellExecute = true
+            });
+            StatusMessage = "Carpeta de logs abierta.";
+            _logService.Info("Diagnostics", "LogsFolderOpened", "Carpeta de logs abierta.", new { _logService.SessionDirectory });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open logs folder");
+            _logService.Error("Diagnostics", "OpenLogsFolderFailed", "No se pudo abrir la carpeta de logs.", ex);
+            StatusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task ExportDiagnostics()
+    {
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Exportando diagnóstico...";
+            var zipPath = await _logService.ExportDiagnosticsZipAsync(new DiagnosticExportOptions());
+            StatusMessage = $"Diagnóstico exportado: {zipPath}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export diagnostics");
+            _logService.Error("Diagnostics", "ExportFailed", "No se pudo exportar diagnóstico.", ex);
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task<long> CalculateTotalSizeAsync()

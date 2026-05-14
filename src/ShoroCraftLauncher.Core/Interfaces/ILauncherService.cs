@@ -14,7 +14,9 @@ public interface ILauncherService
     Task<LaunchResult> LaunchProfileAsync(Profile profile, AuthResult auth);
     Task StopGameAsync();
     bool IsGameRunning { get; }
+    IReadOnlyList<string> LogHistory { get; }
     event Action<string>? LogOutput;
     event Action<double, string>? ProgressChanged;
     event Action? GameExited;
+    void Log(string message);
 }

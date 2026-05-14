@@ -17,6 +17,7 @@ namespace ShoroCraftLauncher.App;
 public partial class App : Application
 {
     private readonly IHost _host;
+    private ILogService? _logService;
 
     public App()
     {
@@ -26,6 +27,7 @@ public partial class App : Application
 
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
+        _logService?.Critical("App", "UiUnhandledException", "Excepción no controlada en UI.", e.Exception);
         Log.Fatal(e.Exception, "Unhandled exception occurred");
         System.Windows.MessageBox.Show($"Ha ocurrido un error inesperado:\n{e.Exception.Message}\n\nEl launcher se cerrará por seguridad.", "Error Inesperado", MessageBoxButton.OK, MessageBoxImage.Error);
         Log.CloseAndFlush();
@@ -70,6 +72,7 @@ public partial class App : Application
                 services.AddSingleton<IGameVersionRepository, GameVersionRepository>();
                 services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
+                services.AddSingleton<ILogService, LogService>();
                 services.AddSingleton<IMinecraftService, MinecraftService>();
                 services.AddSingleton<IJavaService, JavaService>();
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
@@ -86,7 +89,7 @@ public partial class App : Application
                 services.AddTransient<ResourcePacksViewModel>();
                 services.AddTransient<ShaderPacksViewModel>();
                 services.AddTransient<ScriptsViewModel>();
-                services.AddTransient<ConsoleViewModel>();
+                services.AddSingleton<ConsoleViewModel>();
                 services.AddTransient<SettingsViewModel>();
 
                 services.AddSingleton<MainViewModel>();
@@ -102,6 +105,20 @@ public partial class App : Application
             base.OnStartup(e);
 
             await _host.StartAsync();
+            _logService = _host.Services.GetRequiredService<ILogService>();
+            _logService.Info("App", "Started", "ShoroCraft Launcher iniciado.");
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                    _logService?.Critical("App", "UnhandledException", "Excepción no controlada del dominio.", ex);
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                _logService?.Error("App", "UnobservedTaskException", "Excepción no observada en tarea.", args.Exception);
+                args.SetObserved();
+            };
 
             using (var scope = _host.Services.CreateScope())
             {
@@ -115,6 +132,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            _logService?.Critical("App", "StartupFailed", "Falló el arranque de la aplicación.", ex);
             Log.Fatal(ex, "Application start-up failed");
             System.Windows.MessageBox.Show($"Critical error during startup:\n{ex.Message}\n\nCheck logs for details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
@@ -124,6 +142,9 @@ public partial class App : Application
     protected override async void OnExit(ExitEventArgs e)
     {
         base.OnExit(e);
+        _logService?.Info("App", "Shutdown", "ShoroCraft Launcher cerrando.");
+        if (_logService != null)
+            await _logService.FlushAsync();
         await _host.StopAsync();
         Log.CloseAndFlush();
     }

@@ -68,6 +68,10 @@
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
                         <Button Content="Buscar actualizaciones" Command="{Binding CheckUpdatesCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                        <Button Content="Abrir logs" Command="{Binding OpenLogsFolderCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                        <Button Content="Exportar diagnóstico" Command="{Binding ExportDiagnosticsCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
                     </WrapPanel>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,8,0,0" />

@@ -7,12 +7,22 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+        <WrapPanel Grid.Row="0" Margin="0,0,0,12">
             <Button Content="Limpiar" Command="{Binding ClearLogCommand}"
                     Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
             <Button Content="Copiar" Command="{Binding CopyLogCommand}"
                     Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
-            <Border Background="{StaticResource CardBrush}" CornerRadius="6"
+            <Button Content="Copiar errores" Command="{Binding CopyRelevantLogCommand}"
+                    Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
+            <ComboBox ItemsSource="{Binding LevelFilters}"
+                      SelectedItem="{Binding SelectedLevel}"
+                      Width="110" Margin="0,0,8,0" />
+            <ComboBox ItemsSource="{Binding ModuleFilters}"
+                      SelectedItem="{Binding SelectedModule}"
+                      Width="140" Margin="0,0,8,0" />
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Width="180" Margin="0,0,8,0" Tag="Filtrar texto" />
+            <Border Background="{StaticResource CardBrush}" CornerRadius="0"
                     Padding="10,6">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}"
@@ -32,10 +42,11 @@
                     </TextBlock>
                 </StackPanel>
             </Border>
-        </StackPanel>
+        </WrapPanel>
 
         <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0">
-            <ListBox ItemsSource="{Binding LogLines}"
+            <ListBox x:Name="ConsoleList"
+                     ItemsSource="{Binding LogLines}"
                      Style="{StaticResource ConsoleListBox}"
                      VirtualizingStackPanel.IsVirtualizing="True"
                      VirtualizingStackPanel.VirtualizationMode="Recycling" />

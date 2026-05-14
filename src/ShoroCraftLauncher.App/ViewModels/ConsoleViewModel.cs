@@ -8,9 +8,45 @@ namespace ShoroCraftLauncher.App.ViewModels;
 
 public class ConsoleViewModel : BaseViewModel
 {
-    private readonly ILauncherService _launcherService;
+    private readonly ILogService _logService;
+    private readonly List<LogEvent> _allEvents = new();
 
     public ObservableCollection<string> LogLines { get; } = new();
+    public ObservableCollection<string> LevelFilters { get; } = new() { "Todos", "Trace", "Debug", "Info", "Warning", "Error", "Critical" };
+    public ObservableCollection<string> ModuleFilters { get; } = new() { "Todos" };
+
+    private string _selectedLevel = "Todos";
+    public string SelectedLevel
+    {
+        get => _selectedLevel;
+        set
+        {
+            if (SetProperty(ref _selectedLevel, value))
+                ApplyFilters();
+        }
+    }
+
+    private string _selectedModule = "Todos";
+    public string SelectedModule
+    {
+        get => _selectedModule;
+        set
+        {
+            if (SetProperty(ref _selectedModule, value))
+                ApplyFilters();
+        }
+    }
+
+    private string _searchText = string.Empty;
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+                ApplyFilters();
+        }
+    }
 
     private bool _isGameRunning;
     public bool IsGameRunning
@@ -21,16 +57,23 @@ public class ConsoleViewModel : BaseViewModel
 
     public ICommand ClearLogCommand { get; }
     public ICommand CopyLogCommand { get; }
+    public ICommand CopyRelevantLogCommand { get; }
 
-    public ConsoleViewModel(ILauncherService launcherService)
+    public ConsoleViewModel(ILogService logService, ILauncherService launcherService)
     {
-        _launcherService = launcherService;
+        _logService = logService;
 
-        _launcherService.LogOutput += OnLogOutput;
-        _launcherService.GameExited += () => IsGameRunning = false;
+        foreach (var logEvent in _logService.RecentEvents)
+            AddLogEvent(logEvent, refresh: false);
+        ApplyFilters();
+
+        _logService.LogReceived += OnLogReceived;
+        launcherService.GameExited += () => IsGameRunning = false;
+        IsGameRunning = launcherService.IsGameRunning;
 
         ClearLogCommand = new RelayCommand(_ => ClearLog());
         CopyLogCommand = new RelayCommand(_ => CopyLog());
+        CopyRelevantLogCommand = new RelayCommand(_ => CopyRelevantLog());
     }
 
     private string CleanLogLine(string line)
@@ -51,30 +94,86 @@ public class ConsoleViewModel : BaseViewModel
         return cleaned;
     }
 
-    private void OnLogOutput(string line)
+    private void OnLogReceived(object? sender, LogEvent logEvent)
     {
         App.Current.Dispatcher.Invoke(() =>
         {
-            var cleaned = CleanLogLine(line);
-            if (string.IsNullOrWhiteSpace(cleaned) && line.Contains("log4j")) return;
-            if (string.IsNullOrWhiteSpace(cleaned) && string.IsNullOrWhiteSpace(line)) return;
-
-            LogLines.Add(cleaned);
-
-            if (LogLines.Count > 1000)
-            {
-                LogLines.RemoveAt(0);
-            }
-
-            IsGameRunning = _launcherService.IsGameRunning;
+            AddLogEvent(logEvent);
         });
     }
 
     public string FullLogText => string.Join(Environment.NewLine, LogLines);
 
-    private void ClearLog()
+    private void AddLogEvent(LogEvent logEvent, bool refresh = true)
+    {
+        _allEvents.Add(logEvent);
+        if (_allEvents.Count > 3000)
+            _allEvents.RemoveRange(0, _allEvents.Count - 3000);
+
+        if (!ModuleFilters.Contains(logEvent.Module))
+            ModuleFilters.Add(logEvent.Module);
+
+        if (refresh)
+            ApplyFilters();
+    }
+
+    private void ApplyFilters()
     {
         LogLines.Clear();
+        foreach (var logEvent in _allEvents.Where(PassesFilters).TakeLast(1000))
+        {
+            var cleaned = CleanLogLine(FormatLogEvent(logEvent));
+            if (string.IsNullOrWhiteSpace(cleaned) && cleaned.Contains("log4j")) continue;
+            if (string.IsNullOrWhiteSpace(cleaned)) continue;
+            LogLines.Add(cleaned);
+        }
+
+        OnPropertyChanged(nameof(FullLogText));
+    }
+
+    private bool PassesFilters(LogEvent logEvent)
+    {
+        if (SelectedLevel != "Todos" && !logEvent.Level.ToString().Equals(SelectedLevel, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (SelectedModule != "Todos" && !logEvent.Module.Equals(SelectedModule, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var text = $"{logEvent.Module} {logEvent.EventName} {logEvent.Message}";
+            if (!text.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static string FormatLogEvent(LogEvent logEvent)
+    {
+        var op = string.IsNullOrEmpty(logEvent.OperationId) ? "-" : logEvent.OperationId;
+        return $"{logEvent.Timestamp:HH:mm:ss.fff} [{logEvent.Level}] [{logEvent.Module}] [op={op}] {logEvent.Message}";
+    }
+
+    private void AddLogLine(string line)
+    {
+        var cleaned = CleanLogLine(line);
+        if (string.IsNullOrWhiteSpace(cleaned) && line.Contains("log4j")) return;
+        if (string.IsNullOrWhiteSpace(cleaned) && string.IsNullOrWhiteSpace(line)) return;
+
+        LogLines.Add(cleaned);
+
+        if (LogLines.Count > 1000)
+            LogLines.RemoveAt(0);
+
+        OnPropertyChanged(nameof(FullLogText));
+    }
+
+    private void ClearLog()
+    {
+        SearchText = string.Empty;
+        SelectedLevel = "Todos";
+        SelectedModule = "Todos";
     }
 
     private void CopyLog()
@@ -84,6 +183,20 @@ public class ConsoleViewModel : BaseViewModel
         {
             System.Windows.Clipboard.SetText(text);
             StatusMessage = "Log copiado al portapapeles.";
+        }
+    }
+
+    private void CopyRelevantLog()
+    {
+        var relevant = _allEvents
+            .Where(e => e.Level >= LauncherLogLevel.Warning)
+            .TakeLast(200)
+            .Select(FormatLogEvent);
+        var text = string.Join(Environment.NewLine, relevant);
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            System.Windows.Clipboard.SetText(text);
+            StatusMessage = "Errores y advertencias copiados.";
         }
     }
 }
