@@ -54,7 +54,11 @@ public class MainViewModel : BaseViewModel
     public bool IsGameRunning
     {
         get => _isGameRunning;
-        set => SetProperty(ref _isGameRunning, value);
+        set
+        {
+            if (SetProperty(ref _isGameRunning, value))
+                CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     private bool _isDownloading;
@@ -117,6 +121,7 @@ public class MainViewModel : BaseViewModel
         {
             _profileService.SelectedProfile = value;
             OnPropertyChanged(nameof(SelectedProfile));
+            CommandManager.InvalidateRequerySuggested();
             if (value != null)
             {
                 SelectedProfileName = value.Name;
@@ -147,10 +152,16 @@ public class MainViewModel : BaseViewModel
         _profileService.SelectedProfileChanged += () =>
         {
             OnPropertyChanged(nameof(SelectedProfile));
+            CommandManager.InvalidateRequerySuggested();
             if (SelectedProfile != null)
             {
                 SelectedProfileName = SelectedProfile.Name;
                 GameVersionStatus = $"{SelectedProfile.MinecraftVersion} | {SelectedProfile.Type}";
+            }
+            else
+            {
+                SelectedProfileName = "Sin perfil";
+                GameVersionStatus = "No instalado";
             }
         };
 
