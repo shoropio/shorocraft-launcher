@@ -135,6 +135,7 @@ public class MainViewModel : BaseViewModel
     public ICommand LaunchGameCommand { get; }
     public ICommand StopGameCommand { get; }
     public ICommand LoginCommand { get; }
+    public ICommand LoginOfflineCommand { get; }
 
     public MainViewModel(
         IServiceProvider serviceProvider,
@@ -177,7 +178,8 @@ public class MainViewModel : BaseViewModel
         NavigateCommand = new RelayCommand(p => SelectedNav = p?.ToString() ?? "Dashboard");
         LaunchGameCommand = new RelayCommand(async _ => await LaunchGame(), _ => SelectedProfile != null && !IsGameRunning);
         StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning);
-        LoginCommand = new RelayCommand(async _ => await Login());
+        LoginCommand = new RelayCommand(async _ => await LoginMicrosoft());
+        LoginOfflineCommand = new RelayCommand(async _ => await LoginOffline());
 
         _launcherService.GameExited += () =>
         {
@@ -239,7 +241,7 @@ public class MainViewModel : BaseViewModel
     {
         if (SelectedProfile == null || IsGameRunning) return;
 
-        if (_currentAuth == null || !_currentAuth.Success || _currentAuth.Username != Username)
+        if (_currentAuth == null || !_currentAuth.Success || (_currentAuth.IsOffline && _currentAuth.Username != Username))
         {
             _currentAuth = await _authService.AuthenticateOfflineAsync(Username);
             if (!_currentAuth.Success)
@@ -248,7 +250,7 @@ public class MainViewModel : BaseViewModel
                 return;
             }
             IsAuthenticated = true;
-            AuthStatus = $"Jugando como: {_currentAuth.Username}";
+            AuthStatus = $"Offline: {_currentAuth.Username}";
         }
 
         IsBusy = true;
@@ -277,7 +279,28 @@ public class MainViewModel : BaseViewModel
         StatusMessage = "Juego detenido.";
     }
 
-    private async Task Login()
+    private async Task LoginMicrosoft()
+    {
+        IsBusy = true;
+        StatusMessage = "Abriendo autenticación Microsoft...";
+
+        _currentAuth = await _authService.AuthenticateAsync();
+        if (_currentAuth.Success)
+        {
+            Username = _currentAuth.Username ?? Username;
+            IsAuthenticated = true;
+            AuthStatus = $"Microsoft: {_currentAuth.Username}";
+            SkinUrl = _currentAuth.SkinUrl;
+            StatusMessage = "Autenticación Microsoft exitosa.";
+        }
+        else
+        {
+            StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación Microsoft.";
+        }
+        IsBusy = false;
+    }
+
+    private async Task LoginOffline()
     {
         IsBusy = true;
         StatusMessage = "Autenticando offline...";
@@ -287,7 +310,7 @@ public class MainViewModel : BaseViewModel
         if (_currentAuth.Success)
         {
             IsAuthenticated = true;
-            AuthStatus = $"Jugando como: {_currentAuth.Username}";
+            AuthStatus = $"Offline: {_currentAuth.Username}";
             SkinUrl = _currentAuth.SkinUrl;
             StatusMessage = "Autenticación offline exitosa.";
         }

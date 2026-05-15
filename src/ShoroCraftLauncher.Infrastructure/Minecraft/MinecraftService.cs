@@ -383,11 +383,18 @@ public class MinecraftService : IMinecraftService
             }
         };
 
+        var session = accessToken.Equals("offline", StringComparison.OrdinalIgnoreCase)
+            ? CmlLib.Core.Auth.MSession.CreateOfflineSession(username)
+            : new CmlLib.Core.Auth.MSession(username, accessToken, uuid)
+            {
+                UserType = "msa"
+            };
+
         var launchOption = new CmlLib.Core.ProcessBuilder.MLaunchOption
         {
             MaximumRamMb = profile.MaxRamMB,
             MinimumRamMb = profile.MinRamMB,
-            Session = CmlLib.Core.Auth.MSession.CreateOfflineSession(username),
+            Session = session,
             JavaPath = javaPath,
             VersionType = "ShoroCraft Launcher",
             GameLauncherName = "ShoroCraft",

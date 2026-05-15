@@ -3,6 +3,7 @@ namespace ShoroCraftLauncher.Core.Interfaces;
 public class AuthResult
 {
     public bool Success { get; set; }
+    public bool IsOffline { get; set; }
     public string? AccessToken { get; set; }
     public string? Uuid { get; set; }
     public string? Username { get; set; }

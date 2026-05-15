@@ -39,9 +39,11 @@ public class AuthenticationService : IAuthenticationService
                 return new AuthResult
                 {
                     Success = true,
+                    IsOffline = false,
                     AccessToken = session.AccessToken,
                     Uuid = session.UUID,
-                    Username = session.Username
+                    Username = session.Username,
+                    SkinUrl = $"https://crafatar.com/renders/body/{session.UUID}?overlay=true"
                 };
             }
 
@@ -66,6 +68,7 @@ public class AuthenticationService : IAuthenticationService
             return new AuthResult
             {
                 Success = true,
+                IsOffline = true,
                 AccessToken = "offline",
                 Uuid = uuid,
                 Username = username,
