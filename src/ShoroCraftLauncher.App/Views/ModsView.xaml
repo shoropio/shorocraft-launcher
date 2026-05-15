@@ -31,18 +31,26 @@
             <Border Grid.Row="0" Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="12">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                             Tag="Buscar mods en Modrinth..."
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding SearchProviders}"
+                              SelectedItem="{Binding SelectedProvider}"
+                              Style="{StaticResource DarkComboBox}"
+                              ItemContainerStyle="{StaticResource DarkComboBoxItem}"
+                              Margin="0,0,8,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="Buscar mods..."
                              Style="{StaticResource SearchTextBox}"
                              Margin="0,0,8,0">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Grid.Column="1" Content="Buscar" Command="{Binding SearchCommand}"
+                    <Button Grid.Column="2" Content="Buscar" Command="{Binding SearchCommand}"
                             Style="{StaticResource PrimaryButton}" Padding="16,8" />
                 </Grid>
             </Border>

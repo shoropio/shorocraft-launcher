@@ -16,6 +16,7 @@ public class ModsViewModel : BaseViewModel
 
     public ObservableCollection<Mod> Mods { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
+    public List<string> SearchProviders { get; } = new() { "Modrinth", "CurseForge" };
 
     public Profile? SelectedProfile
     {
@@ -41,6 +42,13 @@ public class ModsViewModel : BaseViewModel
     }
 
     public ObservableCollection<Mod> SearchResults { get; } = new();
+
+    private string _selectedProvider = "Modrinth";
+    public string SelectedProvider
+    {
+        get => _selectedProvider;
+        set => SetProperty(ref _selectedProvider, value);
+    }
 
     private bool _isSearching;
     public bool IsSearching
@@ -91,18 +99,17 @@ public class ModsViewModel : BaseViewModel
         IsBusy = true;
         try
         {
-            // Determine loader type from profile name or metadata (stub for now)
-            var loader = SelectedProfile.Name.ToLower().Contains("fabric") ? "fabric" : "forge";
-            var results = await _modService.SearchModrinthAsync(SearchQuery, SelectedProfile.MinecraftVersion, loader);
+            var loader = SelectedProfile.Type.ToString().ToLowerInvariant();
+            var results = await _modService.SearchModsAsync(SelectedProvider, SearchQuery, SelectedProfile.MinecraftVersion, loader);
             
             SearchResults.Clear();
             foreach (var r in results)
                 SearchResults.Add(r);
             
-            StatusMessage = $"Encontrados {SearchResults.Count} mods en Modrinth.";
+            StatusMessage = $"Encontrados {SearchResults.Count} mods en {SelectedProvider}.";
         } catch (Exception ex) {
             _logger.LogError(ex, "Search failed");
-            StatusMessage = "Error al buscar mods.";
+            StatusMessage = ex.Message;
         }
         IsBusy = false;
     }

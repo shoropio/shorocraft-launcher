@@ -9,5 +9,6 @@ public interface IModService
     Task ToggleModAsync(int modId);
     Task RemoveModAsync(int modId);
     Task<string> GetModsFolderAsync(int profileId);
+    Task<List<Mod>> SearchModsAsync(string provider, string query, string minecraftVersion, string loaderType);
     Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType);
 }

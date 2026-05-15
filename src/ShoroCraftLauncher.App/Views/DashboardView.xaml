@@ -140,53 +140,6 @@
                                  Margin="0,12,0,0" />
                 </StackPanel>
             </Border>
-
-            <!-- News Feed -->
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="18">
-                <StackPanel>
-                    <TextBlock Text="Últimas Noticias" Style="{StaticResource CardTitle}" FontSize="20" Margin="0,0,0,14" />
-
-                    <ItemsControl ItemsSource="{Binding NewsFeed}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{StaticResource SurfaceBrush}"
-                                        BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="1"
-                                        Margin="0,0,10,0"
-                                        Padding="0"
-                                        MinHeight="210">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="118" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="*" />
-                                        </Grid.RowDefinitions>
-                                        <Border Grid.Row="0" ClipToBounds="True">
-                                            <Border.Background>
-                                                <SolidColorBrush Color="{StaticResource CardColor}" />
-                                            </Border.Background>
-                                            <Image Source="{Binding ImageUrl}" Stretch="UniformToFill" />
-                                        </Border>
-                                        <Rectangle Grid.Row="1" Height="3" Fill="{StaticResource PrimaryGradient}" />
-                                        <Border Grid.Row="2" Padding="14,12">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Date}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" />
-                                                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" Margin="0,6,0,4" TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="40" TextWrapping="Wrap" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

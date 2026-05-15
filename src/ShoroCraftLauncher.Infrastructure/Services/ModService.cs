@@ -10,6 +10,7 @@ public class ModService : IModService
 {
     private readonly IModRepository _modRepository;
     private readonly IProfileRepository _profileRepository;
+    private readonly ISettingsRepository _settingsRepository;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ModService> _logger;
     private readonly HttpClient _httpClient;
@@ -17,15 +18,24 @@ public class ModService : IModService
     public ModService(
         IModRepository modRepository,
         IProfileRepository profileRepository,
+        ISettingsRepository settingsRepository,
         IMinecraftService minecraftService,
         ILogger<ModService> logger,
         HttpClient httpClient)
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
+        _settingsRepository = settingsRepository;
         _minecraftService = minecraftService;
         _logger = logger;
         _httpClient = httpClient;
+    }
+
+    public async Task<List<Mod>> SearchModsAsync(string provider, string query, string minecraftVersion, string loaderType)
+    {
+        return provider.Equals("CurseForge", StringComparison.OrdinalIgnoreCase)
+            ? await SearchCurseForgeAsync(query, minecraftVersion, loaderType)
+            : await SearchModrinthAsync(query, minecraftVersion, loaderType);
     }
 
     public async Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType)
@@ -63,6 +73,67 @@ public class ModService : IModService
             _logger.LogError(ex, "Modrinth search failed");
             return new List<Mod>();
         }
+    }
+
+    private async Task<List<Mod>> SearchCurseForgeAsync(string query, string minecraftVersion, string loaderType)
+    {
+        var apiKey = await _settingsRepository.GetAsync("curseforge_api_key");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Configura una API key de CurseForge en Configuración.");
+
+        var loaderTypeId = loaderType.ToLowerInvariant() switch
+        {
+            "forge" => 1,
+            "fabric" => 4,
+            "quilt" => 5,
+            _ => 0
+        };
+
+        var url = "https://api.curseforge.com/v1/mods/search"
+            + "?gameId=432"
+            + "&classId=6"
+            + $"&searchFilter={Uri.EscapeDataString(query)}"
+            + $"&gameVersion={Uri.EscapeDataString(minecraftVersion)}"
+            + $"&modLoaderType={loaderTypeId}"
+            + "&sortField=2"
+            + "&sortOrder=desc"
+            + "&pageSize=20";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Add("x-api-key", apiKey);
+        request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+
+        using var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var results = new List<Mod>();
+
+        foreach (var item in doc.RootElement.GetProperty("data").EnumerateArray())
+        {
+            var latest = item.TryGetProperty("latestFilesIndexes", out var indexes)
+                ? indexes.EnumerateArray().FirstOrDefault()
+                : default;
+
+            results.Add(new Mod
+            {
+                Name = item.GetProperty("name").GetString() ?? "Unknown",
+                Description = item.TryGetProperty("summary", out var summary) ? summary.GetString() : null,
+                IconPath = item.TryGetProperty("logo", out var logo) && logo.TryGetProperty("thumbnailUrl", out var icon)
+                    ? icon.GetString()
+                    : null,
+                FileName = item.GetProperty("id").GetInt32().ToString(),
+                MinecraftVersion = latest.ValueKind == System.Text.Json.JsonValueKind.Object && latest.TryGetProperty("gameVersion", out var gameVersion)
+                    ? gameVersion.GetString() ?? minecraftVersion
+                    : minecraftVersion,
+                ModVersion = latest.ValueKind == System.Text.Json.JsonValueKind.Object && latest.TryGetProperty("filename", out var filename)
+                    ? filename.GetString() ?? "latest"
+                    : "latest"
+            });
+        }
+
+        return results;
     }
 
     public async Task<List<Mod>> GetModsAsync(int profileId) =>

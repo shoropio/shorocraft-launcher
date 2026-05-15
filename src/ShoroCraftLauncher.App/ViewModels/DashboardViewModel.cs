@@ -18,16 +18,6 @@ public class DashboardViewModel : BaseViewModel
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
     public ObservableCollection<GameVersion> AvailableVersions { get; } = new();
-    public ObservableCollection<NewsItem> NewsFeed { get; } = new();
-
-    public class NewsItem
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Summary { get; set; } = string.Empty;
-        public string Url { get; set; } = string.Empty;
-        public string Date { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty;
-    }
 
     public Profile? SelectedProfile
     {
@@ -128,7 +118,6 @@ public class DashboardViewModel : BaseViewModel
         {
             await _profileService.LoadProfilesAsync();
             await LoadVersionsAsync();
-            await LoadNewsAsync();
             UpdateProfileDetailsAsync();
 
             ReadyStatus = "Listo";
@@ -140,33 +129,6 @@ public class DashboardViewModel : BaseViewModel
             StatusMessage = "Error al cargar dashboard.";
         }
         IsBusy = false;
-    }
-
-    private async Task LoadNewsAsync()
-    {
-        try
-        {
-            // Placeholder news for now, or fetch from real RSS
-            NewsFeed.Clear();
-            NewsFeed.Add(new NewsItem 
-            { 
-                Title = "Actualización 1.21: Tricky Trials", 
-                Summary = "Explora las nuevas Trial Chambers y el mazo.", 
-                Date = "13 Jun 2024",
-                ImageUrl = "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/TrickyTrials_KeyArt_16x9.png"
-            });
-            NewsFeed.Add(new NewsItem 
-            { 
-                Title = "Minecraft 15 Aniversario", 
-                Summary = "Celebramos 15 años de bloques y aventuras.", 
-                Date = "17 May 2024",
-                ImageUrl = "https://www.minecraft.net/content/dam/minecraftnet/games/minecraft/key-art/15thAnniversary_KeyArt_16x9.png"
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load news feed");
-        }
     }
 
     private async void UpdateProfileDetailsAsync()

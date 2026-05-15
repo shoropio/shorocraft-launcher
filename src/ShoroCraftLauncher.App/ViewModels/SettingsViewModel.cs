@@ -54,6 +54,13 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
+    private string _curseForgeApiKey = string.Empty;
+    public string CurseForgeApiKey
+    {
+        get => _curseForgeApiKey;
+        set => SetProperty(ref _curseForgeApiKey, value);
+    }
+
     private string _launcherVersion = "1.0.0";
     public string LauncherVersion
     {
@@ -115,6 +122,7 @@ public class SettingsViewModel : BaseViewModel
             KeepOpen = settings.GetValueOrDefault("keep_launcher_open") != "false";
             GameDir = settings.GetValueOrDefault("game_directory") ?? string.Empty;
             Language = settings.GetValueOrDefault("language") ?? "es";
+            CurseForgeApiKey = settings.GetValueOrDefault("curseforge_api_key") ?? string.Empty;
             LauncherVersion = settings.GetValueOrDefault("launcher_version") ?? "1.0.0";
 
             _totalSizeBytes = await CalculateTotalSizeAsync();
@@ -142,8 +150,9 @@ public class SettingsViewModel : BaseViewModel
         if (!string.IsNullOrEmpty(GameDir))
         {
             await _settingsRepo.SetAsync("game_directory", GameDir);
+            await _settingsRepo.SetAsync("curseforge_api_key", CurseForgeApiKey);
             _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
-            StatusMessage = "Directorio guardado.";
+            StatusMessage = "Configuracion guardada.";
         }
     }
 
