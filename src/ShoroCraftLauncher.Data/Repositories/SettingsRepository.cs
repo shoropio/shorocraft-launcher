@@ -7,31 +7,36 @@ namespace ShoroCraftLauncher.Data.Repositories;
 
 public class SettingsRepository : ISettingsRepository
 {
-    private readonly LauncherDbContext _context;
+    private readonly IDbContextFactory<LauncherDbContext> _contextFactory;
 
-    public SettingsRepository(LauncherDbContext context) => _context = context;
+    public SettingsRepository(IDbContextFactory<LauncherDbContext> contextFactory) => _contextFactory = contextFactory;
 
     public async Task<string?> GetAsync(string key)
     {
-        var setting = await _context.LauncherSettings.FindAsync(key);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var setting = await context.LauncherSettings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key);
         return setting?.Value;
     }
 
     public async Task SetAsync(string key, string value)
     {
-        var setting = await _context.LauncherSettings.FindAsync(key);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var setting = await context.LauncherSettings.FindAsync(key);
         if (setting != null)
         {
             setting.Value = value;
-            _context.LauncherSettings.Update(setting);
+            context.LauncherSettings.Update(setting);
         }
         else
         {
-            _context.LauncherSettings.Add(new LauncherSetting { Key = key, Value = value });
+            context.LauncherSettings.Add(new LauncherSetting { Key = key, Value = value });
         }
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
-    public async Task<Dictionary<string, string>> GetAllAsync() =>
-        await _context.LauncherSettings.ToDictionaryAsync(s => s.Key, s => s.Value);
+    public async Task<Dictionary<string, string>> GetAllAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.LauncherSettings.AsNoTracking().ToDictionaryAsync(s => s.Key, s => s.Value);
+    }
 }

@@ -6,24 +6,25 @@ namespace ShoroCraftLauncher.Data.Database;
 
 public class DbInitializer
 {
-    private readonly LauncherDbContext _context;
+    private readonly IDbContextFactory<LauncherDbContext> _contextFactory;
 
-    public DbInitializer(LauncherDbContext context) => _context = context;
+    public DbInitializer(IDbContextFactory<LauncherDbContext> contextFactory) => _contextFactory = contextFactory;
 
     public void Initialize()
     {
-        _context.Database.EnsureCreated();
-        MigrateSchema();
-        SeedDefaults();
+        using var context = _contextFactory.CreateDbContext();
+        context.Database.EnsureCreated();
+        MigrateSchema(context);
+        SeedDefaults(context);
     }
 
     /// <summary>
     /// Applies incremental schema changes for columns added after the initial DB creation.
     /// Safe to call on every startup — each ALTER is wrapped in a column-existence check.
     /// </summary>
-    private void MigrateSchema()
+    private static void MigrateSchema(LauncherDbContext context)
     {
-        var conn = _context.Database.GetDbConnection();
+        var conn = context.Database.GetDbConnection();
         conn.Open();
         try
         {
@@ -53,11 +54,11 @@ public class DbInitializer
         }
     }
 
-    private void SeedDefaults()
+    private static void SeedDefaults(LauncherDbContext context)
     {
-        if (_context.LauncherSettings.Any()) return;
+        if (context.LauncherSettings.Any()) return;
 
-        _context.LauncherSettings.AddRange(
+        context.LauncherSettings.AddRange(
             new LauncherSetting { Key = "theme", Value = "dark" },
             new LauncherSetting { Key = "default_min_ram", Value = "1024" },
             new LauncherSetting { Key = "default_max_ram", Value = "4096" },
@@ -69,6 +70,6 @@ public class DbInitializer
             new LauncherSetting { Key = "launcher_version", Value = "1.0.0" }
         );
 
-        _context.SaveChanges();
+        context.SaveChanges();
     }
 }

@@ -7,40 +7,52 @@ namespace ShoroCraftLauncher.Data.Repositories;
 
 public class GameVersionRepository : IGameVersionRepository
 {
-    private readonly LauncherDbContext _context;
+    private readonly IDbContextFactory<LauncherDbContext> _contextFactory;
 
-    public GameVersionRepository(LauncherDbContext context) => _context = context;
+    public GameVersionRepository(IDbContextFactory<LauncherDbContext> contextFactory) => _contextFactory = contextFactory;
 
-    public async Task<List<GameVersion>> GetAllAsync() =>
-        await _context.GameVersions.OrderByDescending(g => g.ReleasedAt).ToListAsync();
+    public async Task<List<GameVersion>> GetAllAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.GameVersions.AsNoTracking().OrderByDescending(g => g.ReleasedAt).ToListAsync();
+    }
 
-    public async Task<GameVersion?> GetByIdAsync(int id) =>
-        await _context.GameVersions.FindAsync(id);
+    public async Task<GameVersion?> GetByIdAsync(int id)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
+    }
 
-    public async Task<GameVersion?> GetByVersionIdAsync(string versionId) =>
-        await _context.GameVersions.FirstOrDefaultAsync(g => g.VersionId == versionId);
+    public async Task<GameVersion?> GetByVersionIdAsync(string versionId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.VersionId == versionId);
+    }
 
     public async Task<int> CreateAsync(GameVersion version)
     {
-        _context.GameVersions.Add(version);
-        await _context.SaveChangesAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.GameVersions.Add(version);
+        await context.SaveChangesAsync();
         return version.Id;
     }
 
     public async Task UpdateAsync(GameVersion version)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         version.UpdatedAt = DateTime.UtcNow;
-        _context.GameVersions.Update(version);
-        await _context.SaveChangesAsync();
+        context.GameVersions.Update(version);
+        await context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
     {
-        var version = await _context.GameVersions.FindAsync(id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var version = await context.GameVersions.FindAsync(id);
         if (version != null)
         {
-            _context.GameVersions.Remove(version);
-            await _context.SaveChangesAsync();
+            context.GameVersions.Remove(version);
+            await context.SaveChangesAsync();
         }
     }
 }

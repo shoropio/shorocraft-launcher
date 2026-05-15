@@ -7,39 +7,48 @@ namespace ShoroCraftLauncher.Data.Repositories;
 
 public class ProfileRepository : IProfileRepository
 {
-    private readonly LauncherDbContext _context;
+    private readonly IDbContextFactory<LauncherDbContext> _contextFactory;
 
-    public ProfileRepository(LauncherDbContext context) => _context = context;
+    public ProfileRepository(IDbContextFactory<LauncherDbContext> contextFactory) => _contextFactory = contextFactory;
 
-    public async Task<List<Profile>> GetAllAsync() =>
-        await _context.Profiles.OrderByDescending(p => p.UpdatedAt).ToListAsync();
+    public async Task<List<Profile>> GetAllAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Profiles.AsNoTracking().OrderByDescending(p => p.UpdatedAt).ToListAsync();
+    }
 
-    public async Task<Profile?> GetByIdAsync(int id) =>
-        await _context.Profiles.FindAsync(id);
+    public async Task<Profile?> GetByIdAsync(int id)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+    }
 
     public async Task<int> CreateAsync(Profile profile)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         profile.CreatedAt = DateTime.UtcNow;
         profile.UpdatedAt = DateTime.UtcNow;
-        _context.Profiles.Add(profile);
-        await _context.SaveChangesAsync();
+        context.Profiles.Add(profile);
+        await context.SaveChangesAsync();
         return profile.Id;
     }
 
     public async Task UpdateAsync(Profile profile)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         profile.UpdatedAt = DateTime.UtcNow;
-        _context.Profiles.Update(profile);
-        await _context.SaveChangesAsync();
+        context.Profiles.Update(profile);
+        await context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
     {
-        var profile = await _context.Profiles.FindAsync(id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var profile = await context.Profiles.FindAsync(id);
         if (profile != null)
         {
-            _context.Profiles.Remove(profile);
-            await _context.SaveChangesAsync();
+            context.Profiles.Remove(profile);
+            await context.SaveChangesAsync();
         }
     }
 }

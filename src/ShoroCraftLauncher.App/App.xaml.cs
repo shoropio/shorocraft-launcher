@@ -58,8 +58,8 @@ public partial class App : Application
             .UseSerilog()
             .ConfigureServices((_, services) =>
             {
-                services.AddDbContext<LauncherDbContext>(options =>
-                    options.UseSqlite($"Data Source={dbPath}"), ServiceLifetime.Singleton);
+                services.AddDbContextFactory<LauncherDbContext>(options =>
+                    options.UseSqlite($"Data Source={dbPath}"));
 
                 services.AddSingleton<DbInitializer>();
                 services.AddHttpClient();
