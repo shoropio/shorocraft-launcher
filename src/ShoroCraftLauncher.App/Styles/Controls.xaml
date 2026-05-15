@@ -7,15 +7,29 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Padding" Value="16" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#000000" Opacity="0.35" BlurRadius="18" ShadowDepth="4" Direction="270" />
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Effect" Value="{StaticResource CardShadow}" />
+    </Style>
+
+    <Style x:Key="GlassCard" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource GlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="20" />
+        <Setter Property="Effect" Value="{StaticResource SoftShadow}" />
+    </Style>
+
+    <Style x:Key="GradientCard" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource SurfaceGradient}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Effect" Value="{StaticResource CardShadow}" />
     </Style>
 
     <Style x:Key="SectionTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontSize" Value="22" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="Margin" Value="0,0,0,16" />
@@ -35,14 +49,14 @@
 
     <Style x:Key="StatusBadge" TargetType="Border">
         <Setter Property="CornerRadius" Value="0" />
-        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Padding" Value="10,5" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
     <Style x:Key="FormLabel" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-        <Setter Property="Margin" Value="0,0,0,4" />
+        <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
 
     <Style x:Key="ProgressBarStyle" TargetType="ProgressBar">
@@ -56,7 +70,7 @@
                     <Border Background="{TemplateBinding Background}" CornerRadius="0">
                         <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="0">
                             <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}"
-                                       HorizontalAlignment="Left" RadiusX="3" RadiusY="3" />
+                                       HorizontalAlignment="Left" RadiusX="0" RadiusY="0" />
                         </Border>
                     </Border>
                 </ControlTemplate>
@@ -64,8 +78,12 @@
         </Setter>
     </Style>
 
+    <Style x:Key="AccentProgressBar" TargetType="ProgressBar" BasedOn="{StaticResource ProgressBarStyle}">
+        <Setter Property="Foreground" Value="{StaticResource PrimaryGradient}" />
+    </Style>
+
     <Style x:Key="ConsoleTextBox" TargetType="TextBox">
-        <Setter Property="Background" Value="#0D0D1A" />
+        <Setter Property="Background" Value="#0A0A14" />
         <Setter Property="Foreground" Value="#00FF88" />
         <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
         <Setter Property="FontSize" Value="12" />
@@ -77,9 +95,9 @@
     </Style>
 
     <Style x:Key="ConsoleListBox" TargetType="ListBox">
-        <Setter Property="Background" Value="#0D0D1A" />
+        <Setter Property="Background" Value="#0A0A14" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBox">
@@ -110,24 +128,25 @@
             </Setter.Value>
         </Setter>
     </Style>
+
     <Style x:Key="SearchTextBox" TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Padding" Value="12,10" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="border" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="0">
                         <Grid>
                             <TextBlock Text="{TemplateBinding Tag}"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Foreground="{StaticResource TextMutedBrush}"
                                        Margin="{TemplateBinding Padding}"
                                        VerticalAlignment="Center"
                                        IsHitTestVisible="False">
@@ -145,9 +164,40 @@
                             <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryDarkBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                            <Setter TargetName="border" Property="Effect" Value="{StaticResource GlowShadow}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Gradient separator line -->
+    <Style x:Key="GradientSeparator" TargetType="Rectangle">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Fill" Value="{StaticResource GlowGradient}" />
+        <Setter Property="Opacity" Value="0.4" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+    <!-- Stat value display -->
+    <Style x:Key="StatValue" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+
+    <!-- Stat label display -->
+    <Style x:Key="StatLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
     </Style>
 
 </ResourceDictionary>

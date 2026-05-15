@@ -9,13 +9,13 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0">
+        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
             <StackPanel>
                 <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
                 <ListBox ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="400" />
+                         DisplayMemberPath="Name" Height="440" />
             </StackPanel>
         </Border>
 
@@ -27,43 +27,47 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                         Tag="Buscar mods en Modrinth..."
-                         Style="{StaticResource SearchTextBox}"
-                         Margin="0,0,8,0">
-                    <TextBox.InputBindings>
-                        <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                    </TextBox.InputBindings>
-                </TextBox>
-                <Button Grid.Column="1" Content="🔍" Command="{Binding SearchCommand}"
-                        Style="{StaticResource SecondaryButton}" />
-            </Grid>
+            <!-- Search bar -->
+            <Border Grid.Row="0" Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="Buscar mods en Modrinth..."
+                             Style="{StaticResource SearchTextBox}"
+                             Margin="0,0,8,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Grid.Column="1" Content="Buscar" Command="{Binding SearchCommand}"
+                            Style="{StaticResource PrimaryButton}" Padding="16,8" />
+                </Grid>
+            </Border>
 
+            <!-- Action bar -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="+ Agregar Mods Local" Command="{Binding AddModCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" />
-                <Button Content="📁 Abrir carpeta" Command="{Binding OpenModsFolderCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
-                <Button Content="🔄 Actualizar" Command="{Binding RefreshCommand}"
+                <Button Content="+ Agregar Mod Local" Command="{Binding AddModCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                <Button Content="Abrir carpeta" Command="{Binding OpenModsFolderCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                <Button Content="Actualizar" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
             <TextBlock Grid.Row="2" Text="{Binding StatusMessage}"
-                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
-            
-            <Grid Grid.Row="3" Margin="0,0,0,0">
-                <!-- Local Mods List -->
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+
+            <!-- Mods list / Search results -->
+            <Grid Grid.Row="3">
                 <ListBox ItemsSource="{Binding Mods}"
                          Background="Transparent" BorderThickness="0"
                          Visibility="{Binding IsSearching, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="12">
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -71,9 +75,9 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                            <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0,0,12,0" />
-                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="0,0,12,0" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
+                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
                                             <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" />
                                         </StackPanel>
                                     </StackPanel>
@@ -83,7 +87,7 @@
                                                       Command="{Binding ElementName=root, Path=DataContext.ToggleModCommand}"
                                                       CommandParameter="{Binding Id}" />
                                         <Button Content="Eliminar" Style="{StaticResource DangerButton}"
-                                                Padding="8,4" FontSize="12" Margin="8,0,0,0"
+                                                Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                                 Command="{Binding ElementName=root, Path=DataContext.RemoveModCommand}"
                                                 CommandParameter="{Binding Id}" />
                                     </StackPanel>
@@ -93,26 +97,27 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Search Results (Online) -->
+                <!-- Search Results -->
                 <ListBox ItemsSource="{Binding SearchResults}"
                          Background="Transparent" BorderThickness="0"
                          Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="12">
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="50" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Image Grid.Column="0" Source="{Binding IconPath}" Width="40" Height="40" Margin="0,0,12,0" />
+                                    <Image Grid.Column="0" Source="{Binding IconPath}" Width="40" Height="40"
+                                           Margin="0,0,12,0" />
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
-                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="30" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="30" TextWrapping="Wrap" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <Button Grid.Column="2" Content="Instalar" Style="{StaticResource PrimaryButton}"
-                                            Padding="12,6" FontSize="12" VerticalAlignment="Center" />
+                                            Padding="14,7" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

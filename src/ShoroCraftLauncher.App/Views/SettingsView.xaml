@@ -5,9 +5,10 @@
         <StackPanel>
             <TextBlock Text="Configuración" Style="{StaticResource SectionTitle}" />
 
-            <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
+            <!-- General -->
+            <Border Style="{StaticResource CardBorder}" Padding="24" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="General" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
+                    <TextBlock Text="General" Style="{StaticResource CardTitle}" Margin="0,0,0,20" />
 
                     <Grid>
                         <Grid.RowDefinitions>
@@ -21,7 +22,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <TextBlock Text="Directorio de Minecraft" Style="{StaticResource FormLabel}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -31,26 +32,26 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding GameDir}" IsReadOnly="True" />
                                 <Button Grid.Column="1" Content="..." Command="{Binding BrowseGameDirCommand}"
-                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="12,6" />
+                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="14,6" FontSize="13" />
                                 <Button Grid.Column="2" Content="Guardar" Command="{Binding SaveGameDirCommand}"
-                                        Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Padding="12,6" />
+                                        Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Padding="14,6" FontSize="13" />
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="1" Margin="0,0,0,14">
                             <TextBlock Text="Idioma" Style="{StaticResource FormLabel}" />
                             <ComboBox ItemsSource="{Binding Languages}"
                                       SelectedItem="{Binding Language}" Width="200" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="16,0,0,12">
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="16,0,0,14">
                             <TextBlock Text="Cerrar launcher al iniciar" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding CloseOnLaunch}"
                                           Style="{StaticResource SwitchToggle}"
                                           HorizontalAlignment="Left" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="16,0,0,12">
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="16,0,0,14">
                             <TextBlock Text="Mantener abierto después de jugar" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding KeepOpen}"
                                           Style="{StaticResource SwitchToggle}"
@@ -60,25 +61,27 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
+            <!-- Maintenance -->
+            <Border Style="{StaticResource CardBorder}" Padding="24" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="Mantenimiento" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
                     <WrapPanel>
-                        <Button Content="Limpiar archivos temporales" Command="{Binding CleanTempCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                        <Button Content="Limpiar temporales" Command="{Binding CleanTempCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                         <Button Content="Buscar actualizaciones" Command="{Binding CheckUpdatesCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                         <Button Content="Abrir logs" Command="{Binding OpenLogsFolderCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                         <Button Content="Exportar diagnóstico" Command="{Binding ExportDiagnosticsCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" />
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                     </WrapPanel>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}"
-                               Margin="0,8,0,0" />
+                               Margin="0,10,0,0" />
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorder}" Padding="20">
+            <!-- About -->
+            <Border Style="{StaticResource CardBorder}" Padding="24">
                 <StackPanel>
                     <TextBlock Text="Acerca de" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
                     <Grid>
@@ -92,14 +95,14 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Launcher:" FontWeight="Bold" Margin="0,0,16,8" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="ShoroCraft Launcher" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Launcher" FontWeight="Bold" Margin="0,0,16,10" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="ShoroCraft Launcher" Margin="0,0,0,10" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Versión:" FontWeight="Bold" Margin="0,0,16,8" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LauncherVersion}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Versión" FontWeight="Bold" Margin="0,0,16,10" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LauncherVersion}" Margin="0,0,0,10" />
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Tamaño total:" FontWeight="Bold" Margin="0,0,16,8" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TotalSizeFormatted}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Tamaño total" FontWeight="Bold" Margin="0,0,16,10" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TotalSizeFormatted}" Margin="0,0,0,10" />
                     </Grid>
                 </StackPanel>
             </Border>

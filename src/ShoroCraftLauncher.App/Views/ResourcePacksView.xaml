@@ -8,13 +8,13 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0">
+        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
             <StackPanel>
                 <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
                 <ListBox ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="400" />
+                         DisplayMemberPath="Name" Height="440" />
             </StackPanel>
         </Border>
 
@@ -27,9 +27,9 @@
 
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
                 <Button Content="+ Agregar Packs" Command="{Binding AddPackCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" />
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
                 <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="Actualizar" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
@@ -41,7 +41,7 @@
                      Background="Transparent" BorderThickness="0">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="12">
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="48" />
@@ -50,7 +50,8 @@
                                 </Grid.ColumnDefinitions>
                                 <Border Grid.Column="0" Width="40" Height="40"
                                         Background="{StaticResource SurfaceBrush}"
-                                        CornerRadius="0" Margin="0,0,8,0">
+                                        CornerRadius="0" Margin="0,0,10,0"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                     <TextBlock Text="🎨" FontSize="20"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center" />
@@ -58,7 +59,7 @@
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
                                     <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}"
-                                               Style="{StaticResource CardSubtitle}" />
+                                               Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
@@ -66,7 +67,7 @@
                                                   Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
                                                   CommandParameter="{Binding Id}" />
                                     <Button Content="Eliminar" Style="{StaticResource DangerButton}"
-                                            Padding="8,4" FontSize="12" Margin="8,0,0,0"
+                                            Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"
                                             CommandParameter="{Binding Id}" />
                                 </StackPanel>

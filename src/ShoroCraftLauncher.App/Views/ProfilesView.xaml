@@ -5,20 +5,20 @@
              xmlns:sys="clr-namespace:System;assembly=System.Runtime">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="280" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0">
+        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
             <StackPanel>
-                <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
-                <Button Content="Nuevo Perfil" Command="{Binding CreateProfileCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,0,16" />
+                <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                <Button Content="+ Nuevo Perfil" Command="{Binding CreateProfileCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,0,16" Padding="14,8" />
                 <ListBox ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
                          DisplayMemberPath="Name"
-                         Height="400" />
+                         Height="420" />
             </StackPanel>
         </Border>
 
@@ -26,7 +26,7 @@
             <StackPanel>
                 <TextBlock Text="Editar Perfil" Style="{StaticResource SectionTitle}" />
 
-                <Border Style="{StaticResource CardBorder}" Padding="20" IsEnabled="{Binding IsProfileSelected}">
+                <Border Style="{StaticResource CardBorder}" Padding="24" IsEnabled="{Binding IsProfileSelected}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -45,17 +45,17 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <TextBlock Text="Nombre del perfil" Style="{StaticResource FormLabel}" />
                             <TextBox Text="{Binding ProfileName}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12">
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,14">
                             <TextBlock Text="Versión de Minecraft" Style="{StaticResource FormLabel}" />
                             <TextBox Text="{Binding McVersion}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,12">
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,14">
                             <TextBlock Text="Tipo" Style="{StaticResource FormLabel}" />
                             <ComboBox ItemsSource="{Binding ProfileTypes}"
                                       SelectedItem="{Binding ProfileTypeValue}"
@@ -63,34 +63,34 @@
                                       ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Asignación de RAM (MB)" Style="{StaticResource FormLabel}" />
-                                <TextBlock Grid.Column="1" Text="{Binding MaxRam}" Foreground="{StaticResource PrimaryBrush}" FontWeight="Bold" />
+                                <TextBlock Grid.Column="1" Text="{Binding MaxRam}" Foreground="{StaticResource PrimaryBrush}" FontWeight="Bold" FontSize="15" />
                             </Grid>
                             <Slider Value="{Binding MaxRam}" Minimum="512" Maximum="16384" SmallChange="512" LargeChange="1024" Style="{StaticResource ModernSlider}" />
-                            <Grid Margin="0,4,0,0">
-                                <TextBlock Text="512MB" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Left" />
-                                <TextBlock Text="16GB" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right" />
+                            <Grid Margin="0,6,0,0">
+                                <TextBlock Text="512 MB" FontSize="10" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Left" />
+                                <TextBlock Text="16 GB" FontSize="10" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right" />
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <TextBlock Text="Resolución y Pantalla" Style="{StaticResource FormLabel}" />
                             <StackPanel Orientation="Horizontal">
                                 <TextBox Text="{Binding WindowWidth}" Width="80" Margin="0,0,8,0" />
-                                <TextBlock Text="x" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="x" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextMutedBrush}" />
                                 <TextBox Text="{Binding WindowHeight}" Width="80" Margin="0,0,16,0" />
-                                <CheckBox Content="Pantalla completa" IsChecked="{Binding IsFullscreen}" Style="{StaticResource ModernCheckBox}" />
+                                <CheckBox Content="Pantalla completa" IsChecked="{Binding IsFullscreen}" Style="{StaticResource ModernCheckBox}" VerticalAlignment="Center" />
                             </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                            <TextBlock Text="Carpeta de juego (Opcional - usa por defecto)" Style="{StaticResource FormLabel}" />
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,14">
+                            <TextBlock Text="Carpeta de juego (Opcional)" Style="{StaticResource FormLabel}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -98,12 +98,12 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding GameDir}" IsReadOnly="True" />
                                 <Button Grid.Column="1" Content="..." Command="{Binding BrowseGameDirCommand}"
-                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="12,6" />
+                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="14,6" FontSize="13" />
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                            <TextBlock Text="Java Path (Opcional - usa autodetectado)" Style="{StaticResource FormLabel}" />
+                        <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,0,0,14">
+                            <TextBlock Text="Java Path (Opcional)" Style="{StaticResource FormLabel}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -111,33 +111,34 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding JavaPath}" IsReadOnly="True" />
                                 <Button Grid.Column="1" Content="..." Command="{Binding BrowseJavaCommand}"
-                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="12,6" />
+                                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Padding="14,6" FontSize="13" />
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                            <TextBlock Text="Versión del Loader (Opcional - usa latest si está vacío)" Style="{StaticResource FormLabel}" />
+                        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Margin="0,0,0,14">
+                            <TextBlock Text="Versión del Loader (Opcional)" Style="{StaticResource FormLabel}" />
                             <TextBox Text="{Binding LoaderVersion}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                        <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Margin="0,0,0,14">
                             <TextBlock Text="Argumentos JVM adicionales (Opcional)" Style="{StaticResource FormLabel}" />
-                            <TextBox Text="{Binding JvmArgs}" Height="60"
-                                     AcceptsReturn="True" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding JvmArgs}" Height="70"
+                                     AcceptsReturn="True" TextWrapping="Wrap"
+                                     Padding="10,8" />
                         </StackPanel>
 
                         <TextBlock Grid.Row="8" Grid.ColumnSpan="2" Text="{Binding StatusMessage}"
-                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
 
-                        <WrapPanel Grid.Row="9" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                        <WrapPanel Grid.Row="9" Grid.ColumnSpan="2" Margin="0,4,0,0">
                             <Button Content="Guardar" Command="{Binding SaveProfileCommand}"
-                                    Style="{StaticResource PrimaryButton}" Margin="0,0,8,8" Width="100" />
+                                    Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" Width="110" />
                             <Button Content="Duplicar" Command="{Binding DuplicateProfileCommand}"
-                                    Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Width="100" />
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" Width="110" />
                             <Button Content="Eliminar" Command="{Binding DeleteProfileCommand}"
-                                    Style="{StaticResource DangerButton}" Margin="0,0,8,8" Width="100" />
+                                    Style="{StaticResource DangerButton}" Margin="0,0,10,0" Width="110" />
                             <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
-                                    Style="{StaticResource SecondaryButton}" Width="120" Margin="0,0,0,8" />
+                                    Style="{StaticResource SecondaryButton}" Width="130" />
                         </WrapPanel>
                     </Grid>
                 </Border>
