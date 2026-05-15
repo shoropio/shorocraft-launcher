@@ -14,7 +14,8 @@ public class MinecraftLaunchIntegrationTest
     private readonly ILogger<JavaService> _javaLogger = Mock.Of<ILogger<JavaService>>();
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
 
-    [Fact]
+    [Trait("Category", "Integration")]
+    [ManualIntegrationFact]
     public async Task FetchVersionManifest_ReturnsVersions()
     {
         var mc = new MinecraftService(_logger, _httpClient);
@@ -24,7 +25,8 @@ public class MinecraftLaunchIntegrationTest
         Assert.Contains(versions, v => v.VersionType == "release");
     }
 
-    [Fact]
+    [Trait("Category", "Integration")]
+    [ManualIntegrationFact]
     public async Task ResolveLatest_ReturnsRealVersion()
     {
         var mc = new MinecraftService(_logger, _httpClient);
@@ -35,7 +37,8 @@ public class MinecraftLaunchIntegrationTest
         Assert.False(string.IsNullOrEmpty(latest.VersionId));
     }
 
-    [Fact]
+    [Trait("Category", "Integration")]
+    [ManualIntegrationFact]
     public async Task InstallVersion1_21_4_DownloadsClientAndLibraries()
     {
         var mc = new MinecraftService(_logger, _httpClient);
@@ -61,7 +64,8 @@ public class MinecraftLaunchIntegrationTest
         Assert.NotEmpty(libFiles);
     }
 
-    [Fact]
+    [Trait("Category", "Integration")]
+    [ManualIntegrationFact]
     public async Task JavaService_FindsJavaInstallation()
     {
         var java = new JavaService(_javaLogger, _httpClient);
@@ -76,7 +80,8 @@ public class MinecraftLaunchIntegrationTest
         Assert.True(File.Exists(recommended));
     }
 
-    [Fact]
+    [Trait("Category", "Integration")]
+    [ManualIntegrationFact]
     public async Task LaunchBuild_RunsWithoutCrashing()
     {
         var java = new JavaService(_javaLogger, _httpClient);

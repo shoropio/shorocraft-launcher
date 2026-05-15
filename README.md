@@ -1,6 +1,3 @@
-Claro 👍 Aquí tienes una versión sin emojis del markdown: 
-
-````md
 <div align="center">
 
 # ShoroCraft Launcher
@@ -159,6 +156,19 @@ Desde la pestaña **Mods**, puedes:
 
 ## Desarrollo
 
+### Pruebas
+
+```bash
+dotnet test ShoroCraftLauncher.sln
+```
+
+Los tests que descargan archivos reales, revisan Java o lanzan Minecraft estan marcados como `Category=Integration` y se omiten por defecto. Para correrlos manualmente:
+
+```powershell
+$env:SHOROCRAFT_RUN_INTEGRATION_TESTS="1"
+dotnet test ShoroCraftLauncher.sln --filter Category=Integration
+```
+
 ### Crear un nuevo servicio
 
 1. Definir la interfaz en `ShoroCraftLauncher.Core/Interfaces/`
@@ -217,4 +227,3 @@ Distribuido bajo la licencia **MIT**. Ver [`LICENSE`](LICENSE) para más informa
 <div align="center">
   <sub>Hecho con ❤️ por <a href="https://github.com/Shoropio">Shoropio</a></sub>
 </div>
-```
