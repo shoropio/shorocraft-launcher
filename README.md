@@ -1,229 +1,146 @@
-<div align="center">
-
 # ShoroCraft Launcher
 
-**Launcher profesional de Minecraft para Windows**
+Launcher de Minecraft para Windows, construido con .NET 8, WPF, MVVM, SQLite y CmlLib.
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/8.0)
-[![WPF](https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/)
+[![WPF](https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows)](https://learn.microsoft.com/dotnet/desktop/wpf/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 
-*Un launcher moderno, potente y completamente personalizable.*
+## Caracteristicas
 
-</div>
+| Modulo | Descripcion |
+| ------ | ----------- |
+| Autenticacion | Microsoft OAuth y modo offline con nombre de usuario configurable |
+| Perfiles | Perfiles para Vanilla, Forge, Fabric, Quilt, OptiFine e Iris |
+| Java | Deteccion y descarga automatica de JRE 8, 17 y 21 |
+| Mods | Busqueda e instalacion desde Modrinth API |
+| Resource Packs | Gestion de paquetes de texturas |
+| Shaders | Gestion de shader packs compatible con Iris y OptiFine |
+| Noticias | Feed de noticias en el dashboard |
+| Consola | Logs en tiempo real del proceso de Minecraft |
+| Datos | Persistencia local con SQLite |
 
----
+## Requisitos
 
-## Características Principales
-
-| Módulo | Descripción |
-|--------|-------------|
-| **Autenticación** | Microsoft OAuth integrado + modo offline |
-| **Perfiles** | Múltiples perfiles con Vanilla, Forge, Fabric, Quilt, OptiFine, Iris |
-| **Java Automático** | Detección y descarga automática de JRE 8, 17 y 21 |
-| **Buscador de Mods** | Búsqueda e instalación directa desde Modrinth API |
-| **Resource Packs** | Gestión de texturas con activación/desactivación |
-| **Shaders** | Gestión de shader packs compatible con Iris/OptiFine |
-| **Noticias** | Feed de noticias de Minecraft en el Dashboard |
-| **Consola** | Logs en tiempo real del proceso de Minecraft |
-| **Base de Datos** | SQLite local para persistencia de perfiles y mods |
-
----
-
-## Capturas de Pantalla
-
-> **Dashboard** — Resumen rápido del estado del launcher, noticias y acceso rápido
-
-| Vista | Descripción |
-|-------|-------------|
-| Dashboard | Métricas: versión instalada, mods activos, RAM, estado |
-| Perfiles | Crear y gestionar múltiples configuraciones de Minecraft |
-| Mods | Buscar en Modrinth y gestionar mods locales |
-| Consola | Logs en tiempo real con colores por nivel |
-
----
-
-## Inicio Rápido
-
-### Requisitos
-
-- **Windows 10 / Windows 11 (x64)**
+- Windows 10 o Windows 11 x64
 - [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Java 8, 17 o 21 *(se detecta o descarga automáticamente)*
+- Java 8, 17 o 21, detectado o descargado automaticamente por el launcher
 
-### Compilar desde el código fuente
+## Compilar
 
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/Shoropio/shorocraft-launcher.git
+git clone https://github.com/shoropio/shorocraft-launcher.git
 cd shorocraft-launcher
-
-# 2. Restaurar dependencias
 dotnet restore
-
-# 3. Compilar en Release
 dotnet build -c Release
-
-# 4. Ejecutar
 dotnet run --project src/ShoroCraftLauncher.App
-````
+```
 
-También puedes abrir `ShoroCraftLauncher.sln` en **Visual Studio 2022** (v17.8+) y compilar con `Ctrl+Shift+B`.
+Tambien puedes abrir `ShoroCraftLauncher.sln` en Visual Studio 2022 v17.8 o superior.
 
----
+## Arquitectura
 
-## Arquitectura del Proyecto
-
-El launcher sigue el patrón **MVVM** con **Inyección de Dependencias** centralizada, separando responsabilidades en 4 capas:
+El proyecto usa MVVM e inyeccion de dependencias. Las capas principales son:
 
 ```txt
 shorocraft-launcher/
-├── src/
-│   ├── ShoroCraftLauncher.App/            # UI Layer
-│   │   ├── Views/                         # Vistas WPF (.xaml)
-│   │   ├── ViewModels/                    # ViewModels (MVVM)
-│   │   ├── Styles/                        # Tema dark, controles custom
-│   │   ├── Converters/                    # Value converters
-│   │   └── App.xaml.cs                    # DI Container, bootstrapping
-│   │
-│   ├── ShoroCraftLauncher.Core/           # Domain Layer
-│   │   ├── Interfaces/                    # Contratos de servicios
-│   │   ├── Models/                        # Entidades de negocio
-│   │   └── Enums/                         # Enumeraciones
-│   │
-│   ├── ShoroCraftLauncher.Data/           # Data Layer
-│   │   ├── LauncherDbContext.cs           # EF Core + SQLite
-│   │   └── Repositories/                  # Implementaciones de repositorios
-│   │
-│   ├── ShoroCraftLauncher.Infrastructure/ # Services Layer
-│   │   ├── Services/                      # JavaService, ModService, LauncherService...
-│   │   └── Authentication/                # Microsoft OAuth + Offline auth
-│   │
-│   └── ShoroCraftLauncher.Tests/          # Test Layer
-│       └── ...                            # xUnit unit tests
-│
-├── assets/                                # Recursos visuales
-├── docs/                                  # Documentación adicional
-├── installer/                             # Configuración del instalador
-└── README.md
+|-- src/
+|   |-- ShoroCraftLauncher.App/             UI WPF, views, viewmodels y estilos
+|   |-- ShoroCraftLauncher.Core/            modelos, enums e interfaces
+|   |-- ShoroCraftLauncher.Data/            EF Core, SQLite y repositorios
+|   |-- ShoroCraftLauncher.Infrastructure/  servicios de Minecraft, Java, auth y logs
+|   `-- ShoroCraftLauncher.Tests/           pruebas con xUnit
+|-- assets/
+|-- docs/
+|-- installer/
+`-- README.md
 ```
 
-### Dependencias principales
+## Dependencias
 
-| Paquete                                | Versión | Uso                              |
-| -------------------------------------- | ------- | -------------------------------- |
-| `CmlLib.Core`                          | 4.x     | Integración nativa con Minecraft |
-| `CmlLib.Core.Auth.Microsoft`           | latest  | Autenticación Microsoft OAuth    |
-| `Microsoft.EntityFrameworkCore.Sqlite` | 8.0.0   | Persistencia local               |
-| `Serilog`                              | 8.x     | Sistema de logging               |
-| `Microsoft.Extensions.Hosting`         | 8.0.0   | DI + Configuration               |
+| Paquete | Uso |
+| ------- | --- |
+| `CmlLib.Core` | Integracion con Minecraft |
+| `CmlLib.Core.Auth.Microsoft` | Autenticacion Microsoft |
+| `Microsoft.EntityFrameworkCore.Sqlite` | Persistencia local |
+| `Serilog` | Logging |
+| `Microsoft.Extensions.Hosting` | DI y configuracion |
 
----
-
-## Autenticación
+## Autenticacion
 
 El launcher soporta dos modos:
 
-1. **Microsoft (OAuth2)** — Autenticación oficial con cuenta de Mojang/Microsoft. Permite jugar en servidores premium y muestra la skin real.
-2. **Offline** — Acceso rápido sin cuenta. Ideal para servidores no premium y modo local.
+1. Microsoft OAuth: autenticacion oficial con cuenta Microsoft para servidores premium.
+2. Offline: acceso local usando un nombre de usuario configurado por el usuario.
 
-> La autenticación Microsoft abre el navegador por defecto para validar las credenciales de forma segura. Los tokens se almacenan de forma cifrada localmente.
+## Java
 
----
-
-## Gestión Automática de Java
-
-| Versión Minecraft | Java Requerido |
+| Version Minecraft | Java requerido |
 | ----------------- | -------------- |
-| 1.0 – 1.16        | Java 8         |
-| 1.17 – 1.20.4     | Java 17        |
-| 1.20.5+           | Java 21        |
+| 1.0 a 1.16 | Java 8 |
+| 1.17 a 1.20.4 | Java 17 |
+| 1.20.5 o superior | Java 21 |
 
-Si no se encuentra la versión adecuada en el sistema, el launcher la descarga automáticamente a su carpeta interna.
+Si no se encuentra la version adecuada, el launcher intenta descargarla en su carpeta interna.
 
----
+## Modrinth
 
-## Integración con Modrinth
+Desde la vista Mods puedes buscar mods en Modrinth, ver informacion basica y filtrar resultados por version de Minecraft y loader.
 
-Desde la pestaña **Mods**, puedes:
-
-1. Buscar mods directamente en [Modrinth](https://modrinth.com/) sin salir del launcher
-2. Ver el icono, nombre y descripción de cada mod
-3. Los resultados se filtran automáticamente por la versión de Minecraft del perfil seleccionado
-
----
-
-## Desarrollo
-
-### Pruebas
+## Pruebas
 
 ```bash
 dotnet test ShoroCraftLauncher.sln
 ```
 
-Los tests que descargan archivos reales, revisan Java o lanzan Minecraft estan marcados como `Category=Integration` y se omiten por defecto. Para correrlos manualmente:
+Los tests que descargan archivos reales, revisan instalaciones de Java o lanzan Minecraft estan marcados como `Category=Integration` y se omiten por defecto.
+
+Para correrlos manualmente:
 
 ```powershell
 $env:SHOROCRAFT_RUN_INTEGRATION_TESTS="1"
 dotnet test ShoroCraftLauncher.sln --filter Category=Integration
 ```
 
-### Crear un nuevo servicio
+## Desarrollo
 
-1. Definir la interfaz en `ShoroCraftLauncher.Core/Interfaces/`
-2. Implementar en `ShoroCraftLauncher.Infrastructure/Services/`
-3. Registrar en el contenedor DI en `App.xaml.cs`
+Para agregar un servicio:
 
-### Contribuir
+1. Define la interfaz en `ShoroCraftLauncher.Core/Interfaces/`.
+2. Implementa el servicio en `ShoroCraftLauncher.Infrastructure/Services/`.
+3. Registra la dependencia en `App.xaml.cs`.
 
-1. Fork el repositorio
-2. Crea una rama feature: `git checkout -b feature/mi-feature`
-3. Commitea tus cambios: `git commit -m 'feat: agrega mi-feature'`
-4. Push a la rama: `git push origin feature/mi-feature`
-5. Abre un Pull Request
+## Commits
 
-### Convención de commits
-
-Seguimos [Conventional Commits](https://www.conventionalcommits.org/):
+El proyecto usa Conventional Commits:
 
 ```txt
 feat:     Nueva funcionalidad
-fix:      Corrección de bug
-style:    Cambios de UI/estilos
-refactor: Refactorización sin cambio de comportamiento
-docs:     Documentación
+fix:      Correccion de bug
+style:    Cambios de UI o estilos
+refactor: Refactorizacion sin cambio de comportamiento
+docs:     Documentacion
 chore:    Tareas de mantenimiento
-test:     Añadir o corregir tests
+test:     Pruebas
 ```
-
----
 
 ## Roadmap
 
-* [x] Dashboard con métricas en tiempo real
-* [x] Gestión de perfiles (Vanilla, Forge, Fabric, Quilt)
-* [x] Lanzamiento de Minecraft con proceso separado
-* [x] Consola de logs en tiempo real
-* [x] Gestión de Mods, Resource Packs y Shaders
-* [x] Autenticación Microsoft OAuth
-* [x] Búsqueda de mods via Modrinth API
-* [x] Sistema de noticias en el Dashboard
-* [x] Icono de aplicación personalizado
-* [ ] Descarga automática de JRE integrada (CmlLib)
-* [ ] Instalación de mods desde Modrinth con un click
-* [ ] Notificaciones de actualizaciones de Minecraft
-* [ ] Soporte para CurseForge API
-* [ ] Empaquetado como instalador (.msi)
-
----
+- [x] Dashboard con metricas
+- [x] Gestion de perfiles
+- [x] Lanzamiento de Minecraft
+- [x] Consola de logs en tiempo real
+- [x] Gestion de mods, resource packs y shaders
+- [x] Autenticacion Microsoft OAuth
+- [x] Modo offline con nombre de usuario configurable
+- [x] Busqueda de mods via Modrinth API
+- [x] Noticias en el dashboard
+- [ ] Instalacion de mods desde Modrinth con un click
+- [ ] Notificaciones de actualizaciones de Minecraft
+- [ ] Soporte para CurseForge API
+- [ ] Empaquetado como instalador MSI
 
 ## Licencia
 
-Distribuido bajo la licencia **MIT**. Ver [`LICENSE`](LICENSE) para más información.
-
----
-
-<div align="center">
-  <sub>Hecho con ❤️ por <a href="https://github.com/Shoropio">Shoropio</a></sub>
-</div>
+Distribuido bajo licencia MIT. Consulta [LICENSE](LICENSE).
