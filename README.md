@@ -139,7 +139,7 @@ test:     Pruebas
 - [ ] Instalacion de mods desde Modrinth con un click
 - [ ] Notificaciones de actualizaciones de Minecraft
 - [ ] Soporte para CurseForge API
-- [ ] Empaquetado como instalador MSI
+- [x] Empaquetado como instalador (Inno Setup / .exe)
 
 ## Licencia
 
