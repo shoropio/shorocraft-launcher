@@ -11,6 +11,7 @@ using ShoroCraftLauncher.Data.Repositories;
 using ShoroCraftLauncher.Infrastructure.Authentication;
 using ShoroCraftLauncher.Infrastructure.Minecraft;
 using ShoroCraftLauncher.Infrastructure.Services;
+using ShoroCraftLauncher.App.Services;
 
 namespace ShoroCraftLauncher.App;
 
@@ -69,6 +70,7 @@ public partial class App : Application
                 services.AddSingleton<IResourcePackRepository, ResourcePackRepository>();
                 services.AddSingleton<IShaderPackRepository, ShaderPackRepository>();
                 services.AddSingleton<IScriptRepository, ScriptRepository>();
+                services.AddSingleton<IGameMapRepository, GameMapRepository>();
                 services.AddSingleton<IGameVersionRepository, GameVersionRepository>();
                 services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
@@ -81,7 +83,9 @@ public partial class App : Application
                 services.AddSingleton<IResourcePackService, ResourcePackService>();
                 services.AddSingleton<IShaderPackService, ShaderPackService>();
                 services.AddSingleton<IScriptService, ScriptService>();
+                services.AddSingleton<IGameMapService, GameMapService>();
                 services.AddSingleton<IProfileService, ProfileService>();
+                services.AddSingleton<IDialogService, DialogService>();
 
                 services.AddTransient<DashboardViewModel>();
                 services.AddTransient<ProfilesViewModel>();
@@ -89,6 +93,7 @@ public partial class App : Application
                 services.AddTransient<ResourcePacksViewModel>();
                 services.AddTransient<ShaderPacksViewModel>();
                 services.AddTransient<ScriptsViewModel>();
+                services.AddTransient<MapsViewModel>();
                 services.AddSingleton<ConsoleViewModel>();
                 services.AddTransient<SettingsViewModel>();
 

@@ -11,17 +11,20 @@ public class ShaderPackService : IShaderPackService
     private readonly IProfileRepository _profileRepository;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ShaderPackService> _logger;
+    private readonly ILogService _logService;
 
     public ShaderPackService(
         IShaderPackRepository repository,
         IProfileRepository profileRepository,
         IMinecraftService minecraftService,
-        ILogger<ShaderPackService> logger)
+        ILogger<ShaderPackService> logger,
+        ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
         _minecraftService = minecraftService;
         _logger = logger;
+        _logService = logService;
     }
 
     public async Task<List<ShaderPack>> GetPacksAsync(int profileId) =>
@@ -30,6 +33,7 @@ public class ShaderPackService : IShaderPackService
     public async Task<ShaderPack> AddPackAsync(int profileId, string sourceFilePath)
     {
         _logger.LogInformation("Adding shader pack from {Source}", sourceFilePath);
+        _logService.Info("ShaderPackService", "AddPack", $"Agregando shader {Path.GetFileName(sourceFilePath)}...");
 
         var ext = Path.GetExtension(sourceFilePath).ToLowerInvariant();
         if (ext != ".zip")
@@ -44,6 +48,7 @@ public class ShaderPackService : IShaderPackService
         if (File.Exists(destPath))
             throw new Exception($"El shader pack '{fileName}' ya existe.");
 
+        _logService.Info("ShaderPackService", "AddPack", $"Copiando {fileName} a shaderpacks...");
         File.Copy(sourceFilePath, destPath);
 
         var pack = new ShaderPack
@@ -57,6 +62,7 @@ public class ShaderPackService : IShaderPackService
         };
 
         await _repository.CreateAsync(pack);
+        _logService.Info("ShaderPackService", "AddPack", $"Shader '{pack.Name}' agregado.");
         return pack;
     }
 
@@ -66,6 +72,7 @@ public class ShaderPackService : IShaderPackService
             ?? throw new Exception($"Shader pack {packId} not found");
         pack.Status = pack.Status == PackStatus.Active ? PackStatus.Inactive : PackStatus.Active;
         await _repository.UpdateAsync(pack);
+        _logService.Info("ShaderPackService", "TogglePack", $"Shader '{pack.Name}' {(pack.Status == PackStatus.Active ? "activado" : "desactivado")}.");
     }
 
     public async Task RemovePackAsync(int packId)
@@ -73,10 +80,12 @@ public class ShaderPackService : IShaderPackService
         var pack = await _repository.GetByIdAsync(packId)
             ?? throw new Exception($"Shader pack {packId} not found");
 
+        _logService.Info("ShaderPackService", "RemovePack", $"Eliminando shader '{pack.Name}'...");
         try { if (File.Exists(pack.FilePath)) File.Delete(pack.FilePath); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete shader file"); }
 
         await _repository.DeleteAsync(packId);
+        _logService.Info("ShaderPackService", "RemovePack", $"Shader '{pack.Name}' eliminado.");
     }
 
     public async Task<string> GetPacksFolderAsync(int profileId)

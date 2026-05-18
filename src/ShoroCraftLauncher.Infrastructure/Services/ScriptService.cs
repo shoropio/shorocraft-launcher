@@ -9,15 +9,18 @@ public class ScriptService : IScriptService
     private readonly IScriptRepository _repository;
     private readonly IProfileRepository _profileRepository;
     private readonly ILogger<ScriptService> _logger;
+    private readonly ILogService _logService;
 
     public ScriptService(
         IScriptRepository repository,
         IProfileRepository profileRepository,
-        ILogger<ScriptService> logger)
+        ILogger<ScriptService> logger,
+        ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
         _logger = logger;
+        _logService = logService;
     }
 
     public async Task<List<Script>> GetScriptsAsync(int profileId) =>
@@ -26,13 +29,17 @@ public class ScriptService : IScriptService
     public async Task<Script> ImportScriptAsync(int profileId, string sourceFilePath)
     {
         _logger.LogInformation("Importing script from {Source}", sourceFilePath);
+        _logService.Info("ScriptService", "ImportScript", $"Importando script {Path.GetFileName(sourceFilePath)}...");
 
         var profile = await _profileRepository.GetByIdAsync(profileId)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var ext = Path.GetExtension(sourceFilePath).ToLowerInvariant();
         if (ext is ".exe" or ".bat" or ".cmd" or ".ps1" or ".vbs")
+        {
             _logger.LogWarning("Importing potentially executable script: {File}", sourceFilePath);
+            _logService.Warning("ScriptService", "ImportScript", $"ADVERTENCIA: '{Path.GetFileName(sourceFilePath)}' es un ejecutable/script del sistema.");
+        }
 
         var scriptsDir = Path.Combine(
             string.IsNullOrEmpty(profile.GameDirectory)
@@ -48,8 +55,10 @@ public class ScriptService : IScriptService
         {
             var backupPath = await CreateBackupAsync(profileId, destPath);
             _logger.LogInformation("Backup created at {Backup}", backupPath);
+            _logService.Info("ScriptService", "ImportScript", $"Backup creado: {backupPath}");
         }
 
+        _logService.Info("ScriptService", "ImportScript", $"Copiando {fileName} a scripts...");
         File.Copy(sourceFilePath, destPath, true);
 
         var script = new Script
@@ -62,6 +71,7 @@ public class ScriptService : IScriptService
         };
 
         await _repository.CreateAsync(script);
+        _logService.Info("ScriptService", "ImportScript", $"Script '{script.Name}' importado.");
         return script;
     }
 
@@ -86,6 +96,7 @@ public class ScriptService : IScriptService
         script.Content = content;
         await _repository.UpdateAsync(script);
         _logger.LogInformation("Script {Name} saved with backup", script.Name);
+        _logService.Info("ScriptService", "SaveScript", $"Script '{script.Name}' guardado (backup creado).");
     }
 
     public async Task DeleteScriptAsync(int scriptId)
@@ -97,6 +108,7 @@ public class ScriptService : IScriptService
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete script file"); }
 
         await _repository.DeleteAsync(scriptId);
+        _logService.Info("ScriptService", "DeleteScript", $"Script '{script.Name}' eliminado.");
     }
 
     public async Task<string> CreateBackupAsync(int profileId, string filePath)

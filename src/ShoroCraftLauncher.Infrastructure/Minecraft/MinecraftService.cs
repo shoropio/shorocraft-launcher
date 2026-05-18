@@ -40,6 +40,7 @@ public class MinecraftService : IMinecraftService
     public string GetModsDirectory(string gameDir) => Path.Combine(gameDir, "mods");
     public string GetResourcePacksDirectory(string gameDir) => Path.Combine(gameDir, "resourcepacks");
     public string GetShaderPacksDirectory(string gameDir) => Path.Combine(gameDir, "shaderpacks");
+    public string GetSavesDirectory(string gameDir) => Path.Combine(gameDir, "saves");
 
     public async Task<List<GameVersion>> FetchAvailableVersionsAsync()
     {

@@ -14,6 +14,7 @@ public class LauncherDbContext : DbContext
     public DbSet<LauncherSetting> LauncherSettings => Set<LauncherSetting>();
     public DbSet<DownloadHistory> DownloadHistories => Set<DownloadHistory>();
     public DbSet<LogEntry> LogEntries => Set<LogEntry>();
+    public DbSet<GameMap> GameMaps => Set<GameMap>();
 
     public LauncherDbContext(DbContextOptions<LauncherDbContext> options) : base(options) { }
 
@@ -105,6 +106,17 @@ public class LauncherDbContext : DbContext
             e.Property(l => l.Level).HasConversion<string>().HasMaxLength(20);
             e.Property(l => l.Source).HasMaxLength(100);
             e.HasIndex(l => l.ProfileId);
+        });
+
+        modelBuilder.Entity<GameMap>(e =>
+        {
+            e.HasKey(m => m.Id);
+            e.Property(m => m.Name).IsRequired().HasMaxLength(200);
+            e.Property(m => m.FileName).IsRequired().HasMaxLength(255);
+            e.Property(m => m.FilePath).IsRequired().HasMaxLength(500);
+            e.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(m => m.PreviewImagePath).HasMaxLength(500);
+            e.HasIndex(m => m.ProfileId);
         });
     }
 }

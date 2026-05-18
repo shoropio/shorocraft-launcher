@@ -8,13 +8,14 @@ using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class ProfilesViewModel : BaseViewModel
+public class ProfilesViewModel : BaseViewModel, IDisposable
 {
     private readonly IProfileService _profileService;
     private readonly IProfileRepository _profileRepo;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ProfilesViewModel> _logger;
     private readonly ILogService _logService;
+    private readonly IDialogService _dialogService;
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
 
@@ -84,21 +85,17 @@ public class ProfilesViewModel : BaseViewModel
         IProfileRepository profileRepo,
         IMinecraftService minecraftService,
         ILogger<ProfilesViewModel> logger,
-        ILogService logService)
+        ILogService logService,
+        IDialogService dialogService)
     {
         _profileService = profileService;
         _profileRepo = profileRepo;
         _minecraftService = minecraftService;
         _logger = logger;
         _logService = logService;
+        _dialogService = dialogService;
 
-        _profileService.SelectedProfileChanged += () =>
-        {
-            OnPropertyChanged(nameof(SelectedProfile));
-            OnPropertyChanged(nameof(IsProfileSelected));
-            if (SelectedProfile != null) LoadProfileIntoForm(SelectedProfile);
-            else ClearForm();
-        };
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
         CreateProfileCommand = new RelayCommand(async _ => await CreateProfile());
         SaveProfileCommand = new RelayCommand(async _ => await SaveProfile(), _ => SelectedProfile != null);
@@ -109,6 +106,20 @@ public class ProfilesViewModel : BaseViewModel
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder(), _ => SelectedProfile != null);
 
         _ = LoadProfilesAsync();
+    }
+
+    private void OnSelectedProfileChanged()
+    {
+        OnPropertyChanged(nameof(SelectedProfile));
+        OnPropertyChanged(nameof(IsProfileSelected));
+        if (SelectedProfile != null) LoadProfileIntoForm(SelectedProfile);
+        else ClearForm();
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
     }
 
     public async Task LoadProfilesAsync()
@@ -326,21 +337,16 @@ public class ProfilesViewModel : BaseViewModel
 
     private async Task BrowseGameDirectory()
     {
-        using var dialog = new System.Windows.Forms.FolderBrowserDialog();
-        dialog.Description = "Selecciona la carpeta de Minecraft";
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            GameDir = dialog.SelectedPath;
+        var result = _dialogService.ShowFolderBrowserDialog("Selecciona la carpeta de Minecraft");
+        if (result != null)
+            GameDir = result;
     }
 
     private async Task BrowseJavaPath()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Java executable (javaw.exe)|javaw.exe|Java executable (java.exe)|java.exe",
-            Title = "Selecciona Java"
-        };
-        if (dialog.ShowDialog() == true)
-            JavaPath = dialog.FileName;
+        var result = _dialogService.ShowOpenFileDialog("Java executable (javaw.exe)|javaw.exe|Java executable (java.exe)|java.exe", "Selecciona Java");
+        if (result != null && result.Length > 0)
+            JavaPath = result[0];
     }
 
     private async Task OpenFolder()
@@ -350,9 +356,17 @@ public class ProfilesViewModel : BaseViewModel
             ? _minecraftService.GetDefaultGameDirectory(SelectedProfile.Name)
             : SelectedProfile.GameDirectory;
 
-        if (Directory.Exists(dir))
-            System.Diagnostics.Process.Start("explorer.exe", dir);
-        else
-            StatusMessage = "La carpeta del perfil no existe.";
+        try
+        {
+            if (Directory.Exists(dir))
+                System.Diagnostics.Process.Start("explorer.exe", dir);
+            else
+                StatusMessage = "La carpeta del perfil no existe.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open folder {Directory}", dir);
+            StatusMessage = $"Error al abrir la carpeta: {ex.Message}";
+        }
     }
 }

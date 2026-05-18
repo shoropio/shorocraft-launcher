@@ -172,6 +172,7 @@ public class MainViewModel : BaseViewModel
         NavItems.Add(new NavItem { Name = "Texturas", Icon = "🎨" });
         NavItems.Add(new NavItem { Name = "Shaders", Icon = "✨" });
         NavItems.Add(new NavItem { Name = "Scripts", Icon = "📜" });
+        NavItems.Add(new NavItem { Name = "Mapas", Icon = "🗺️" });
         NavItems.Add(new NavItem { Name = "Consola", Icon = "🖥️" });
         NavItems.Add(new NavItem { Name = "Configuración", Icon = "⚙️" });
 
@@ -226,6 +227,7 @@ public class MainViewModel : BaseViewModel
             "Texturas" => _serviceProvider.GetRequiredService<ResourcePacksViewModel>(),
             "Shaders" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
             "Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
+            "Mapas" => _serviceProvider.GetRequiredService<MapsViewModel>(),
             "Consola" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
             "Configuración" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
             _ => null

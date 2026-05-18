@@ -7,12 +7,12 @@ using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class ModsViewModel : BaseViewModel
+public class ModsViewModel : BaseViewModel, IDisposable
 {
     private readonly IProfileService _profileService;
     private readonly IModService _modService;
-    private readonly IProfileRepository _profileRepo;
     private readonly ILogger<ModsViewModel> _logger;
+    private readonly IDialogService _dialogService;
 
     public ObservableCollection<Mod> Mods { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
@@ -37,7 +37,10 @@ public class ModsViewModel : BaseViewModel
         {
             SetProperty(ref _searchQuery, value);
             if (string.IsNullOrEmpty(value) && SelectedProfile != null)
+            {
+                IsSearching = false;
                 _ = LoadModsAsync(SelectedProfile.Id);
+            }
         }
     }
 
@@ -63,23 +66,20 @@ public class ModsViewModel : BaseViewModel
     public ICommand OpenModsFolderCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand SearchCommand { get; }
+    public ICommand InstallFromSearchCommand { get; }
 
     public ModsViewModel(
         IProfileService profileService,
         IModService modService,
-        IProfileRepository profileRepo,
-        ILogger<ModsViewModel> logger)
+        ILogger<ModsViewModel> logger,
+        IDialogService dialogService)
     {
         _profileService = profileService;
         _modService = modService;
-        _profileRepo = profileRepo;
         _logger = logger;
+        _dialogService = dialogService;
 
-        _profileService.SelectedProfileChanged += () =>
-        {
-            OnPropertyChanged(nameof(SelectedProfile));
-            if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
-        };
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
         AddModCommand = new RelayCommand(async _ => await AddMod());
         ToggleModCommand = new RelayCommand(async p => await ToggleMod(p));
@@ -87,8 +87,21 @@ public class ModsViewModel : BaseViewModel
         OpenModsFolderCommand = new RelayCommand(async _ => await OpenFolder());
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); });
         SearchCommand = new RelayCommand(async _ => await SearchMods());
+        InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p));
 
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
+    }
+
+    private void OnSelectedProfileChanged()
+    {
+        OnPropertyChanged(nameof(SelectedProfile));
+        if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
     }
 
     private async Task SearchMods()
@@ -114,6 +127,28 @@ public class ModsViewModel : BaseViewModel
         IsBusy = false;
     }
 
+    private async Task InstallFromSearch(object? parameter)
+    {
+        if (SelectedProfile == null) return;
+        if (parameter is not Mod searchResult) return;
+        if (string.IsNullOrWhiteSpace(searchResult.FileName)) return;
+
+        IsBusy = true;
+        try
+        {
+            await _modService.InstallFromSearchAsync(SelectedProfile.Id, searchResult, SelectedProvider);
+            StatusMessage = $"{searchResult.Name} instalado correctamente.";
+            IsSearching = false;
+            await LoadModsAsync(SelectedProfile.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install mod from search");
+            StatusMessage = $"Error al instalar: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
     public async Task LoadModsAsync(int profileId)
     {
         IsBusy = true;
@@ -135,18 +170,13 @@ public class ModsViewModel : BaseViewModel
     {
         if (SelectedProfile == null) return;
 
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Mods (*.jar)|*.jar",
-            Multiselect = true,
-            Title = "Seleccionar mods"
-        };
+        var files = _dialogService.ShowOpenFileDialog("Mods (*.jar)|*.jar", "Seleccionar mods", true);
 
-        if (dialog.ShowDialog() == true)
+        if (files != null)
         {
             IsBusy = true;
             var added = 0;
-            foreach (var file in dialog.FileNames)
+            foreach (var file in files)
             {
                 try
                 {
@@ -167,9 +197,17 @@ public class ModsViewModel : BaseViewModel
     {
         if (modId is int id)
         {
-            await _modService.ToggleModAsync(id);
-            if (SelectedProfile != null) {
-                await LoadModsAsync(SelectedProfile.Id);
+            try
+            {
+                await _modService.ToggleModAsync(id);
+                if (SelectedProfile != null) {
+                    await LoadModsAsync(SelectedProfile.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle mod {ModId}", id);
+                StatusMessage = $"Error al cambiar estado del mod: {ex.Message}";
             }
         }
     }
@@ -178,22 +216,38 @@ public class ModsViewModel : BaseViewModel
     {
         if (modId is int id)
         {
-            await _modService.RemoveModAsync(id);
-            if (SelectedProfile != null) {
-                await LoadModsAsync(SelectedProfile.Id);
+            try
+            {
+                await _modService.RemoveModAsync(id);
+                if (SelectedProfile != null) {
+                    await LoadModsAsync(SelectedProfile.Id);
+                }
+                StatusMessage = "Mod eliminado.";
             }
-            StatusMessage = "Mod eliminado.";
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to remove mod {ModId}", id);
+                StatusMessage = $"Error al eliminar mod: {ex.Message}";
+            }
         }
     }
 
     private async Task OpenFolder()
     {
         if (SelectedProfile == null) return;
-        var folder = await _modService.GetModsFolderAsync(SelectedProfile.Id);
-        if (Directory.Exists(folder)) {
-            System.Diagnostics.Process.Start("explorer.exe", folder);
-        } else {
-            StatusMessage = "La carpeta de mods no existe.";
+        try
+        {
+            var folder = await _modService.GetModsFolderAsync(SelectedProfile.Id);
+            if (Directory.Exists(folder)) {
+                System.Diagnostics.Process.Start("explorer.exe", folder);
+            } else {
+                StatusMessage = "La carpeta de mods no existe.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open mods folder for profile {ProfileId}", SelectedProfile.Id);
+            StatusMessage = $"Error al abrir la carpeta: {ex.Message}";
         }
     }
 }

@@ -39,18 +39,14 @@ public class AuthenticationService : IAuthenticationService
                 return new AuthResult
                 {
                     Success = true,
-                    IsOffline = false,
                     AccessToken = session.AccessToken,
                     Uuid = session.UUID,
-                    Username = session.Username,
-                    SkinUrl = $"https://crafatar.com/renders/body/{session.UUID}?overlay=true"
+                    Username = session.Username
                 };
             }
 
             return new AuthResult { Success = false, ErrorMessage = "Login cancelado o fallido." };
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "Microsoft authentication failed");
             return new AuthResult { Success = false, ErrorMessage = ex.Message };
         }
@@ -65,15 +61,13 @@ public class AuthenticationService : IAuthenticationService
 
         var uuid = GenerateOfflineUuid(username);
 
-            return new AuthResult
-            {
-                Success = true,
-                IsOffline = true,
-                AccessToken = "offline",
-                Uuid = uuid,
-                Username = username,
-                SkinUrl = $"https://crafatar.com/renders/body/{uuid}?overlay=true"
-            };
+        return new AuthResult
+        {
+            Success = true,
+            AccessToken = "offline",
+            Uuid = uuid,
+            Username = username
+        };
     }
 
     public async Task<bool> ValidateTokenAsync(string accessToken)
@@ -84,9 +78,7 @@ public class AuthenticationService : IAuthenticationService
             if (parts.Length == 0) return false;
 
             return !string.IsNullOrEmpty(parts[0]);
-        }
-        catch
-        {
+        } catch {
             return false;
         }
     }
@@ -103,9 +95,7 @@ public class AuthenticationService : IAuthenticationService
                 var credentialDelete = NativeLibrary.GetExport(advapi32, "CredDeleteW");
                 NativeLibrary.Free(advapi32);
             }
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to clear stored credentials");
         }
     }
@@ -118,9 +108,7 @@ public class AuthenticationService : IAuthenticationService
                 return null;
 
             return null;
-        }
-        catch
-        {
+        } catch {
             return null;
         }
     }

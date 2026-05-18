@@ -7,7 +7,7 @@ using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class DashboardViewModel : BaseViewModel
+public class DashboardViewModel : BaseViewModel, IDisposable
 {
     private readonly IProfileService _profileService;
     private readonly IGameVersionRepository _versionRepo;
@@ -99,16 +99,24 @@ public class DashboardViewModel : BaseViewModel
         _javaService = javaService;
         _logger = logger;
 
-        _profileService.SelectedProfileChanged += () =>
-        {
-            OnPropertyChanged(nameof(SelectedProfile));
-            UpdateProfileDetailsAsync();
-        };
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
         RefreshVersionsCommand = new RelayCommand(async _ => await LoadVersionsAsync());
         InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"));
         InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""));
         ApplyProfileCommand = new RelayCommand(_ => ApplyProfile());
+    }
+
+    private void OnSelectedProfileChanged()
+    {
+        OnPropertyChanged(nameof(SelectedProfile));
+        UpdateProfileDetailsAsync();
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
     }
 
     public async Task LoadDataAsync()

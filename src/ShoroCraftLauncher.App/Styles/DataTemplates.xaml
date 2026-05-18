@@ -21,6 +21,9 @@
     <DataTemplate DataType="{x:Type vm:ScriptsViewModel}">
         <v:ScriptsView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:MapsViewModel}">
+        <v:MapsView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:ConsoleViewModel}">
         <v:ConsoleView />
     </DataTemplate>

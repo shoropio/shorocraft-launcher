@@ -16,4 +16,5 @@ public interface IMinecraftService
     string GetModsDirectory(string gameDir);
     string GetResourcePacksDirectory(string gameDir);
     string GetShaderPacksDirectory(string gameDir);
+    string GetSavesDirectory(string gameDir);
 }
