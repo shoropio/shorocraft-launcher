@@ -136,9 +136,9 @@ test:     Pruebas
 - [x] Modo offline con nombre de usuario configurable
 - [x] Busqueda de mods via Modrinth API
 - [x] Noticias en el dashboard
-- [ ] Instalacion de mods desde Modrinth con un click
+- [x] Instalacion de mods desde Modrinth con un click
 - [ ] Notificaciones de actualizaciones de Minecraft
-- [ ] Soporte para CurseForge API
+- [x] Soporte para CurseForge API
 - [x] Empaquetado como instalador (Inno Setup / .exe)
 
 ## Licencia
