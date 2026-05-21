@@ -9,6 +9,7 @@ public class ShaderPackService : IShaderPackService
 {
     private readonly IShaderPackRepository _repository;
     private readonly IProfileRepository _profileRepository;
+    private readonly IModRepository _modRepository;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ShaderPackService> _logger;
     private readonly ILogService _logService;
@@ -16,12 +17,14 @@ public class ShaderPackService : IShaderPackService
     public ShaderPackService(
         IShaderPackRepository repository,
         IProfileRepository profileRepository,
+        IModRepository modRepository,
         IMinecraftService minecraftService,
         ILogger<ShaderPackService> logger,
         ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
+        _modRepository = modRepository;
         _minecraftService = minecraftService;
         _logger = logger;
         _logService = logService;
@@ -102,6 +105,44 @@ public class ShaderPackService : IShaderPackService
     {
         var profile = await _profileRepository.GetByIdAsync(profileId)
             ?? throw new Exception($"Profile {profileId} not found");
-        return profile.Type is Core.Enums.ProfileType.OptiFine or Core.Enums.ProfileType.Iris;
+
+        if (profile.Type is ProfileType.OptiFine or ProfileType.Iris)
+            return true;
+
+        var mods = await _modRepository.GetByProfileIdAsync(profileId);
+        if (mods.Any(IsActiveShaderMod))
+            return true;
+
+        var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
+            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            : profile.GameDirectory;
+        var modsDir = _minecraftService.GetModsDirectory(gameDir);
+
+        if (!Directory.Exists(modsDir))
+            return false;
+
+        return Directory.GetFiles(modsDir, "*.jar")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Any(IsShaderModName);
+    }
+
+    private static bool IsActiveShaderMod(Mod mod)
+    {
+        if (mod.Status != ModStatus.Active)
+            return false;
+
+        return IsShaderModName(mod.Name)
+            || IsShaderModName(mod.FileName)
+            || IsShaderModName(mod.ModVersion);
+    }
+
+    private static bool IsShaderModName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        return value.Contains("iris", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("oculus", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("optifine", StringComparison.OrdinalIgnoreCase);
     }
 }

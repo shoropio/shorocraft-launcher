@@ -23,6 +23,17 @@ Launcher de Minecraft para Windows, construido con .NET 8, WPF, MVVM, SQLite y C
 
 ## Requisitos
 
+## Export / Import y Backups
+
+El launcher soporta exportar e importar perfiles, y gestionar copias de seguridad:
+
+- Exportar: desde la vista de Perfiles, usa el botón "Exportar" para guardar un paquete `.zip` del perfil.
+- Importar: usa "Importar" para restaurar o añadir un perfil desde un paquete `.zip`.
+- Copias de seguridad: crea backups de `Worlds`, `Scripts` o `Configs` en `%LocalAppData%\ShoroCraftLauncher\backups\{perfil}` y restaura/elimina desde la misma vista.
+
+Estas operaciones también están disponibles programáticamente vía `IProfileService`.
+
+
 - Windows 10 o Windows 11 x64
 - [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
 - Java 8, 17 o 21, detectado o descargado automaticamente por el launcher

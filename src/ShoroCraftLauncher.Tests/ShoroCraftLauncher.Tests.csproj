@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
@@ -16,5 +16,6 @@
     <ProjectReference Include="..\ShoroCraftLauncher.Core\ShoroCraftLauncher.Core.csproj" />
     <ProjectReference Include="..\ShoroCraftLauncher.Data\ShoroCraftLauncher.Data.csproj" />
     <ProjectReference Include="..\ShoroCraftLauncher.Infrastructure\ShoroCraftLauncher.Infrastructure.csproj" />
+    <ProjectReference Include="..\ShoroCraftLauncher.App\ShoroCraftLauncher.App.csproj" />
   </ItemGroup>
 </Project>

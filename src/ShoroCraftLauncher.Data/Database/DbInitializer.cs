@@ -47,11 +47,73 @@ public class DbInitializer
                 cmd.CommandText = "ALTER TABLE Mods ADD COLUMN IconPath TEXT NULL";
                 cmd.ExecuteNonQuery();
             }
+
+            // Create GameMaps table if it doesn't exist
+            cmd.CommandText = @"
+                CREATE TABLE IF NOT EXISTS GameMaps (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ProfileId INTEGER NOT NULL,
+                    Name TEXT NOT NULL,
+                    FileName TEXT NOT NULL,
+                    FilePath TEXT NOT NULL,
+                    FileSizeBytes INTEGER NOT NULL,
+                    PreviewImagePath TEXT NULL,
+                    Status TEXT NOT NULL,
+                    AddedAt TEXT NOT NULL
+                )";
+            cmd.ExecuteNonQuery();
+
+            EnsureGameMapsStatusText(conn);
         }
         finally
         {
             conn.Close();
         }
+    }
+
+    private static void EnsureGameMapsStatusText(System.Data.Common.DbConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT type FROM pragma_table_info('GameMaps') WHERE name='Status'";
+        var statusType = (cmd.ExecuteScalar()?.ToString() ?? string.Empty).Trim();
+
+        if (statusType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        cmd.CommandText = @"
+            CREATE TABLE GameMaps_New (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ProfileId INTEGER NOT NULL,
+                Name TEXT NOT NULL,
+                FileName TEXT NOT NULL,
+                FilePath TEXT NOT NULL,
+                FileSizeBytes INTEGER NOT NULL,
+                PreviewImagePath TEXT NULL,
+                Status TEXT NOT NULL,
+                AddedAt TEXT NOT NULL
+            )";
+        cmd.ExecuteNonQuery();
+
+        cmd.CommandText = @"
+            INSERT INTO GameMaps_New (Id, ProfileId, Name, FileName, FilePath, FileSizeBytes, PreviewImagePath, Status, AddedAt)
+            SELECT Id, ProfileId, Name, FileName, FilePath, FileSizeBytes, PreviewImagePath,
+                   CASE
+                       WHEN Status = 0 THEN 'Active'
+                       WHEN Status = 1 THEN 'Inactive'
+                       ELSE COALESCE(CAST(Status AS TEXT), 'Active')
+                   END,
+                   AddedAt
+            FROM GameMaps";
+        cmd.ExecuteNonQuery();
+
+        cmd.CommandText = "DROP TABLE GameMaps";
+        cmd.ExecuteNonQuery();
+
+        cmd.CommandText = "ALTER TABLE GameMaps_New RENAME TO GameMaps";
+        cmd.ExecuteNonQuery();
+
+        cmd.CommandText = "CREATE INDEX IF NOT EXISTS IX_GameMaps_ProfileId ON GameMaps (ProfileId)";
+        cmd.ExecuteNonQuery();
     }
 
     private static void SeedDefaults(LauncherDbContext context)

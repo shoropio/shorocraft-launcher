@@ -7,6 +7,7 @@ public class RelayCommand : ICommand
     private readonly Func<object?, Task>? _asyncExecute;
     private readonly Action<object?>? _syncExecute;
     private readonly Func<object?, bool>? _canExecute;
+    private bool _isExecuting;
 
     public RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null)
     {
@@ -35,14 +36,37 @@ public class RelayCommand : ICommand
         remove => CommandManager.RequerySuggested -= value;
     }
 
-    public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+    public bool CanExecute(object? parameter) =>
+        !_isExecuting && (_canExecute?.Invoke(parameter) ?? true);
 
     public async void Execute(object? parameter)
     {
-        if (_asyncExecute != null)
-            await _asyncExecute(parameter);
-        else
-            _syncExecute?.Invoke(parameter);
+        if (!CanExecute(parameter))
+            return;
+
+        try
+        {
+            _isExecuting = true;
+            CommandManager.InvalidateRequerySuggested();
+
+            if (_asyncExecute != null)
+                await _asyncExecute(parameter);
+            else
+                _syncExecute?.Invoke(parameter);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Ocurrio un error al ejecutar la accion:\n{ex.Message}",
+                "ShoroCraft Launcher",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isExecuting = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 }
 

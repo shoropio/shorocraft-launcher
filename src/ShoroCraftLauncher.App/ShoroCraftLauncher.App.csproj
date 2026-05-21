@@ -9,6 +9,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>ShoroCraftLauncher.App</RootNamespace>
     <AssemblyName>ShoroCraftLauncher</AssemblyName>
+    <Version>1.0.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>

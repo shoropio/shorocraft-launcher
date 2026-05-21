@@ -1,0 +1,8 @@
+dotnet run --project src/ShoroCraftLauncher.App
+dotnet build ShoroCraftLauncher.sln
+dotnet test ShoroCraftLauncher.sln --no-build
+dotnet pack ShoroCraftLauncher.csproj --configuration Release --output ./output
+
+dotnet build ShoroCraftCore\ShoroCraftCore.csproj
+dotnet build ShoroCraftCommon\ShoroCraftCommon.csproj
+dotnet build ShoroCraftLauncher.csproj

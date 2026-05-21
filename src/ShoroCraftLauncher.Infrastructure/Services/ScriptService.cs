@@ -91,12 +91,23 @@ public class ScriptService : IScriptService
         var script = await _repository.GetByIdAsync(scriptId)
             ?? throw new Exception($"Script {scriptId} not found");
 
-        await CreateBackupAsync(script.ProfileId, script.FilePath);
+        var scriptDir = Path.GetDirectoryName(script.FilePath);
+        if (!string.IsNullOrWhiteSpace(scriptDir))
+            Directory.CreateDirectory(scriptDir);
+
+        var backupPath = await CreateBackupAsync(script.ProfileId, script.FilePath);
         await File.WriteAllTextAsync(script.FilePath, content);
         script.Content = content;
+        if (!string.IsNullOrEmpty(backupPath))
+            script.BackupPath = backupPath;
+
         await _repository.UpdateAsync(script);
-        _logger.LogInformation("Script {Name} saved with backup", script.Name);
-        _logService.Info("ScriptService", "SaveScript", $"Script '{script.Name}' guardado (backup creado).");
+        _logger.LogInformation("Script {Name} saved. Backup: {BackupPath}", script.Name, backupPath);
+
+        var message = string.IsNullOrEmpty(backupPath)
+            ? $"Script '{script.Name}' guardado (sin backup previo: el archivo no existia)."
+            : $"Script '{script.Name}' guardado (backup creado).";
+        _logService.Info("ScriptService", "SaveScript", message);
     }
 
     public async Task DeleteScriptAsync(int scriptId)

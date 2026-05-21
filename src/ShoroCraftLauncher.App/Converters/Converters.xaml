@@ -6,4 +6,5 @@
     <c:InverseBoolConverter x:Key="InverseBoolConverter" />
     <c:FileSizeConverter x:Key="FileSizeConverter" />
     <c:StatusToBoolConverter x:Key="StatusToBoolConverter" />
+    <c:TranslationConverter x:Key="TranslationConverter" />
 </ResourceDictionary>

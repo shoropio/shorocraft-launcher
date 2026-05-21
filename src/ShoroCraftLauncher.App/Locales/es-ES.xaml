@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+    
+    <!-- Sidebar -->
+    <system:String x:Key="Nav_Dashboard">Inicio</system:String>
+    <system:String x:Key="Nav_Profiles">Perfiles</system:String>
+    <system:String x:Key="Nav_Mods">Mods</system:String>
+    <system:String x:Key="Nav_ResourcePacks">Texturas</system:String>
+    <system:String x:Key="Nav_ShaderPacks">Shaders</system:String>
+    <system:String x:Key="Nav_Scripts">Scripts</system:String>
+    <system:String x:Key="Nav_Maps">Mapas</system:String>
+    <system:String x:Key="Nav_Console">Consola</system:String>
+    <system:String x:Key="Nav_Settings">Configuración</system:String>
+    
+    <!-- User Panel -->
+    <system:String x:Key="User_NotAuthenticated">No autenticado</system:String>
+    <system:String x:Key="User_Offline">Desconectado</system:String>
+    <system:String x:Key="User_LoginMicrosoft">Microsoft</system:String>
+    <system:String x:Key="User_LoginOffline">Offline</system:String>
+    
+    <!-- Main Window Bar -->
+    <system:String x:Key="TopBar_NoProfile">Sin perfil seleccionado</system:String>
+    <system:String x:Key="BottomBar_Play">JUGAR</system:String>
+    <system:String x:Key="BottomBar_Stop">DETENER</system:String>
+    
+</ResourceDictionary>

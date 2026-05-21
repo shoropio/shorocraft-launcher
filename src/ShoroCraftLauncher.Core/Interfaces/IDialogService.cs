@@ -4,4 +4,5 @@ public interface IDialogService
 {
     string[]? ShowOpenFileDialog(string filter, string title, bool multiselect = false);
     string? ShowFolderBrowserDialog(string description);
+    string? ShowSaveFileDialog(string filter, string title, string? defaultFileName = null);
 }

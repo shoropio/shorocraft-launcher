@@ -397,7 +397,7 @@ public class ModService : IModService
         return _minecraftService.GetModsDirectory(gameDir);
     }
 
-    private async Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath)
+    public async Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath)
     {
         try
         {

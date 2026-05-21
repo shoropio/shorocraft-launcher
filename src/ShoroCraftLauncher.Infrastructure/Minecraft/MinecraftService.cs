@@ -70,16 +70,16 @@ public class MinecraftService : IMinecraftService
         }
     }
 
-    public async Task InstallVersionAsync(string versionId, IProgress<double>? progress = null)
+    public async Task InstallVersionAsync(string versionId, IProgress<double>? progress = null, string? gameDir = null)
     {
-        using var operation = _logService?.BeginOperation("MinecraftInstall", "InstallVersion", new { versionId });
+        gameDir = ResolveGameDirectory(gameDir);
+        using var operation = _logService?.BeginOperation("MinecraftInstall", "InstallVersion", new { versionId, gameDir });
         _logger.LogInformation("Installing Minecraft version {Version}", versionId);
         _logService?.Info("MinecraftInstall", "Started", "Instalando versión de Minecraft.", new { versionId });
         var versionData = await FetchVersionDataAsync(versionId);
         if (versionData == null)
             throw new Exception($"Version {versionId} not found");
 
-        var gameDir = GetMinecraftGameDir();
         var versionsDir = Path.Combine(gameDir, "versions", versionId);
         var installMarker = Path.Combine(versionsDir, ".shorocraft-installed.json");
         Directory.CreateDirectory(Path.Combine(gameDir, "versions"));
@@ -145,15 +145,15 @@ public class MinecraftService : IMinecraftService
         }
     }
 
-    public async Task InstallLoaderAsync(string versionId, string loaderType, string loaderVersion, string javaPath, Action<string>? onProgress = null, IProgress<double>? progress = null, Action<string>? onLog = null)
+    public async Task InstallLoaderAsync(string versionId, string loaderType, string loaderVersion, string javaPath, Action<string>? onProgress = null, IProgress<double>? progress = null, Action<string>? onLog = null, string? gameDir = null)
     {
-        using var operation = _logService?.BeginOperation("LoaderInstall", "InstallLoader", new { versionId, loaderType, loaderVersion });
+        gameDir = ResolveGameDirectory(gameDir);
+        using var operation = _logService?.BeginOperation("LoaderInstall", "InstallLoader", new { versionId, loaderType, loaderVersion, gameDir });
         _logger.LogInformation("Installing loader {Loader} for Minecraft {McVersion}", loaderType, versionId);
         _logService?.Info("LoaderInstall", "Started", "Instalando loader.", new { versionId, loaderType, loaderVersion });
         onLog?.Invoke($"[INFO] Preparando instalación de {loaderType} {loaderVersion}...");
         onProgress?.Invoke($"Preparando instalación de {loaderType} {loaderVersion}...");
         
-        var gameDir = GetMinecraftGameDir();
         Directory.CreateDirectory(Path.Combine(gameDir, "cache"));
 
         var versionDir = Path.Combine(gameDir, "versions", versionId);
@@ -162,7 +162,7 @@ public class MinecraftService : IMinecraftService
             _logService?.Warning("LoaderInstall", "BaseVersionMissing", "Minecraft base no está instalado; se instalará antes del loader.", new { versionId });
             onLog?.Invoke($"[INFO] Minecraft {versionId} no está instalado. Instalando versión base...");
             onProgress?.Invoke($"Instalando Minecraft {versionId}...");
-            await InstallVersionAsync(versionId, progress);
+            await InstallVersionAsync(versionId, progress, gameDir);
         }
 
         await EnsureLauncherProfileAsync(gameDir, versionId);
@@ -322,6 +322,7 @@ public class MinecraftService : IMinecraftService
 
     public async Task<bool> VerifyInstallationAsync(string gameDir)
     {
+        gameDir = ResolveGameDirectory(gameDir);
         return Directory.Exists(Path.Combine(gameDir, "versions"))
             && Directory.Exists(Path.Combine(gameDir, "libraries"))
             && Directory.Exists(Path.Combine(gameDir, "assets"));
@@ -329,6 +330,7 @@ public class MinecraftService : IMinecraftService
 
     public async Task RepairInstallationAsync(string gameDir, IProgress<double>? progress = null)
     {
+        gameDir = ResolveGameDirectory(gameDir);
         _logger.LogInformation("Repairing installation at {GameDir}", gameDir);
         foreach (var dir in new[] { "versions", "assets", "libraries", "mods", "resourcepacks", "shaderpacks", "saves", "cache", "logs", "natives" })
             Directory.CreateDirectory(Path.Combine(gameDir, dir));
@@ -339,7 +341,8 @@ public class MinecraftService : IMinecraftService
     {
         _logger.LogInformation("Launching: profile={Profile}, version={Version}", profile.Name, profile.MinecraftVersion);
 
-        var globalDir = GetMinecraftGameDir();
+        gameDir = ResolveGameDirectory(gameDir);
+        var globalDir = gameDir;
         var targetVersion = profile.MinecraftVersion;
 
         if (profile.MinecraftVersion.ToLower() == "latest")
@@ -636,6 +639,9 @@ public class MinecraftService : IMinecraftService
 
     private static string GetMinecraftGameDir() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+
+    private static string ResolveGameDirectory(string? gameDir) =>
+        string.IsNullOrWhiteSpace(gameDir) ? GetMinecraftGameDir() : gameDir;
 
     private static bool IsVersionComplete(string versionsDir, string versionId)
     {

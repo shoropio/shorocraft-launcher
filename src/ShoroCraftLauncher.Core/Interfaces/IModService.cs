@@ -12,4 +12,5 @@ public interface IModService
     Task<List<Mod>> SearchModsAsync(string provider, string query, string minecraftVersion, string loaderType);
     Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType);
     Task<Mod> InstallFromSearchAsync(int profileId, Mod searchResult, string provider);
+    Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath);
 }

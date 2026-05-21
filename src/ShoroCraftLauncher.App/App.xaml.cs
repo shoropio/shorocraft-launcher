@@ -28,12 +28,28 @@ public partial class App : Application
 
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
-        _logService?.Critical("App", "UiUnhandledException", "Excepción no controlada en UI.", e.Exception);
-        Log.Fatal(e.Exception, "Unhandled exception occurred");
-        System.Windows.MessageBox.Show($"Ha ocurrido un error inesperado:\n{e.Exception.Message}\n\nEl launcher se cerrará por seguridad.", "Error Inesperado", MessageBoxButton.OK, MessageBoxImage.Error);
-        Log.CloseAndFlush();
+        HandleCrash(e.Exception, "UI Thread");
         e.Handled = true;
-        Shutdown(1);
+    }
+
+    private void HandleCrash(Exception ex, string source)
+    {
+        _logService?.Critical("App", source, "Crash", ex);
+        Log.Fatal(ex, "Crash");
+        
+        try 
+        {
+            var crashPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"crash-{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            var report = $"ShoroCraft Launcher Crash Report\nDate: {DateTime.Now}\nSource: {source}\n\nException: {ex.GetType().Name}\nMessage: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}";
+            File.WriteAllText(crashPath, report);
+            
+            System.Windows.MessageBox.Show($"Ha ocurrido un error crítico.\n\nSe ha generado un reporte en:\n{crashPath}\n\nEl launcher se cerrará.", "ShoroCraft Crash Reporter", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", crashPath) { UseShellExecute = true });
+        }
+        catch { }
+        
+        Log.CloseAndFlush();
+        Environment.Exit(1);
     }
 
     private static IHost CreateHostBuilder()
@@ -46,6 +62,8 @@ public partial class App : Application
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
+            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
             .WriteTo.File(
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -86,6 +104,7 @@ public partial class App : Application
                 services.AddSingleton<IGameMapService, GameMapService>();
                 services.AddSingleton<IProfileService, ProfileService>();
                 services.AddSingleton<IDialogService, DialogService>();
+                services.AddSingleton<IUpdaterService, UpdaterService>();
 
                 services.AddTransient<DashboardViewModel>();
                 services.AddTransient<ProfilesViewModel>();
@@ -116,12 +135,12 @@ public partial class App : Application
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
                 if (args.ExceptionObject is Exception ex)
-                    _logService?.Critical("App", "UnhandledException", "Excepción no controlada del dominio.", ex);
+                    HandleCrash(ex, "AppDomain");
             };
 
             TaskScheduler.UnobservedTaskException += (_, args) =>
             {
-                _logService?.Error("App", "UnobservedTaskException", "Excepción no observada en tarea.", args.Exception);
+                HandleCrash(args.Exception, "TaskScheduler");
                 args.SetObserved();
             };
 

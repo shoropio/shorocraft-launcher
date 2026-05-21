@@ -7,13 +7,16 @@ using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class MainViewModel : BaseViewModel
+public class MainViewModel : BaseViewModel, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILauncherService _launcherService;
     private readonly IAuthenticationService _authService;
     private readonly IProfileService _profileService;
     private readonly IMinecraftService _minecraftService;
+    private readonly Action _selectedProfileChangedHandler;
+    private readonly Action _gameExitedHandler;
+    private readonly Action<double, string> _progressChangedHandler;
 
     public ObservableCollection<NavItem> NavItems { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
@@ -36,7 +39,7 @@ public class MainViewModel : BaseViewModel
         }
     }
 
-    private string _authStatus = "No autenticado";
+    private string _authStatus = "User_NotAuthenticated";
     public string AuthStatus
     {
         get => _authStatus;
@@ -100,7 +103,7 @@ public class MainViewModel : BaseViewModel
         set => SetProperty(ref _username, value);
     }
 
-    private string _selectedProfileName = "Sin perfil";
+    private string _selectedProfileName = "TopBar_NoProfile";
     public string SelectedProfileName
     {
         get => _selectedProfileName;
@@ -125,7 +128,7 @@ public class MainViewModel : BaseViewModel
             if (value != null)
             {
                 SelectedProfileName = value.Name;
-                GameVersionStatus = $"{value.MinecraftVersion} | {value.Type}";
+                GameVersionStatus = $"Config: {value.MinecraftVersion} | {value.Type}";
             }
         }
     }
@@ -150,39 +153,40 @@ public class MainViewModel : BaseViewModel
         _profileService = profileService;
         _minecraftService = minecraftService;
 
-        _profileService.SelectedProfileChanged += () =>
+        _selectedProfileChangedHandler = () =>
         {
             OnPropertyChanged(nameof(SelectedProfile));
             CommandManager.InvalidateRequerySuggested();
             if (SelectedProfile != null)
             {
                 SelectedProfileName = SelectedProfile.Name;
-                GameVersionStatus = $"{SelectedProfile.MinecraftVersion} | {SelectedProfile.Type}";
+                GameVersionStatus = $"Config: {SelectedProfile.MinecraftVersion} | {SelectedProfile.Type}";
             }
             else
             {
-                SelectedProfileName = "Sin perfil";
+                SelectedProfileName = "TopBar_NoProfile";
                 GameVersionStatus = "No instalado";
             }
         };
+        _profileService.SelectedProfileChanged += _selectedProfileChangedHandler;
 
-        NavItems.Add(new NavItem { Name = "Dashboard", Icon = "🏠" });
-        NavItems.Add(new NavItem { Name = "Perfiles", Icon = "👤" });
-        NavItems.Add(new NavItem { Name = "Mods", Icon = "🔧" });
-        NavItems.Add(new NavItem { Name = "Texturas", Icon = "🎨" });
-        NavItems.Add(new NavItem { Name = "Shaders", Icon = "✨" });
-        NavItems.Add(new NavItem { Name = "Scripts", Icon = "📜" });
-        NavItems.Add(new NavItem { Name = "Mapas", Icon = "🗺️" });
-        NavItems.Add(new NavItem { Name = "Consola", Icon = "🖥️" });
-        NavItems.Add(new NavItem { Name = "Configuración", Icon = "⚙️" });
+        NavItems.Add(new NavItem { Name = "Nav_Dashboard", Icon = "🏠" });
+        NavItems.Add(new NavItem { Name = "Nav_Profiles", Icon = "👤" });
+        NavItems.Add(new NavItem { Name = "Nav_Mods", Icon = "🔧" });
+        NavItems.Add(new NavItem { Name = "Nav_ResourcePacks", Icon = "🎨" });
+        NavItems.Add(new NavItem { Name = "Nav_ShaderPacks", Icon = "✨" });
+        NavItems.Add(new NavItem { Name = "Nav_Scripts", Icon = "📜" });
+        NavItems.Add(new NavItem { Name = "Nav_Maps", Icon = "🗺️" });
+        NavItems.Add(new NavItem { Name = "Nav_Console", Icon = "🖥️" });
+        NavItems.Add(new NavItem { Name = "Nav_Settings", Icon = "⚙️" });
 
-        NavigateCommand = new RelayCommand(p => SelectedNav = p?.ToString() ?? "Dashboard");
+        NavigateCommand = new RelayCommand(p => SelectedNav = p?.ToString() ?? "Nav_Dashboard");
         LaunchGameCommand = new RelayCommand(async _ => await LaunchGame(), _ => SelectedProfile != null && !IsGameRunning);
         StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning);
         LoginCommand = new RelayCommand(async _ => await LoginMicrosoft());
         LoginOfflineCommand = new RelayCommand(async _ => await LoginOffline());
 
-        _launcherService.GameExited += () =>
+        _gameExitedHandler = () =>
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
@@ -193,8 +197,9 @@ public class MainViewModel : BaseViewModel
                 DownloadStatus = string.Empty;
             });
         };
+        _launcherService.GameExited += _gameExitedHandler;
 
-        _launcherService.ProgressChanged += (pct, msg) =>
+        _progressChangedHandler = (pct, msg) =>
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
@@ -207,6 +212,7 @@ public class MainViewModel : BaseViewModel
                 StatusMessage = msg;
             });
         };
+        _launcherService.ProgressChanged += _progressChangedHandler;
 
         _ = LoadInitialDataAsync();
     }
@@ -214,29 +220,32 @@ public class MainViewModel : BaseViewModel
     private async Task LoadInitialDataAsync()
     {
         await _profileService.LoadProfilesAsync();
-        SelectedNav = "Dashboard";
+        SelectedNav = "Nav_Dashboard";
     }
 
     private void NavigateTo(string navName)
     {
         BaseViewModel? vm = navName switch
         {
-            "Dashboard" => _serviceProvider.GetRequiredService<DashboardViewModel>(),
-            "Perfiles" => _serviceProvider.GetRequiredService<ProfilesViewModel>(),
-            "Mods" => _serviceProvider.GetRequiredService<ModsViewModel>(),
-            "Texturas" => _serviceProvider.GetRequiredService<ResourcePacksViewModel>(),
-            "Shaders" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
-            "Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
-            "Mapas" => _serviceProvider.GetRequiredService<MapsViewModel>(),
-            "Consola" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
-            "Configuración" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
+            "Nav_Dashboard" => _serviceProvider.GetRequiredService<DashboardViewModel>(),
+            "Nav_Profiles" => _serviceProvider.GetRequiredService<ProfilesViewModel>(),
+            "Nav_Mods" => _serviceProvider.GetRequiredService<ModsViewModel>(),
+            "Nav_ResourcePacks" => _serviceProvider.GetRequiredService<ResourcePacksViewModel>(),
+            "Nav_ShaderPacks" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
+            "Nav_Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
+            "Nav_Maps" => _serviceProvider.GetRequiredService<MapsViewModel>(),
+            "Nav_Console" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
+            "Nav_Settings" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
             _ => null
         };
 
-        if (vm is DashboardViewModel dash)
-            _ = dash.LoadDataAsync();
+        if (!ReferenceEquals(CurrentView, vm) && CurrentView is IDisposable disposable)
+            disposable.Dispose();
 
         CurrentView = vm;
+
+        if (vm is DashboardViewModel dash)
+            _ = dash.LoadDataAsync();
     }
 
     private async Task LaunchGame()
@@ -257,7 +266,7 @@ public class MainViewModel : BaseViewModel
 
         IsBusy = true;
         StatusMessage = $"Iniciando {SelectedProfileName}...";
-        SelectedNav = "Consola";
+        SelectedNav = "Nav_Console";
 
         var result = await _launcherService.LaunchProfileAsync(SelectedProfile, _currentAuth);
 
@@ -321,6 +330,18 @@ public class MainViewModel : BaseViewModel
             StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación.";
         }
         IsBusy = false;
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= _selectedProfileChangedHandler;
+        _launcherService.GameExited -= _gameExitedHandler;
+        _launcherService.ProgressChanged -= _progressChangedHandler;
+
+        if (CurrentView is IDisposable disposable)
+            disposable.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 }
 

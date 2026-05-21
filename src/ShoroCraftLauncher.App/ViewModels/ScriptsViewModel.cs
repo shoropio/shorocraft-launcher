@@ -138,7 +138,7 @@ public class ScriptsViewModel : BaseViewModel
         try
         {
             await _scriptService.SaveScriptContentAsync(SelectedScript.Id, ScriptContent);
-            StatusMessage = "Script guardado (backup creado).";
+            StatusMessage = "Script guardado.";
         }
         catch (Exception ex)
         {

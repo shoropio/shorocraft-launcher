@@ -33,4 +33,21 @@ public class DialogService : IDialogService
 
         return null;
     }
+
+    public string? ShowSaveFileDialog(string filter, string title, string? defaultFileName = null)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = filter,
+            Title = title,
+            FileName = defaultFileName ?? string.Empty
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            return dialog.FileName;
+        }
+
+        return null;
+    }
 }

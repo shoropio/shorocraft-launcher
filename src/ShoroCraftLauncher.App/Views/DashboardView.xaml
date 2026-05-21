@@ -96,6 +96,102 @@
                 </Border>
             </Grid>
 
+            <!-- Checklist Card & Repair -->
+            <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Estado de preparación del perfil" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+                        <TextBlock Text="{Binding ChecklistMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,14" />
+                        
+                        <WrapPanel>
+                            <!-- RAM checklist item -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+                                <TextBlock FontWeight="Bold" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="❌" />
+                                            <Setter Property="Foreground" Value="#fff44336" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRamReady}" Value="True">
+                                                    <Setter Property="Text" Value="✔" />
+                                                    <Setter Property="Foreground" Value="#ff4caf50" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Asignación de RAM" Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <!-- Java checklist item -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+                                <TextBlock FontWeight="Bold" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="❌" />
+                                            <Setter Property="Foreground" Value="#fff44336" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsJavaReady}" Value="True">
+                                                    <Setter Property="Text" Value="✔" />
+                                                    <Setter Property="Foreground" Value="#ff4caf50" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Java recomendado" Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <!-- Minecraft files checklist item -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+                                <TextBlock FontWeight="Bold" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="❌" />
+                                            <Setter Property="Foreground" Value="#fff44336" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsVersionReady}" Value="True">
+                                                    <Setter Property="Text" Value="✔" />
+                                                    <Setter Property="Foreground" Value="#ff4caf50" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Archivos del juego" Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <!-- Mod loader checklist item -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+                                <TextBlock FontWeight="Bold" Margin="0,0,6,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="❌" />
+                                            <Setter Property="Foreground" Value="#fff44336" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsLoaderReady}" Value="True">
+                                                    <Setter Property="Text" Value="✔" />
+                                                    <Setter Property="Foreground" Value="#ff4caf50" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Cargador de mods (Loader)" Foreground="{StaticResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Content="Reparar perfil" Command="{Binding RepairProfileCommand}"
+                            Style="{StaticResource PrimaryButton}" VerticalAlignment="Center" Padding="16,10" FontSize="13" />
+                </Grid>
+            </Border>
+
             <!-- Quick Actions -->
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20">
                 <StackPanel>

@@ -43,7 +43,12 @@ public class LauncherService : ILauncherService
         _logService = logService;
     }
 
-    public async Task<LaunchResult> LaunchProfileAsync(Profile profile, AuthResult auth)
+    public Task<LaunchResult> LaunchProfileAsync(Profile profile, AuthResult auth)
+    {
+        return LaunchProfileInternalAsync(profile, auth, false);
+    }
+
+    private async Task<LaunchResult> LaunchProfileInternalAsync(Profile profile, AuthResult auth, bool isRetry)
     {
         using var operation = _logService?.BeginOperation("Launch", "LaunchProfile", new { profile.Name, profile.MinecraftVersion, profile.Type });
 
@@ -54,14 +59,14 @@ public class LauncherService : ILauncherService
             return new LaunchResult { Success = false, ErrorMessage = "Ya hay una partida en ejecución." };
         }
 
+        var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
+            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            : profile.GameDirectory;
+
         try
         {
             _logger.LogInformation("Launching profile {ProfileName}", profile.Name);
             _logService?.Info("Launch", "PreflightStarted", "Validando perfil antes de iniciar.", new { profile.Name, profile.MinecraftVersion, profile.Type });
-
-            var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-                ? _minecraftService.GetDefaultGameDirectory(profile.Name)
-                : profile.GameDirectory;
 
             Directory.CreateDirectory(gameDir);
             _logService?.Debug("Launch", "GameDirectoryReady", "Directorio de juego listo.", new { gameDir });
@@ -161,11 +166,33 @@ public class LauncherService : ILauncherService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to launch game");
+            var errorMsg = ex.Message;
+            var shouldRepair = ex is DirectoryNotFoundException
+                || errorMsg.Contains("Could not find path", StringComparison.OrdinalIgnoreCase)
+                || errorMsg.Contains("Could not find a part of the path", StringComparison.OrdinalIgnoreCase);
+
+            if (shouldRepair && !isRetry)
+            {
+                _logger.LogWarning(ex, "Path issue detected, attempting repair and retry.");
+                _logService?.Warning("Launch", "PathRepair", "Se detectó un error de ruta; intentando reparar e iniciar de nuevo.");
+                try
+                {
+                    await _minecraftService.RepairInstallationAsync(gameDir);
+                    return await LaunchProfileInternalAsync(profile, auth, true);
+                }
+                catch (Exception retryEx)
+                {
+                    _logger.LogError(retryEx, "Retry after repair failed");
+                }
+
+                errorMsg = "La carpeta del perfil no existía o estaba corrupta; fue recreada. Por favor, intenta de nuevo.";
+            }
+
             _logService?.Error("Launch", "Failed", "Error al iniciar Minecraft.", ex);
             return new LaunchResult
             {
                 Success = false,
-                ErrorMessage = $"Error al iniciar: {ex.Message}"
+                ErrorMessage = errorMsg
             };
         }
     }

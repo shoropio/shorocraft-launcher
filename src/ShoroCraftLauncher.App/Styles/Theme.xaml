@@ -2,11 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Paleta premium -->
-    <Color x:Key="PrimaryColor">#22D3EE</Color>
-    <Color x:Key="PrimaryDarkColor">#0EA5E9</Color>
-    <Color x:Key="PrimaryLightColor">#67E8F9</Color>
-    <Color x:Key="AccentColor">#818CF8</Color>
-    <Color x:Key="AccentDarkColor">#6D5CE7</Color>
+    <Color x:Key="PrimaryColor">#10B981</Color>
+    <Color x:Key="PrimaryDarkColor">#059669</Color>
+    <Color x:Key="PrimaryLightColor">#34D399</Color>
+    <Color x:Key="AccentColor">#047857</Color>
+    <Color x:Key="AccentDarkColor">#064E3B</Color>
     <Color x:Key="BackgroundColor">#0B0E1A</Color>
     <Color x:Key="SurfaceColor">#111827</Color>
     <Color x:Key="CardColor">#1A2235</Color>

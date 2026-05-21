@@ -72,6 +72,25 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
 
     public List<ProfileType> ProfileTypes { get; } = Enum.GetValues<ProfileType>().ToList();
 
+    private ObservableCollection<BackupItem> _backups = new();
+    public ObservableCollection<BackupItem> Backups => _backups;
+
+    private BackupItem? _selectedBackup;
+    public BackupItem? SelectedBackup
+    {
+        get => _selectedBackup;
+        set => SetProperty(ref _selectedBackup, value);
+    }
+
+    private string _selectedBackupType = "All";
+    public string SelectedBackupType
+    {
+        get => _selectedBackupType;
+        set => SetProperty(ref _selectedBackupType, value);
+    }
+
+    public List<string> BackupTypesList { get; } = new() { "All", "Worlds", "Scripts", "Configs" };
+
     public ICommand CreateProfileCommand { get; }
     public ICommand SaveProfileCommand { get; }
     public ICommand DeleteProfileCommand { get; }
@@ -79,6 +98,12 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     public ICommand BrowseGameDirCommand { get; }
     public ICommand BrowseJavaCommand { get; }
     public ICommand OpenFolderCommand { get; }
+    public ICommand ExportProfileCommand { get; }
+    public ICommand ImportProfileCommand { get; }
+    public ICommand CreateBackupCommand { get; }
+    public ICommand RestoreBackupCommand { get; }
+    public ICommand DeleteBackupCommand { get; }
+    public ICommand LoadBackupsCommand { get; }
 
     public ProfilesViewModel(
         IProfileService profileService,
@@ -104,6 +129,12 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDirectory());
         BrowseJavaCommand = new RelayCommand(async _ => await BrowseJavaPath());
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder(), _ => SelectedProfile != null);
+        ExportProfileCommand = new RelayCommand(async _ => await ExportProfile(), _ => SelectedProfile != null);
+        ImportProfileCommand = new RelayCommand(async _ => await ImportProfile());
+        CreateBackupCommand = new RelayCommand(async _ => await CreateBackup(), _ => SelectedProfile != null);
+        RestoreBackupCommand = new RelayCommand(async _ => await RestoreBackup(), _ => SelectedBackup != null);
+        DeleteBackupCommand = new RelayCommand(async _ => await DeleteBackup(), _ => SelectedBackup != null);
+        LoadBackupsCommand = new RelayCommand(async _ => await LoadBackups(), _ => SelectedProfile != null);
 
         _ = LoadProfilesAsync();
     }
@@ -112,8 +143,16 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         OnPropertyChanged(nameof(SelectedProfile));
         OnPropertyChanged(nameof(IsProfileSelected));
-        if (SelectedProfile != null) LoadProfileIntoForm(SelectedProfile);
-        else ClearForm();
+        if (SelectedProfile != null)
+        {
+            LoadProfileIntoForm(SelectedProfile);
+            _ = LoadBackups();
+        }
+        else
+        {
+            ClearForm();
+            Backups.Clear();
+        }
     }
 
     public void Dispose()
@@ -367,6 +406,134 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to open folder {Directory}", dir);
             StatusMessage = $"Error al abrir la carpeta: {ex.Message}";
+        }
+    }
+
+    private async Task ExportProfile()
+    {
+        if (SelectedProfile == null) return;
+        var result = _dialogService.ShowSaveFileDialog("ShoroCraft Package (*.zip)|*.zip", "Exportar Perfil");
+        if (string.IsNullOrEmpty(result)) return;
+
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Exportando perfil...";
+            await _profileService.ExportProfileAsync(SelectedProfile.Id, result);
+            StatusMessage = "Perfil exportado con éxito.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export profile");
+            StatusMessage = $"Error al exportar: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
+    private async Task ImportProfile()
+    {
+        var result = _dialogService.ShowOpenFileDialog("ShoroCraft Package (*.zip)|*.zip", "Importar Perfil");
+        if (result == null || result.Length == 0 || string.IsNullOrEmpty(result[0])) return;
+
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Importando perfil...";
+            await _profileService.ImportProfileAsync(result[0]);
+            await LoadProfilesAsync();
+            StatusMessage = "Perfil importado con éxito.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import profile");
+            StatusMessage = $"Error al importar: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
+    private async Task CreateBackup()
+    {
+        if (SelectedProfile == null) return;
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Creando copia de seguridad...";
+            await _profileService.CreateBackupAsync(SelectedProfile.Id, SelectedBackupType);
+            await LoadBackups();
+            StatusMessage = "Copia de seguridad creada.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create backup");
+            StatusMessage = $"Error al crear copia: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
+    private async Task RestoreBackup()
+    {
+        if (SelectedProfile == null || SelectedBackup == null) return;
+        var confirm = System.Windows.MessageBox.Show(
+            "¿Estás seguro de que deseas restaurar esta copia de seguridad? Esto reemplazará los archivos actuales (mundos, configs o scripts) del perfil.",
+            "Restaurar copia de seguridad",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Restaurando copia de seguridad...";
+            await _profileService.RestoreBackupAsync(SelectedProfile.Id, SelectedBackup.FilePath);
+            StatusMessage = "Copia de seguridad restaurada con éxito.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to restore backup");
+            StatusMessage = $"Error al restaurar copia: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
+    private async Task DeleteBackup()
+    {
+        if (SelectedProfile == null || SelectedBackup == null) return;
+        IsBusy = true;
+        try
+        {
+            await _profileService.DeleteBackupAsync(SelectedProfile.Id, SelectedBackup.FilePath);
+            await LoadBackups();
+            StatusMessage = "Copia de seguridad de perfil eliminada.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete backup");
+            StatusMessage = $"Error al eliminar copia: {ex.Message}";
+        }
+        IsBusy = false;
+    }
+
+    private async Task LoadBackups()
+    {
+        if (SelectedProfile == null)
+        {
+            Backups.Clear();
+            return;
+        }
+
+        try
+        {
+            var list = await _profileService.GetBackupsAsync(SelectedProfile.Id);
+            Backups.Clear();
+            foreach (var item in list)
+            {
+                Backups.Add(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load backups");
         }
     }
 }

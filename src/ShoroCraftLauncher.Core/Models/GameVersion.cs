@@ -8,5 +8,6 @@ public class GameVersion
     public string Url { get; set; } = string.Empty;
     public DateTime ReleasedAt { get; set; }
     public bool IsInstalled { get; set; } = false;
+    public string DisplayName => IsInstalled ? $"{VersionId} (instalado)" : VersionId;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

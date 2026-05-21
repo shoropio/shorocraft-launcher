@@ -14,6 +14,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly IMinecraftService _minecraftService;
     private readonly ILauncherService _launcherService;
     private readonly IJavaService _javaService;
+    private readonly IUpdaterService _updaterService;
+    private readonly IModService _modService;
     private readonly ILogger<DashboardViewModel> _logger;
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
@@ -26,7 +28,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             _profileService.SelectedProfile = value;
             OnPropertyChanged(nameof(SelectedProfile));
-            UpdateProfileDetailsAsync();
+            _ = UpdateProfileDetailsAsync();
         }
     }
 
@@ -79,10 +81,96 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _selectedVersion, value);
     }
 
+    private bool _hasUpdateNotification;
+    public bool HasUpdateNotification
+    {
+        get => _hasUpdateNotification;
+        set => SetProperty(ref _hasUpdateNotification, value);
+    }
+
+    private string _updateNotificationMessage = string.Empty;
+    public string UpdateNotificationMessage
+    {
+        get => _updateNotificationMessage;
+        set => SetProperty(ref _updateNotificationMessage, value);
+    }
+
+    private bool _hasLauncherUpdate;
+    public bool HasLauncherUpdate
+    {
+        get => _hasLauncherUpdate;
+        set => SetProperty(ref _hasLauncherUpdate, value);
+    }
+
+    private string _launcherUpdateMessage = string.Empty;
+    public string LauncherUpdateMessage
+    {
+        get => _launcherUpdateMessage;
+        set => SetProperty(ref _launcherUpdateMessage, value);
+    }
+
+    private string? _launcherUpdateUrl;
+
+    private bool _isIrisSodiumInstalled;
+    public bool IsIrisSodiumInstalled
+    {
+        get => _isIrisSodiumInstalled;
+        set
+        {
+            if (SetProperty(ref _isIrisSodiumInstalled, value))
+            {
+                OnPropertyChanged(nameof(IrisSodiumButtonText));
+                System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    public string IrisSodiumButtonText =>
+        IsIrisSodiumInstalled ? "Iris + Sodium instalado" : "Instalar Iris + Sodium (Fabric)";
+
+    private bool _isJavaReady;
+    public bool IsJavaReady
+    {
+        get => _isJavaReady;
+        set => SetProperty(ref _isJavaReady, value);
+    }
+
+    private bool _isVersionReady;
+    public bool IsVersionReady
+    {
+        get => _isVersionReady;
+        set => SetProperty(ref _isVersionReady, value);
+    }
+
+    private bool _isLoaderReady;
+    public bool IsLoaderReady
+    {
+        get => _isLoaderReady;
+        set => SetProperty(ref _isLoaderReady, value);
+    }
+
+    private bool _isRamReady;
+    public bool IsRamReady
+    {
+        get => _isRamReady;
+        set => SetProperty(ref _isRamReady, value);
+    }
+
+    private string _checklistMessage = "Verificando...";
+    public string ChecklistMessage
+    {
+        get => _checklistMessage;
+        set => SetProperty(ref _checklistMessage, value);
+    }
+
     public ICommand RefreshVersionsCommand { get; }
     public ICommand InstallVersionCommand { get; }
     public ICommand InstallLoaderCommand { get; }
     public ICommand ApplyProfileCommand { get; }
+    public ICommand DownloadLauncherUpdateCommand { get; }
+    public ICommand InstallIrisCommand { get; }
+    public ICommand OptiFineInfoCommand { get; }
+    public ICommand RepairProfileCommand { get; }
 
     public DashboardViewModel(
         IProfileService profileService,
@@ -90,6 +178,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IMinecraftService minecraftService,
         ILauncherService launcherService,
         IJavaService javaService,
+        IUpdaterService updaterService,
+        IModService modService,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -97,6 +187,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _minecraftService = minecraftService;
         _launcherService = launcherService;
         _javaService = javaService;
+        _updaterService = updaterService;
+        _modService = modService;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -104,13 +196,26 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         RefreshVersionsCommand = new RelayCommand(async _ => await LoadVersionsAsync());
         InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"));
         InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""));
-        ApplyProfileCommand = new RelayCommand(_ => ApplyProfile());
+        ApplyProfileCommand = new RelayCommand(async _ => await ApplyProfile());
+        DownloadLauncherUpdateCommand = new RelayCommand(_ => 
+        {
+            if (!string.IsNullOrEmpty(_launcherUpdateUrl))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_launcherUpdateUrl) { UseShellExecute = true });
+        });
+        
+        InstallIrisCommand = new RelayCommand(async _ => await InstallIris(), _ => SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
+        OptiFineInfoCommand = new RelayCommand(_ => 
+        {
+            System.Windows.MessageBox.Show("OptiFine no permite descargas automáticas.\n\nSe abrirá la página oficial. Descarga la versión correspondiente a tu juego, ve a la pestaña de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://optifine.net/downloads") { UseShellExecute = true });
+        });
+        RepairProfileCommand = new RelayCommand(async _ => await RepairProfile());
     }
 
     private void OnSelectedProfileChanged()
     {
         OnPropertyChanged(nameof(SelectedProfile));
-        UpdateProfileDetailsAsync();
+        _ = UpdateProfileDetailsAsync();
     }
 
     public void Dispose()
@@ -125,8 +230,22 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         try
         {
             await _profileService.LoadProfilesAsync();
+            if (SelectedProfile != null)
+            {
+                await _profileService.SyncProfileFilesAsync(SelectedProfile);
+            }
             await LoadVersionsAsync();
-            UpdateProfileDetailsAsync();
+            await UpdateProfileDetailsAsync();
+            await UpdateComponentInstallStatesAsync();
+
+            var currentVersion = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+            var (isUpdateAvailable, latestVersion, downloadUrl) = await _updaterService.CheckForUpdatesAsync(currentVersion);
+            if (isUpdateAvailable)
+            {
+                HasLauncherUpdate = true;
+                LauncherUpdateMessage = $"¡ShoroCraft Launcher {latestVersion} disponible!";
+                _launcherUpdateUrl = downloadUrl;
+            }
 
             ReadyStatus = "Listo";
         }
@@ -139,37 +258,56 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IsBusy = false;
     }
 
-    private async void UpdateProfileDetailsAsync()
+    private async Task UpdateProfileDetailsAsync()
     {
-        if (SelectedProfile != null)
+        try
         {
-            ModsCount = $"Perfil: {SelectedProfile.Name}";
-            AllocatedRam = $"{SelectedProfile.MaxRamMB / 1024.0:F0} GB";
-            
-            var mcPath = new CmlLib.Core.MinecraftPath();
-            var targetVersion = SelectedProfile.MinecraftVersion;
-            
-            if (targetVersion.ToLower() == "latest")
+            if (SelectedProfile != null)
             {
-                targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
-            }
+                await _profileService.SyncProfileFilesAsync(SelectedProfile);
 
-            if (SelectedProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
+                ModsCount = $"Perfil: {SelectedProfile.Name}";
+                AllocatedRam = $"{SelectedProfile.MaxRamMB / 1024.0:F0} GB";
+                
+                var gameDir = GetSelectedProfileGameDirectory();
+                var mcPath = new CmlLib.Core.MinecraftPath(gameDir);
+                var targetVersion = SelectedProfile.MinecraftVersion;
+                
+                if (targetVersion.ToLower() == "latest")
+                {
+                    targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+                }
+
+                if (SelectedProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
+                {
+                    var loaderPrefix = SelectedProfile.Type.ToString().ToLower();
+                    var dirs = System.IO.Directory.Exists(mcPath.Versions) ? System.IO.Directory.GetDirectories(mcPath.Versions) : Array.Empty<string>();
+                    var match = dirs.Select(System.IO.Path.GetFileName)
+                                    .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
+                    if (match != null) targetVersion = match;
+                }
+
+                var verPath = System.IO.Path.Combine(mcPath.Versions, targetVersion);
+                InstalledVersion = System.IO.Directory.Exists(verPath) ? targetVersion : "No instalado";
+                
+                await ValidateProfileChecklistAsync();
+            }
+            else
             {
-                var loaderPrefix = SelectedProfile.Type.ToString().ToLower();
-                var dirs = System.IO.Directory.Exists(mcPath.Versions) ? System.IO.Directory.GetDirectories(mcPath.Versions) : Array.Empty<string>();
-                var match = dirs.Select(System.IO.Path.GetFileName)
-                                .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
-                if (match != null) targetVersion = match;
+                ModsCount = "0 mods";
+                AllocatedRam = "0 GB";
+                InstalledVersion = "No instalado";
+                
+                IsJavaReady = false;
+                IsVersionReady = false;
+                IsLoaderReady = false;
+                IsRamReady = false;
+                ChecklistMessage = "Selecciona un perfil.";
             }
-
-            var verPath = System.IO.Path.Combine(mcPath.Versions, targetVersion);
-            InstalledVersion = System.IO.Directory.Exists(verPath) ? targetVersion : "No instalado";
         }
-        else
+        catch (Exception ex)
         {
-            ModsCount = "0 mods";
-            AllocatedRam = "0 GB";
+            _logger.LogError(ex, "Failed to update selected profile details");
             InstalledVersion = "No instalado";
         }
     }
@@ -178,6 +316,14 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     {
         StatusMessage = message;
         _launcherService.Log($"[INFO] {message}");
+    }
+
+    private string GetSelectedProfileGameDirectory()
+    {
+        if (SelectedProfile == null || string.IsNullOrWhiteSpace(SelectedProfile.GameDirectory))
+            return _minecraftService.GetDefaultGameDirectory(SelectedProfile?.Name ?? "Default");
+
+        return SelectedProfile.GameDirectory;
     }
 
     private async Task LoadVersionsAsync()
@@ -193,15 +339,49 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 .Take(50)
                 .ToList();
 
+            MarkInstalledVersions(stableVersions);
+
             AvailableVersions.Clear();
             foreach (var v in stableVersions)
                 AvailableVersions.Add(v);
 
             if (stableVersions.Count > 0 && (string.IsNullOrWhiteSpace(SelectedVersion) || SelectedVersion == "latest"))
-                SelectedVersion = stableVersions[0].VersionId;
+            {
+                var installed = stableVersions.FirstOrDefault(v => v.IsInstalled);
+                SelectedVersion = installed?.VersionId ?? stableVersions[0].VersionId;
+            }
 
-            ReadyStatus = "Listo";
-            LogStatus($"{stableVersions.Count} versiones estables disponibles. Más nueva estable: {SelectedVersion}.");
+            if (stableVersions.Count > 0)
+            {
+                var latest = stableVersions[0].VersionId;
+                if (SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
+                {
+                    if (SelectedProfile.MinecraftVersion != "latest" && SelectedProfile.MinecraftVersion != latest)
+                    {
+                        HasUpdateNotification = true;
+                        UpdateNotificationMessage = $"¡La nueva versión de Minecraft {latest} ya está disponible!";
+                    }
+                    else
+                    {
+                        HasUpdateNotification = false;
+                    }
+                }
+            }
+
+            if (stableVersions.Count == 0)
+            {
+                ReadyStatus = "Sin datos";
+                StatusMessage = "No se pudieron obtener versiones estables.";
+                _launcherService.Log($"[WARN] {StatusMessage}");
+                return;
+            }
+
+            var installedStable = stableVersions.FirstOrDefault(v => v.IsInstalled);
+            ReadyStatus = installedStable != null ? "Instalado" : "Listo";
+            StatusMessage = installedStable != null
+                ? $"Versión estable instalada: {installedStable.VersionId}."
+                : $"Lista actualizada. Ultima estable: {stableVersions[0].VersionId}.";
+            _launcherService.Log($"[INFO] {StatusMessage}");
         }
         catch (Exception ex)
         {
@@ -213,13 +393,80 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IsBusy = false;
     }
 
-    private void ApplyProfile()
+    private async Task UpdateComponentInstallStatesAsync()
+    {
+        if (SelectedProfile == null)
+        {
+            IsIrisSodiumInstalled = false;
+            return;
+        }
+
+        try
+        {
+            var knownNames = new List<string>();
+            var mods = await _modService.GetModsAsync(SelectedProfile.Id);
+            knownNames.AddRange(mods
+                .Where(m => m.Status == ShoroCraftLauncher.Core.Enums.ModStatus.Active)
+                .SelectMany(m => new[] { m.Name, m.FileName, m.ModVersion }));
+
+            var modsDir = _minecraftService.GetModsDirectory(GetSelectedProfileGameDirectory());
+            if (Directory.Exists(modsDir))
+            {
+                knownNames.AddRange(Directory.GetFiles(modsDir, "*.jar")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))!);
+            }
+
+            IsIrisSodiumInstalled = ContainsComponent(knownNames, "iris")
+                && ContainsComponent(knownNames, "sodium");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to detect installed optimization mods");
+            IsIrisSodiumInstalled = false;
+        }
+    }
+
+    private static bool ContainsComponent(IEnumerable<string?> names, string component) =>
+        names.Any(name => !string.IsNullOrWhiteSpace(name)
+            && name.Contains(component, StringComparison.OrdinalIgnoreCase));
+
+    private void MarkInstalledVersions(List<GameVersion> versions)
+    {
+        if (SelectedProfile == null)
+            return;
+
+        var gameDir = GetSelectedProfileGameDirectory();
+        var versionsDir = Path.Combine(gameDir, "versions");
+        if (!Directory.Exists(versionsDir))
+            return;
+
+        var installedNames = Directory.GetDirectories(versionsDir)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var version in versions)
+        {
+            version.IsInstalled = installedNames.Contains(version.VersionId)
+                || installedNames.Any(installed =>
+                    installed!.Contains(version.VersionId, StringComparison.OrdinalIgnoreCase)
+                    && (installed.Contains("fabric", StringComparison.OrdinalIgnoreCase)
+                        || installed.Contains("forge", StringComparison.OrdinalIgnoreCase)
+                        || installed.Contains("quilt", StringComparison.OrdinalIgnoreCase)
+                        || installed.Contains("optifine", StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
+    private async Task ApplyProfile()
     {
         if (SelectedProfile != null)
         {
             ReadyStatus = "Listo";
             StatusMessage = $"Perfil \"{SelectedProfile.Name}\" aplicado.";
-            UpdateProfileDetailsAsync();
+            await UpdateProfileDetailsAsync();
+            await LoadVersionsAsync();
+            await UpdateComponentInstallStatesAsync();
         }
     }
 
@@ -242,8 +489,11 @@ public class DashboardViewModel : BaseViewModel, IDisposable
 
             LogStatus($"Instalando Minecraft {versionId}...");
             var progress = new Progress<double>(p => DownloadProgress = p);
-            await _minecraftService.InstallVersionAsync(versionId, progress);
+            await _minecraftService.InstallVersionAsync(versionId, progress, GetSelectedProfileGameDirectory());
             InstalledVersion = versionId;
+            var installed = AvailableVersions.FirstOrDefault(v => string.Equals(v.VersionId, versionId, StringComparison.OrdinalIgnoreCase));
+            if (installed != null)
+                installed.IsInstalled = true;
             ReadyStatus = "Listo";
             LogStatus($"Minecraft {versionId} instalado.");
         }
@@ -308,7 +558,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 mcVersion, loaderType, loaderVersion, javaPath,
                 msg => { App.Current.Dispatcher.Invoke(() => LogStatus(msg)); },
                 progress,
-                onLog: _launcherService.Log);
+                onLog: _launcherService.Log,
+                gameDir: GetSelectedProfileGameDirectory());
 
             var loaderEnum = Enum.TryParse<ShoroCraftLauncher.Core.Enums.ProfileType>(loaderType, ignoreCase: true, out var parsed)
                 ? parsed : SelectedProfile.Type;
@@ -320,6 +571,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             ReadyStatus = "Listo";
             StatusMessage = $"{loaderType} {loaderVersion} instalado correctamente.";
             _launcherService.Log($"[INFO] {loaderType} {loaderVersion} instalado correctamente.");
+            await UpdateComponentInstallStatesAsync();
         }
         catch (OperationCanceledException)
         {
@@ -335,5 +587,195 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             _launcherService.Log($"[ERROR] Error instalando {loaderType}: {ex.Message}");
         }
         IsDownloading = false;
+    }
+
+    private async Task InstallIris()
+    {
+        if (SelectedProfile == null) return;
+        if (IsIrisSodiumInstalled)
+        {
+            StatusMessage = "Iris + Sodium ya está instalado en este perfil.";
+            ReadyStatus = "Instalado";
+            return;
+        }
+
+        IsDownloading = true;
+        ReadyStatus = "Instalando Iris & Sodium...";
+        StatusMessage = "Descargando Iris (Shaders) y Sodium (Rendimiento)...";
+        try
+        {
+            var irisMods = await _modService.SearchModsAsync("modrinth", "iris", SelectedProfile.MinecraftVersion, "fabric");
+            if (irisMods.Any())
+                await _modService.InstallFromSearchAsync(SelectedProfile.Id, irisMods.First(), "modrinth");
+
+            var sodiumMods = await _modService.SearchModsAsync("modrinth", "sodium", SelectedProfile.MinecraftVersion, "fabric");
+            if (sodiumMods.Any())
+                await _modService.InstallFromSearchAsync(SelectedProfile.Id, sodiumMods.First(), "modrinth");
+            
+            StatusMessage = "Iris y Sodium instalados correctamente en tu perfil Fabric.";
+            ReadyStatus = "Listo";
+            await UpdateComponentInstallStatesAsync();
+            _launcherService.Log("[INFO] Iris y Sodium instalados correctamente.");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error instalando Iris: {ex.Message}";
+            ReadyStatus = "Error";
+            _logger.LogError(ex, "Error installing Iris");
+            _launcherService.Log($"[ERROR] Error instalando Iris: {ex.Message}");
+        }
+        IsDownloading = false;
+    }
+
+    private async Task ValidateProfileChecklistAsync()
+    {
+        if (SelectedProfile == null)
+        {
+            IsJavaReady = false;
+            IsVersionReady = false;
+            IsLoaderReady = false;
+            IsRamReady = false;
+            ChecklistMessage = "Selecciona un perfil.";
+            return;
+        }
+
+        try
+        {
+            var targetVersion = SelectedProfile.MinecraftVersion;
+            if (string.Equals(targetVersion, "latest", StringComparison.OrdinalIgnoreCase))
+            {
+                targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            }
+
+            var gameDir = GetSelectedProfileGameDirectory();
+
+            // 1. RAM check
+            IsRamReady = SelectedProfile.MaxRamMB >= 1024 && SelectedProfile.MinRamMB <= SelectedProfile.MaxRamMB;
+
+            // 2. Java check
+            var javaPath = SelectedProfile.JavaPath;
+            if (string.IsNullOrEmpty(javaPath))
+            {
+                javaPath = await _javaService.GetRecommendedJavaPathAsync(targetVersion);
+            }
+            IsJavaReady = !string.IsNullOrEmpty(javaPath) && System.IO.File.Exists(javaPath);
+
+            // 3. Version check
+            var mcPath = new CmlLib.Core.MinecraftPath(gameDir);
+            var versionDir = System.IO.Path.Combine(mcPath.Versions, targetVersion);
+            var jsonPath = System.IO.Path.Combine(versionDir, $"{targetVersion}.json");
+            var jarPath = System.IO.Path.Combine(versionDir, $"{targetVersion}.jar");
+            IsVersionReady = System.IO.File.Exists(jsonPath) && System.IO.File.Exists(jarPath);
+
+            // 4. Loader check
+            if (SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
+            {
+                IsLoaderReady = true;
+            }
+            else
+            {
+                var loaderPrefix = SelectedProfile.Type.ToString().ToLower();
+                var dirs = System.IO.Directory.Exists(mcPath.Versions) 
+                    ? System.IO.Directory.GetDirectories(mcPath.Versions) 
+                    : Array.Empty<string>();
+                var match = dirs.Select(System.IO.Path.GetFileName)
+                                .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
+                IsLoaderReady = match != null;
+            }
+
+            if (IsJavaReady && IsVersionReady && IsLoaderReady && IsRamReady)
+            {
+                ChecklistMessage = "Perfil listo para jugar.";
+            }
+            else
+            {
+                var missing = new List<string>();
+                if (!IsJavaReady) missing.Add("Java");
+                if (!IsVersionReady) missing.Add("Minecraft");
+                if (!IsLoaderReady) missing.Add(SelectedProfile.Type.ToString());
+                if (!IsRamReady) missing.Add("Asignación de RAM");
+                ChecklistMessage = "Falta: " + string.Join(", ", missing);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to validate profile checklist");
+            ChecklistMessage = "Error al validar estado.";
+        }
+    }
+
+    private async Task RepairProfile()
+    {
+        if (SelectedProfile == null) return;
+        IsBusy = true;
+        ReadyStatus = "Reparando perfil...";
+        LogStatus("Validando y reparando archivos clave...");
+
+        try
+        {
+            var gameDir = GetSelectedProfileGameDirectory();
+
+            _launcherService.Log("[INFO] Asegurando jerarquía de carpetas...");
+            await _profileService.SyncProfileFilesAsync(SelectedProfile);
+            await _minecraftService.RepairInstallationAsync(gameDir);
+
+            var targetVersion = SelectedProfile.MinecraftVersion;
+            if (targetVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            }
+            
+            var mcPath = new CmlLib.Core.MinecraftPath(gameDir);
+            var verPath = Path.Combine(mcPath.Versions, targetVersion);
+            if (!Directory.Exists(verPath) || !File.Exists(Path.Combine(verPath, $"{targetVersion}.json")))
+            {
+                _launcherService.Log("[INFO] Descargando archivos de Minecraft faltantes...");
+                var progress = new Progress<double>(p => DownloadProgress = p);
+                await _minecraftService.InstallVersionAsync(targetVersion, progress, gameDir);
+            }
+
+            if (SelectedProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
+            {
+                await ValidateProfileChecklistAsync();
+                if (!IsLoaderReady)
+                {
+                    var loaderType = SelectedProfile.Type.ToString();
+                    var loaderVer = SelectedProfile.LoaderVersion;
+                    if (string.IsNullOrEmpty(loaderVer) || loaderVer.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        loaderVer = await _minecraftService.ResolveLatestLoaderVersionAsync(loaderType, targetVersion);
+                    }
+
+                    var javaPath = SelectedProfile.JavaPath;
+                    if (string.IsNullOrEmpty(javaPath))
+                    {
+                        javaPath = await _javaService.GetRecommendedJavaPathAsync(targetVersion);
+                    }
+
+                    if (!string.IsNullOrEmpty(javaPath) && File.Exists(javaPath))
+                    {
+                        _launcherService.Log($"[INFO] Reinstalando cargador {loaderType} {loaderVer}...");
+                        var progress = new Progress<double>(p => DownloadProgress = p);
+                        await _minecraftService.InstallLoaderAsync(targetVersion, loaderType, loaderVer, javaPath, _ => {}, progress, _launcherService.Log, gameDir);
+                    }
+                }
+            }
+
+            LogStatus("Reparación finalizada.");
+            ReadyStatus = "Listo";
+            await UpdateProfileDetailsAsync();
+            await UpdateComponentInstallStatesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Repair profile failed");
+            ReadyStatus = "Error";
+            StatusMessage = $"Error al reparar: {ex.Message}";
+            _launcherService.Log($"[ERROR] Error al reparar perfil: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 }
