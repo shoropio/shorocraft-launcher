@@ -251,11 +251,15 @@
                     <WrapPanel>
                         <Button Content="{Binding IrisSodiumButtonText}" 
                                 Command="{Binding InstallIrisCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10"
+                                ToolTip="Requiere un perfil Fabric. Si no está instalado, el botón se deshabilita." />
                         <Button Content="OptiFine (Manual)" 
                                 Command="{Binding OptiFineInfoCommand}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,10,10"
+                                ToolTip="OptiFine no se descarga automáticamente; se abrirá la página oficial." />
                     </WrapPanel>
+                    <TextBlock Text="Iris+Sodium está disponible solo para perfiles Fabric. OptiFine requiere descarga manual." 
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>
         </StackPanel>

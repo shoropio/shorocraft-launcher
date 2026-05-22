@@ -6,6 +6,16 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.0.1] - 2026-05-21
+
+### ✨ Nuevo
+- Interfaz de usuario actualizada: botones de Iris+Sodium y OptiFine disponibles directamente en el dashboard.
+- Instalador Windows generado y empaquetado con Inno Setup.
+
+### 🔧 Correcciones
+- Mejorado el manejo del estado de descarga/progreso para que no quede información obsoleta tras iniciar el juego.
+- Ajustado el flujo de release para subir assets `.exe` y `.zip` a GitHub.
+
 ## [1.0.0] - 2026-05-12
 
 ### ✨ Nuevo

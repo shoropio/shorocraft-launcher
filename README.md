@@ -68,6 +68,10 @@ shorocraft-launcher/
 `-- README.md
 ```
 
+## Lanzamiento
+
+La versión más reciente está disponible en GitHub Releases. La release `v1.0.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
+
 ## Dependencias
 
 | Paquete | Uso |
