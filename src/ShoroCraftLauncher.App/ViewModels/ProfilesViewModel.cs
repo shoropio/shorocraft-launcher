@@ -122,19 +122,19 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
-        CreateProfileCommand = new RelayCommand(async _ => await CreateProfile());
-        SaveProfileCommand = new RelayCommand(async _ => await SaveProfile(), _ => SelectedProfile != null);
-        DeleteProfileCommand = new RelayCommand(async _ => await DeleteProfile(), _ => SelectedProfile != null);
-        DuplicateProfileCommand = new RelayCommand(async _ => await DuplicateProfile(), _ => SelectedProfile != null);
-        BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDirectory());
-        BrowseJavaCommand = new RelayCommand(async _ => await BrowseJavaPath());
-        OpenFolderCommand = new RelayCommand(async _ => await OpenFolder(), _ => SelectedProfile != null);
-        ExportProfileCommand = new RelayCommand(async _ => await ExportProfile(), _ => SelectedProfile != null);
-        ImportProfileCommand = new RelayCommand(async _ => await ImportProfile());
-        CreateBackupCommand = new RelayCommand(async _ => await CreateBackup(), _ => SelectedProfile != null);
-        RestoreBackupCommand = new RelayCommand(async _ => await RestoreBackup(), _ => SelectedBackup != null);
-        DeleteBackupCommand = new RelayCommand(async _ => await DeleteBackup(), _ => SelectedBackup != null);
-        LoadBackupsCommand = new RelayCommand(async _ => await LoadBackups(), _ => SelectedProfile != null);
+        CreateProfileCommand = new RelayCommand(async _ => await CreateProfile(), _ => !IsBusy);
+        SaveProfileCommand = new RelayCommand(async _ => await SaveProfile(), _ => SelectedProfile != null && !IsBusy);
+        DeleteProfileCommand = new RelayCommand(async _ => await DeleteProfile(), _ => SelectedProfile != null && !IsBusy);
+        DuplicateProfileCommand = new RelayCommand(async _ => await DuplicateProfile(), _ => SelectedProfile != null && !IsBusy);
+        BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDirectory(), _ => !IsBusy);
+        BrowseJavaCommand = new RelayCommand(async _ => await BrowseJavaPath(), _ => !IsBusy);
+        OpenFolderCommand = new RelayCommand(async _ => await OpenFolder(), _ => SelectedProfile != null && !IsBusy);
+        ExportProfileCommand = new RelayCommand(async _ => await ExportProfile(), _ => SelectedProfile != null && !IsBusy);
+        ImportProfileCommand = new RelayCommand(async _ => await ImportProfile(), _ => !IsBusy);
+        CreateBackupCommand = new RelayCommand(async _ => await CreateBackup(), _ => SelectedProfile != null && !IsBusy);
+        RestoreBackupCommand = new RelayCommand(async _ => await RestoreBackup(), _ => SelectedBackup != null && !IsBusy);
+        DeleteBackupCommand = new RelayCommand(async _ => await DeleteBackup(), _ => SelectedBackup != null && !IsBusy);
+        LoadBackupsCommand = new RelayCommand(async _ => await LoadBackups(), _ => SelectedProfile != null && !IsBusy);
 
         _ = LoadProfilesAsync();
     }
@@ -164,16 +164,21 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     public async Task LoadProfilesAsync()
     {
         IsBusy = true;
+        StatusMessage = "Cargando perfiles...";
         try
         {
             await _profileService.LoadProfilesAsync();
+            StatusMessage = $"{Profiles.Count} perfiles cargados.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load profiles");
             StatusMessage = "Error al cargar perfiles.";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void LoadProfileIntoForm(Profile profile)
@@ -267,6 +272,14 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     private async Task DeleteProfile()
     {
         if (SelectedProfile == null) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"¿Estás seguro de que deseas eliminar el perfil '{SelectedProfile.Name}'? Esta acción no se puede deshacer.",
+            "Eliminar perfil",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
         IsBusy = true;
         try
@@ -413,7 +426,11 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         if (SelectedProfile == null) return;
         var result = _dialogService.ShowSaveFileDialog("ShoroCraft Package (*.zip)|*.zip", "Exportar Perfil");
-        if (string.IsNullOrEmpty(result)) return;
+        if (string.IsNullOrEmpty(result))
+        {
+            StatusMessage = "Exportación cancelada.";
+            return;
+        }
 
         IsBusy = true;
         try
@@ -425,7 +442,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to export profile");
-            StatusMessage = $"Error al exportar: {ex.Message}";
+            StatusMessage = $"Error al exportar el perfil: {ex.Message}";
         }
         IsBusy = false;
     }
@@ -433,7 +450,11 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     private async Task ImportProfile()
     {
         var result = _dialogService.ShowOpenFileDialog("ShoroCraft Package (*.zip)|*.zip", "Importar Perfil");
-        if (result == null || result.Length == 0 || string.IsNullOrEmpty(result[0])) return;
+        if (result == null || result.Length == 0 || string.IsNullOrEmpty(result[0]))
+        {
+            StatusMessage = "Importación cancelada.";
+            return;
+        }
 
         IsBusy = true;
         try
@@ -446,7 +467,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to import profile");
-            StatusMessage = $"Error al importar: {ex.Message}";
+            StatusMessage = $"Error al importar el perfil: {ex.Message}";
         }
         IsBusy = false;
     }
@@ -499,17 +520,26 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     private async Task DeleteBackup()
     {
         if (SelectedProfile == null || SelectedBackup == null) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"¿Estás seguro de que deseas eliminar la copia de seguridad '{SelectedBackup.DisplayName}'? Esta acción no se puede deshacer.",
+            "Eliminar copia de seguridad",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
         IsBusy = true;
         try
         {
             await _profileService.DeleteBackupAsync(SelectedProfile.Id, SelectedBackup.FilePath);
             await LoadBackups();
-            StatusMessage = "Copia de seguridad de perfil eliminada.";
+            StatusMessage = "Copia de seguridad eliminada.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to delete backup");
-            StatusMessage = $"Error al eliminar copia: {ex.Message}";
+            StatusMessage = $"Error al eliminar copia de seguridad: {ex.Message}";
         }
         IsBusy = false;
     }

@@ -41,6 +41,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
                 IsSearching = false;
                 _ = LoadModsAsync(SelectedProfile.Id);
             }
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -81,13 +82,13 @@ public class ModsViewModel : BaseViewModel, IDisposable
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
-        AddModCommand = new RelayCommand(async _ => await AddMod());
-        ToggleModCommand = new RelayCommand(async p => await ToggleMod(p));
-        RemoveModCommand = new RelayCommand(async p => await RemoveMod(p));
-        OpenModsFolderCommand = new RelayCommand(async _ => await OpenFolder());
-        RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); });
-        SearchCommand = new RelayCommand(async _ => await SearchMods());
-        InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p));
+        AddModCommand = new RelayCommand(async _ => await AddMod(), _ => SelectedProfile != null && !IsBusy);
+        ToggleModCommand = new RelayCommand(async p => await ToggleMod(p), _ => SelectedProfile != null && !IsBusy);
+        RemoveModCommand = new RelayCommand(async p => await RemoveMod(p), _ => SelectedProfile != null && !IsBusy);
+        OpenModsFolderCommand = new RelayCommand(async _ => await OpenFolder(), _ => SelectedProfile != null && !IsBusy);
+        RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
+        SearchCommand = new RelayCommand(async _ => await SearchMods(), _ => SelectedProfile != null && !string.IsNullOrWhiteSpace(SearchQuery) && !IsBusy);
+        InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p), _ => SelectedProfile != null && !IsBusy);
 
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
     }
@@ -96,6 +97,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
     {
         OnPropertyChanged(nameof(SelectedProfile));
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
     }
 
     public void Dispose()
@@ -106,10 +108,16 @@ public class ModsViewModel : BaseViewModel, IDisposable
 
     private async Task SearchMods()
     {
-        if (string.IsNullOrWhiteSpace(SearchQuery) || SelectedProfile == null) return;
+        if (string.IsNullOrWhiteSpace(SearchQuery) || SelectedProfile == null)
+        {
+            StatusMessage = "Introduce un término de búsqueda y selecciona un perfil.";
+            return;
+        }
 
         IsSearching = true;
         IsBusy = true;
+        StatusMessage = "Buscando mods...";
+
         try
         {
             var loader = SelectedProfile.Type.ToString().ToLowerInvariant();
@@ -119,21 +127,43 @@ public class ModsViewModel : BaseViewModel, IDisposable
             foreach (var r in results)
                 SearchResults.Add(r);
             
-            StatusMessage = $"Encontrados {SearchResults.Count} mods en {SelectedProvider}.";
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Search failed");
-            StatusMessage = ex.Message;
+            StatusMessage = SearchResults.Count > 0
+                ? $"Encontrados {SearchResults.Count} mods en {SelectedProvider}."
+                : $"No se encontraron mods en {SelectedProvider}. Prueba otro término.";
         }
-        IsBusy = false;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Search failed");
+            StatusMessage = $"Error al buscar mods: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task InstallFromSearch(object? parameter)
     {
-        if (SelectedProfile == null) return;
-        if (parameter is not Mod searchResult) return;
-        if (string.IsNullOrWhiteSpace(searchResult.FileName)) return;
+        if (SelectedProfile == null)
+        {
+            StatusMessage = "Selecciona un perfil antes de instalar un mod.";
+            return;
+        }
+
+        if (parameter is not Mod searchResult)
+        {
+            StatusMessage = "Selecciona un mod válido para instalar.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchResult.FileName))
+        {
+            StatusMessage = "El mod seleccionado no tiene un archivo válido.";
+            return;
+        }
 
         IsBusy = true;
+        StatusMessage = $"Instalando {searchResult.Name}...";
         try
         {
             await _modService.InstallFromSearchAsync(SelectedProfile.Id, searchResult, SelectedProvider);
@@ -144,53 +174,75 @@ public class ModsViewModel : BaseViewModel, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to install mod from search");
-            StatusMessage = $"Error al instalar: {ex.Message}";
+            StatusMessage = $"Error al instalar {searchResult.Name}: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public async Task LoadModsAsync(int profileId)
     {
         IsBusy = true;
+        StatusMessage = "Cargando mods...";
         try
         {
             var mods = await _modService.GetModsAsync(profileId);
             Mods.Clear();
             foreach (var m in mods)
                 Mods.Add(m);
-            StatusMessage = $"{Mods.Count} mods en el perfil.";
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Failed to load mods");
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = Mods.Count > 0
+                ? $"{Mods.Count} mods cargados en el perfil."
+                : "No hay mods instalados en este perfil.";
         }
-        IsBusy = false;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load mods");
+            StatusMessage = $"Error al cargar mods: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task AddMod()
     {
-        if (SelectedProfile == null) return;
+        if (SelectedProfile == null)
+        {
+            StatusMessage = "Selecciona un perfil antes de agregar mods.";
+            return;
+        }
 
         var files = _dialogService.ShowOpenFileDialog("Mods (*.jar)|*.jar", "Seleccionar mods", true);
 
-        if (files != null)
+        if (files == null || files.Length == 0)
         {
-            IsBusy = true;
-            var added = 0;
-            foreach (var file in files)
-            {
-                try
-                {
-                    await _modService.AddModAsync(SelectedProfile.Id, file);
-                    added++;
-                } catch (Exception ex) {
-                    _logger.LogWarning(ex, "Failed to add mod {File}", file);
-                    StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
-                }
-            }
-            await LoadModsAsync(SelectedProfile.Id);
-            StatusMessage = $"{added} mods agregados.";
-            IsBusy = false;
+            StatusMessage = "No se seleccionó ningún archivo.";
+            return;
         }
+
+        IsBusy = true;
+        var added = 0;
+        foreach (var file in files)
+        {
+            try
+            {
+                await _modService.AddModAsync(SelectedProfile.Id, file);
+                added++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to add mod {File}", file);
+                StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
+            }
+        }
+        await LoadModsAsync(SelectedProfile.Id);
+        StatusMessage = added > 0
+            ? $"{added} mods agregados." 
+            : "No se agregó ningún mod.";
+        IsBusy = false;
     }
 
     private async Task ToggleMod(object? modId)
@@ -214,21 +266,29 @@ public class ModsViewModel : BaseViewModel, IDisposable
 
     private async Task RemoveMod(object? modId)
     {
-        if (modId is int id)
+        if (modId is not int id) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            "¿Estás seguro de que deseas eliminar este mod?",
+            "Eliminar mod",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        try
         {
-            try
+            await _modService.RemoveModAsync(id);
+            if (SelectedProfile != null)
             {
-                await _modService.RemoveModAsync(id);
-                if (SelectedProfile != null) {
-                    await LoadModsAsync(SelectedProfile.Id);
-                }
-                StatusMessage = "Mod eliminado.";
+                await LoadModsAsync(SelectedProfile.Id);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to remove mod {ModId}", id);
-                StatusMessage = $"Error al eliminar mod: {ex.Message}";
-            }
+            StatusMessage = "Mod eliminado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove mod {ModId}", id);
+            StatusMessage = $"Error al eliminar el mod: {ex.Message}";
         }
     }
 

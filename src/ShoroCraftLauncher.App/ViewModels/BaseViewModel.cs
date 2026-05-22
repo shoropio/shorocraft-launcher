@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
@@ -15,6 +16,10 @@ public abstract class BaseViewModel : INotifyPropertyChanged
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
         OnPropertyChanged(propertyName);
+        if (propertyName == nameof(IsBusy))
+        {
+            CommandManager.InvalidateRequerySuggested();
+        }
         return true;
     }
 

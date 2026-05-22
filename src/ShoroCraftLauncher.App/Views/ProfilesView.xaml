@@ -9,7 +9,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
+        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -28,10 +28,12 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="📥 Importar" Command="{Binding ImportProfileCommand}"
-                            Style="{StaticResource SecondaryButton}" Margin="0,0,6,0" Padding="8,6" FontSize="11" />
-                    <Button Grid.Column="1" Content="📤 Exportar" Command="{Binding ExportProfileCommand}"
-                            Style="{StaticResource SecondaryButton}" Margin="6,0,0,0" Padding="8,6" FontSize="11" />
+                        <Button Grid.Column="0" Content="📥 Importar" Command="{Binding ImportProfileCommand}"
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,6,0" Padding="8,6" FontSize="11"
+                            ToolTip="Importar un perfil desde un archivo .zip (ShoroCraft Package)." />
+                        <Button Grid.Column="1" Content="📤 Exportar" Command="{Binding ExportProfileCommand}"
+                            Style="{StaticResource SecondaryButton}" Margin="6,0,0,0" Padding="8,6" FontSize="11"
+                            ToolTip="Exportar el perfil seleccionado a un archivo .zip (ShoroCraft Package)." />
                 </Grid>
                 
                 <ListBox Grid.Row="3" ItemsSource="{Binding Profiles}"
@@ -44,6 +46,9 @@
         <ScrollViewer Grid.Column="1">
             <StackPanel>
                 <TextBlock Text="Editar Perfil" Style="{StaticResource SectionTitle}" />
+                <ProgressBar Height="4" Margin="0,10,0,16" IsIndeterminate="True"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Style="{StaticResource AccentProgressBar}" />
 
                 <Border Style="{StaticResource CardBorder}" Padding="24" IsEnabled="{Binding IsProfileSelected}">
                     <Grid>

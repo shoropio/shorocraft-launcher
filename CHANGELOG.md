@@ -6,6 +6,18 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.0.2] - 2026-05-22
+
+### ✨ Nuevo
+- Mejoras de UX en Perfiles y Mods: estados de carga más claros, confirmaciones de eliminación y mensajes de éxito/errores más comprensibles.
+- Indicadores de carga en la vista de Perfiles y en la gestión de Mods.
+- Release empaquetado de nuevo con instalador Windows actualizado.
+
+### 🔧 Correcciones
+- Bloqueo de acciones mientras se ejecuta una operación para evitar estados inconsistentes.
+- Mensajes de error más claros para exportación/importación de perfiles y búsqueda/instalación de mods.
+- Confirmaciones añadidas al eliminar perfiles, mods y copias de seguridad.
+
 ## [1.0.1] - 2026-05-21
 
 ### ✨ Nuevo

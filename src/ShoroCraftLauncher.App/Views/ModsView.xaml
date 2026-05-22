@@ -19,8 +19,9 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1">
+        <Grid Grid.Column="1" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -64,8 +65,10 @@
                 <Button Content="Actualizar" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
-
-            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}"
+            <ProgressBar Grid.Row="2" Height="4" Margin="0,0,0,12" IsIndeterminate="True"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                         Style="{StaticResource AccentProgressBar}" />
+            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
 
             <!-- Mods list / Search results -->

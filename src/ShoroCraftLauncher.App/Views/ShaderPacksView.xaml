@@ -39,9 +39,9 @@
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
 
             <!-- Shader support warning -->
-            <Border Grid.Row="2" Background="{StaticResource WarningBrush}" CornerRadius="0"
+                <Border Grid.Row="2" Background="{StaticResource WarningBrush}" CornerRadius="0"
                     Padding="14,10" Margin="0,0,0,8"
-                    Visibility="{Binding HasShaderSupport, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}">
+                    Visibility="{Binding HasShaderSupport, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                 <TextBlock Text="Este perfil no tiene soporte de shaders. Usa OptiFine o Iris."
                            Foreground="#1A1A2E" FontSize="12" FontWeight="SemiBold" />
             </Border>
