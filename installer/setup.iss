@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=ShoroCraft Launcher
-AppVersion=1.0.0
+AppVersion={#GetVersionNumbersString('..\src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\win-x64\publish\ShoroCraftLauncher.exe')}
 AppPublisher=ShoroCraft
 DefaultDirName={localappdata}\ShoroCraftLauncher
 DefaultGroupName=ShoroCraft Launcher
@@ -25,7 +25,7 @@ Source: "..\src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\publish\*"; De
 
 [Icons]
 Name: "{group}\ShoroCraft Launcher"; Filename: "{app}\ShoroCraftLauncher.exe"
-Name: "{commondesktop}\ShoroCraft Launcher"; Filename: "{app}\ShoroCraftLauncher.exe"
+Name: "{userdesktop}\ShoroCraft Launcher"; Filename: "{app}\ShoroCraftLauncher.exe"
 
 [Run]
 Filename: "{app}\ShoroCraftLauncher.exe"; Description: "Iniciar ShoroCraft Launcher"; Flags: postinstall nowait skipifsilent

@@ -10,6 +10,7 @@
     <RootNamespace>ShoroCraftLauncher.App</RootNamespace>
     <AssemblyName>ShoroCraftLauncher</AssemblyName>
     <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>

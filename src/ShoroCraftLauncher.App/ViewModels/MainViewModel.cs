@@ -203,9 +203,9 @@ public class MainViewModel : BaseViewModel, IDisposable
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
+                IsDownloading = true;
                 if (pct >= 0)
                 {
-                    IsDownloading = true;
                     DownloadProgress = pct;
                 }
                 DownloadStatus = msg;
@@ -280,6 +280,9 @@ public class MainViewModel : BaseViewModel, IDisposable
             StatusMessage = $"Error: {result.ErrorMessage}";
         }
 
+        IsDownloading = false;
+        DownloadProgress = 0;
+        DownloadStatus = string.Empty;
         IsBusy = false;
     }
 
