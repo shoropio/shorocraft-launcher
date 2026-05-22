@@ -203,17 +203,23 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Instala loaders y versiones de Minecraft" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
-                            <WrapPanel>
+                                <WrapPanel>
                                 <Button Content="Instalar Forge" Command="{Binding InstallLoaderCommand}"
-                                        CommandParameter="Forge:latest"
-                                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                    CommandParameter="Forge:latest"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="Instalar Fabric" Command="{Binding InstallLoaderCommand}"
-                                        CommandParameter="Fabric:latest"
-                                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                    CommandParameter="Fabric:latest"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="Instalar Quilt" Command="{Binding InstallLoaderCommand}"
-                                        CommandParameter="Quilt:latest"
-                                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                            </WrapPanel>
+                                    CommandParameter="Quilt:latest"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                <Button Content="{Binding IrisSodiumButtonText}"
+                                    Command="{Binding InstallIrisCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                <Button Content="OptiFine (Manual)"
+                                    Command="{Binding OptiFineInfoCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
                                 <ComboBox ItemsSource="{Binding AvailableVersions}"
                                           SelectedValue="{Binding SelectedVersion}"
