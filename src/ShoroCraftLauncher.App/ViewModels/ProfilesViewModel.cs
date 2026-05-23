@@ -27,6 +27,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             _profileService.SelectedProfile = value;
             OnPropertyChanged(nameof(SelectedProfile));
             OnPropertyChanged(nameof(IsProfileSelected));
+            CommandManager.InvalidateRequerySuggested();
             if (value != null) LoadProfileIntoForm(value);
             else ClearForm();
         }
@@ -79,7 +80,13 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     public BackupItem? SelectedBackup
     {
         get => _selectedBackup;
-        set => SetProperty(ref _selectedBackup, value);
+        set
+        {
+            if (SetProperty(ref _selectedBackup, value))
+            {
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
     }
 
     private string _selectedBackupType = "All";
@@ -143,6 +150,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         OnPropertyChanged(nameof(SelectedProfile));
         OnPropertyChanged(nameof(IsProfileSelected));
+        CommandManager.InvalidateRequerySuggested();
         if (SelectedProfile != null)
         {
             LoadProfileIntoForm(SelectedProfile);

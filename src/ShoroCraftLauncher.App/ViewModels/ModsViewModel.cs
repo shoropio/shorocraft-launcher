@@ -138,6 +138,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
         }
         finally
         {
+            IsSearching = false;
             IsBusy = false;
         }
     }
@@ -225,30 +226,37 @@ public class ModsViewModel : BaseViewModel, IDisposable
 
         IsBusy = true;
         var added = 0;
-        foreach (var file in files)
+        try
         {
-            try
+            foreach (var file in files)
             {
-                await _modService.AddModAsync(SelectedProfile.Id, file);
-                added++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to add mod {File}", file);
-                StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
+                try
+                {
+                    await _modService.AddModAsync(SelectedProfile.Id, file);
+                    added++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to add mod {File}", file);
+                    StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
+                }
             }
         }
-        await LoadModsAsync(SelectedProfile.Id);
-        StatusMessage = added > 0
-            ? $"{added} mods agregados." 
-            : "No se agregó ningún mod.";
-        IsBusy = false;
+        finally
+        {
+            await LoadModsAsync(SelectedProfile.Id);
+            StatusMessage = added > 0
+                ? $"{added} mods agregados."
+                : "No se agregó ningún mod.";
+            IsBusy = false;
+        }
     }
 
     private async Task ToggleMod(object? modId)
     {
         if (modId is int id)
         {
+            IsBusy = true;
             try
             {
                 await _modService.ToggleModAsync(id);
@@ -260,6 +268,10 @@ public class ModsViewModel : BaseViewModel, IDisposable
             {
                 _logger.LogError(ex, "Failed to toggle mod {ModId}", id);
                 StatusMessage = $"Error al cambiar estado del mod: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
             }
         }
     }
@@ -275,7 +287,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
             System.Windows.MessageBoxImage.Warning);
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
+        IsBusy = true;
         try
         {
             await _modService.RemoveModAsync(id);
@@ -289,6 +301,10 @@ public class ModsViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to remove mod {ModId}", id);
             StatusMessage = $"Error al eliminar el mod: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

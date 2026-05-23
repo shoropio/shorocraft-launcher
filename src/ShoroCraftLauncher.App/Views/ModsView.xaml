@@ -15,7 +15,24 @@
                 <ListBox ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="440" />
+                         DisplayMemberPath="Name" Height="440">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Padding" Value="8,6" />
+                            <Setter Property="Margin" Value="0,0,0,4" />
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#3D7FBF" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#2A5A8F" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
             </StackPanel>
         </Border>
 
@@ -86,6 +103,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
                                         <WrapPanel Margin="0,6,0,0">
                                             <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
                                             <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
