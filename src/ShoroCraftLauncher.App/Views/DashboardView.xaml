@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
-        <StackPanel>
+        <StackPanel Margin="0,0,18,0">
             <!-- Profile Selector -->
             <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,0,16">
                 <Grid>

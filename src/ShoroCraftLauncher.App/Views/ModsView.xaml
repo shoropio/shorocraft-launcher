@@ -72,7 +72,7 @@
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
 
             <!-- Mods list / Search results -->
-            <Grid Grid.Row="3">
+            <Grid Grid.Row="4">
                 <ListBox ItemsSource="{Binding Mods}"
                          Background="Transparent" BorderThickness="0"
                          Visibility="{Binding IsSearching, Converter={StaticResource InverseBoolToVisibilityConverter}}">
@@ -84,13 +84,13 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" TextTrimming="CharacterEllipsis" />
+                                        <WrapPanel Margin="0,6,0,0">
                                             <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
                                             <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
                                             <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" />
-                                        </StackPanel>
+                                        </WrapPanel>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
