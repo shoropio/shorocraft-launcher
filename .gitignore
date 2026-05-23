@@ -6,6 +6,8 @@
 # Build outputs
 [Bb]in/
 [Oo]bj/
+dist/
+publish/
 *.dll
 *.pdb
 *.exe
@@ -21,6 +23,21 @@ project.lock.json
 logs/
 *.log
 *.slog
+crash-*.txt
+
+# Test/coverage outputs
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
 
 # OS
 Thumbs.db
