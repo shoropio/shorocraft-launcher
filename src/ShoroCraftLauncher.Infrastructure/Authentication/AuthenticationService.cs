@@ -24,15 +24,26 @@ public class AuthenticationService : IAuthenticationService
             var loginHandler = new CmlLib.Core.Auth.Microsoft.JELoginHandlerBuilder()
                 .Build();
 
-            // Try to login silently first
-            var session = await loginHandler.AuthenticateSilently();
-            
-            if (session == null)
+            try
             {
-                // This would normally open a browser, but for a professional launcher
-                // we want to integrate it better. For now, let's use the default browser flow.
-                session = await loginHandler.Authenticate();
+                var silentSession = await loginHandler.AuthenticateSilently();
+                if (silentSession != null)
+                {
+                    return new AuthResult
+                    {
+                        Success = true,
+                        AccessToken = silentSession.AccessToken,
+                        Uuid = silentSession.UUID,
+                        Username = silentSession.Username
+                    };
+                }
             }
+            catch (Exception ex) when (ex.Message.Contains("RefreshToken", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Silent Microsoft authentication requires an interactive login");
+            }
+
+            var session = await loginHandler.Authenticate();
 
             if (session != null)
             {
@@ -45,11 +56,31 @@ public class AuthenticationService : IAuthenticationService
                 };
             }
 
-            return new AuthResult { Success = false, ErrorMessage = "Login cancelado o fallido." };
+            return new AuthResult { Success = false, ErrorMessage = "Inicio de sesion cancelado o fallido." };
         } catch (Exception ex) {
             _logger.LogError(ex, "Microsoft authentication failed");
-            return new AuthResult { Success = false, ErrorMessage = ex.Message };
+            return new AuthResult { Success = false, ErrorMessage = GetFriendlyMicrosoftAuthError(ex) };
         }
+    }
+
+    private static string GetFriendlyMicrosoftAuthError(Exception ex)
+    {
+        if (ex.GetType().Name == "JEAuthException" &&
+            ex.Message.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Esta cuenta no tiene Minecraft Java activo.";
+        }
+
+        if (ex.Message.Contains("default WebUI", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("WebView", StringComparison.OrdinalIgnoreCase))
+        {
+            return "No se pudo abrir la ventana de inicio de sesion Microsoft. Verifica que Microsoft Edge WebView2 este instalado.";
+        }
+
+        if (ex.Message.Contains("cancel", StringComparison.OrdinalIgnoreCase))
+            return "Inicio de sesion Microsoft cancelado.";
+
+        return "No se pudo iniciar sesion con Microsoft. Revisa tu conexion e intentalo de nuevo.";
     }
 
     public async Task<AuthResult> AuthenticateOfflineAsync(string username)

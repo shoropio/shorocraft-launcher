@@ -128,7 +128,7 @@ public class MainViewModel : BaseViewModel, IDisposable
             if (value != null)
             {
                 SelectedProfileName = value.Name;
-                GameVersionStatus = $"Config: {value.MinecraftVersion} | {value.Type}";
+                GameVersionStatus = $"{value.MinecraftVersion} | {value.Type}";
             }
         }
     }
@@ -160,7 +160,7 @@ public class MainViewModel : BaseViewModel, IDisposable
             if (SelectedProfile != null)
             {
                 SelectedProfileName = SelectedProfile.Name;
-                GameVersionStatus = $"Config: {SelectedProfile.MinecraftVersion} | {SelectedProfile.Type}";
+                GameVersionStatus = $"{SelectedProfile.MinecraftVersion} | {SelectedProfile.Type}";
             }
             else
             {
