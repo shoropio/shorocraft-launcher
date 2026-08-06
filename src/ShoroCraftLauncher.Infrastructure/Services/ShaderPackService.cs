@@ -13,6 +13,7 @@ public class ShaderPackService : IShaderPackService
     private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ShaderPackService> _logger;
     private readonly ILogService _logService;
+    private readonly HttpClient _httpClient;
 
     public ShaderPackService(
         IShaderPackRepository repository,
@@ -20,7 +21,8 @@ public class ShaderPackService : IShaderPackService
         IModRepository modRepository,
         IMinecraftService minecraftService,
         ILogger<ShaderPackService> logger,
-        ILogService logService)
+        ILogService logService,
+        HttpClient httpClient)
     {
         _repository = repository;
         _profileRepository = profileRepository;
@@ -28,6 +30,7 @@ public class ShaderPackService : IShaderPackService
         _minecraftService = minecraftService;
         _logger = logger;
         _logService = logService;
+        _httpClient = httpClient;
     }
 
     public async Task<List<ShaderPack>> GetPacksAsync(int profileId) =>
@@ -144,5 +147,210 @@ public class ShaderPackService : IShaderPackService
         return value.Contains("iris", StringComparison.OrdinalIgnoreCase)
             || value.Contains("oculus", StringComparison.OrdinalIgnoreCase)
             || value.Contains("optifine", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public async Task<List<ShaderPackSearchResult>> SearchShadersAsync(string query, string minecraftVersion)
+    {
+        _logger.LogInformation("Searching Modrinth shaders: {Query} for MC {Version}", query, minecraftVersion);
+        _logService.Info("ShaderPackService", "SearchShaders",
+            $"Buscando shaders en Modrinth{(string.IsNullOrWhiteSpace(query) ? " (populares)" : $" para '{query}'")}...");
+
+        var facets = new List<string> { "[\"project_type:shader\"]" };
+        if (!string.IsNullOrWhiteSpace(query))
+            facets.Add($"[\"versions:{minecraftVersion}\"]");
+
+        var url = "https://api.modrinth.com/v2/search"
+            + $"?query={Uri.EscapeDataString(query.Trim())}"
+            + $"&facets={Uri.EscapeDataString("[" + string.Join(",", facets) + "]")}"
+            + "&limit=40&sort=downloads";
+
+        EnsureUserAgent();
+        using var response = await _httpClient.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+        var results = new List<ShaderPackSearchResult>();
+        foreach (var item in doc.RootElement.GetProperty("hits").EnumerateArray())
+        {
+            results.Add(new ShaderPackSearchResult
+            {
+                ProjectId = item.GetProperty("project_id").GetString() ?? string.Empty,
+                Name = item.GetProperty("title").GetString() ?? "Unknown",
+                Description = item.TryGetProperty("description", out var d) ? d.GetString() : null,
+                IconPath = item.TryGetProperty("icon_url", out var icon) ? icon.GetString() : null,
+                ModVersion = (item.TryGetProperty("latest_version", out var v) ? v.GetString() : "latest") ?? "latest"
+            });
+        }
+
+        _logService.Info("ShaderPackService", "SearchShaders", $"Encontrados {results.Count} shader packs.");
+        return results;
+    }
+
+    public async Task<ShaderPack> InstallFromSearchAsync(int profileId, ShaderPackSearchResult searchResult)
+    {
+        var profile = await _profileRepository.GetByIdAsync(profileId)
+            ?? throw new Exception($"Profile {profileId} not found");
+
+        _logService.Info("ShaderPackService", "InstallFromSearch",
+            $"Instalando shader '{searchResult.Name}' desde Modrinth...");
+
+        var packsDir = await GetPacksFolderAsync(profileId);
+        Directory.CreateDirectory(packsDir);
+
+        var (downloadUrl, fileName, version, size) =
+            await ResolveShaderVersionAsync(searchResult.ProjectId, profile.MinecraftVersion);
+
+        var destPath = Path.Combine(packsDir, fileName);
+        if (File.Exists(destPath))
+            throw new Exception($"El shader pack '{fileName}' ya existe en este perfil.");
+
+        _logger.LogInformation("Downloading shader from {Url}", downloadUrl);
+        _logService.Info("ShaderPackService", "DownloadShader", $"Descargando {fileName}...");
+        var bytes = await _httpClient.GetByteArrayAsync(downloadUrl);
+        await File.WriteAllBytesAsync(destPath, bytes);
+        _logService.Info("ShaderPackService", "DownloadShader", $"Descarga completada ({bytes.Length} bytes).");
+
+        var pack = new ShaderPack
+        {
+            ProfileId = profileId,
+            Name = searchResult.Name,
+            FileName = fileName,
+            FilePath = destPath,
+            FileSizeBytes = size > 0 ? size : bytes.Length,
+            Status = PackStatus.Active
+        };
+
+        await _repository.CreateAsync(pack);
+        _logger.LogInformation("Shader {Name} installed ({Version})", pack.Name, version);
+        _logService.Info("ShaderPackService", "InstallFromSearch", $"Shader '{searchResult.Name}' instalado correctamente.");
+        return pack;
+    }
+
+    private async Task<(string url, string fileName, string version, long size)> ResolveShaderVersionAsync(string projectId, string mcVersion)
+    {
+        EnsureUserAgent();
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+        var candidates = new List<System.Text.Json.JsonElement>();
+        foreach (var version in doc.RootElement.EnumerateArray())
+        {
+            bool matchesMc = false;
+            foreach (var gv in version.GetProperty("game_versions").EnumerateArray())
+            {
+                if (gv.GetString() == mcVersion) { matchesMc = true; break; }
+            }
+            if (!matchesMc) continue;
+
+            if (version.GetProperty("files").GetArrayLength() == 0) continue;
+            if (!HasZipFile(version)) continue;
+
+            candidates.Add(version);
+        }
+
+        System.Text.Json.JsonElement selected = default;
+        foreach (var candidate in candidates)
+        {
+            var type = candidate.TryGetProperty("version_type", out var vt) ? vt.GetString() : null;
+            if (string.Equals(type, "release", StringComparison.OrdinalIgnoreCase))
+            {
+                selected = candidate;
+                break;
+            }
+        }
+        if (selected.ValueKind == System.Text.Json.JsonValueKind.Undefined && candidates.Count > 0)
+            selected = candidates[0];
+
+        if (selected.ValueKind == System.Text.Json.JsonValueKind.Undefined)
+            throw new Exception($"No se encontró una versión del shader pack compatible con Minecraft {mcVersion}.");
+
+        var versionElement = selected;
+        var files = versionElement.GetProperty("files");
+        var file = default(System.Text.Json.JsonElement);
+        foreach (var f in files.EnumerateArray())
+        {
+            var fName = f.GetProperty("filename").GetString() ?? "";
+            if (fName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { file = f; break; }
+        }
+        if (file.ValueKind == System.Text.Json.JsonValueKind.Undefined)
+            file = files[0];
+
+        return (
+            file.GetProperty("url").GetString() ?? "",
+            file.GetProperty("filename").GetString() ?? $"{projectId}.zip",
+            versionElement.GetProperty("version_number").GetString() ?? "unknown",
+            file.TryGetProperty("size", out var s) ? s.GetInt64() : 0L);
+    }
+
+    private static bool HasZipFile(System.Text.Json.JsonElement version)
+    {
+        foreach (var f in version.GetProperty("files").EnumerateArray())
+        {
+            var fName = f.GetProperty("filename").GetString() ?? "";
+            if (fName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
+    private static readonly string[] RecommendedShaderProjectIds =
+    {
+        "HVnmMxH1", // Complementary Reimagined
+        "Q1vvjJYV", // BSL Shaders
+        "lLqFfGNs", // Photon Shaders
+        "EpQFjzrQ", // Solas Shader
+        "ZvMtQlho", // Bliss Shaders
+        "izsIPI7a", // MakeUp - Ultra Fast
+        "LMIZZNxZ", // Super Duper Vanilla
+        "kmwfVOoi", // Rethinking Voxels
+    };
+
+    public async Task<List<ShaderPackSearchResult>> GetRecommendedShadersAsync()
+    {
+        _logService.Info("ShaderPackService", "GetRecommended", "Cargando shader packs recomendados...");
+        var results = new List<ShaderPackSearchResult>();
+        foreach (var projectId in RecommendedShaderProjectIds)
+        {
+            var project = await GetProjectAsync(projectId);
+            if (project != null) results.Add(project);
+        }
+        _logService.Info("ShaderPackService", "GetRecommended", $"Cargados {results.Count} shader packs recomendados.");
+        return results;
+    }
+
+    private async Task<ShaderPackSearchResult?> GetProjectAsync(string projectId)
+    {
+        try
+        {
+            EnsureUserAgent();
+            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}");
+            response.EnsureSuccessStatusCode();
+
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = doc.RootElement;
+            return new ShaderPackSearchResult
+            {
+                ProjectId = projectId,
+                Name = root.TryGetProperty("title", out var t) ? t.GetString() ?? projectId : projectId,
+                Description = root.TryGetProperty("description", out var d) ? d.GetString() : null,
+                IconPath = root.TryGetProperty("icon_url", out var i) ? i.GetString() : null,
+                ModVersion = (root.TryGetProperty("latest_version", out var v) ? v.GetString() : "latest") ?? "latest"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load Modrinth project {ProjectId}", projectId);
+            return null;
+        }
+    }
+
+    private void EnsureUserAgent()
+    {
+        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
     }
 }

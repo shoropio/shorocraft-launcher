@@ -18,15 +18,43 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="0,0,18,0">
+        <Grid Grid.Column="1" Margin="0,0,18,0" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <!-- Search bar -->
+            <Border Grid.Row="0" Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="Buscar shaders en Modrinth (ej: Complementary)..."
+                             Style="{StaticResource SearchTextBox}"
+                             Margin="0,0,8,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Grid.Column="1" Content="Buscar" Command="{Binding SearchCommand}"
+                            Style="{StaticResource PrimaryButton}" Padding="16,8" />
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="Instalados" Command="{Binding ShowInstalledCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                <Button Content="Populares" Command="{Binding ExplorePopularCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                <Button Content="Recomendados" Command="{Binding ShowRecommendedCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="+ Agregar Shaders" Command="{Binding AddPackCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
                 <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
@@ -35,48 +63,81 @@
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
-            <TextBlock Grid.Row="1" Text="{Binding StatusMessage}"
+            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
 
             <!-- Shader support warning -->
-                <Border Grid.Row="2" Background="{StaticResource WarningBrush}" CornerRadius="0"
+                <Border Grid.Row="3" Background="{StaticResource WarningBrush}" CornerRadius="0"
                     Padding="14,10" Margin="0,0,0,8"
                     Visibility="{Binding HasShaderSupport, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                 <TextBlock Text="Este perfil no tiene soporte de shaders. Usa OptiFine o Iris."
                            Foreground="#1A1A2E" FontSize="12" FontWeight="SemiBold" />
             </Border>
 
-            <ListBox Grid.Row="3" ItemsSource="{Binding Packs}"
-                     Background="Transparent" BorderThickness="0"
-                     ItemContainerStyle="{StaticResource FlushListBoxItem}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
-                                    <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}"
-                                               Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
-                                                  Style="{StaticResource SwitchToggle}"
-                                                  Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
-                                                  CommandParameter="{Binding Id}" />
-                                    <Button Content="Eliminar" Style="{StaticResource DangerButton}"
-                                            Padding="10,5" FontSize="12" Margin="10,0,0,0"
-                                            Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"
-                                            CommandParameter="{Binding Id}" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <Grid Grid.Row="4">
+                <ListBox ItemsSource="{Binding Packs}"
+                         Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource FlushListBoxItem}"
+                         Visibility="{Binding ShowSearchResults, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
+                                        <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}"
+                                                   Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
+                                                      Style="{StaticResource SwitchToggle}"
+                                                      Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
+                                                      CommandParameter="{Binding Id}" />
+                                        <Button Content="Eliminar" Style="{StaticResource DangerButton}"
+                                                Padding="10,5" FontSize="12" Margin="10,0,0,0"
+                                                Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"
+                                                CommandParameter="{Binding Id}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Search results -->
+                <ListBox ItemsSource="{Binding SearchResults}"
+                         Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource FlushListBoxItem}"
+                         Visibility="{Binding ShowSearchResults, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Grid.Column="0" Source="{Binding IconPath}" Width="40" Height="40"
+                                           Margin="0,0,12,0" />
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
+                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="30" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Content="Instalar" Style="{StaticResource PrimaryButton}"
+                                            Padding="14,7" FontSize="12" VerticalAlignment="Center"
+                                            Command="{Binding ElementName=root, Path=DataContext.InstallFromSearchCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

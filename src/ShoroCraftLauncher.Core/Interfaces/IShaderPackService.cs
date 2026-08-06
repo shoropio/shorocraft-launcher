@@ -10,4 +10,7 @@ public interface IShaderPackService
     Task RemovePackAsync(int packId);
     Task<string> GetPacksFolderAsync(int profileId);
     Task<bool> HasShaderSupportAsync(int profileId);
+    Task<List<ShaderPackSearchResult>> SearchShadersAsync(string query, string minecraftVersion);
+    Task<List<ShaderPackSearchResult>> GetRecommendedShadersAsync();
+    Task<ShaderPack> InstallFromSearchAsync(int profileId, ShaderPackSearchResult searchResult);
 }

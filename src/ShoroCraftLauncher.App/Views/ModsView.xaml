@@ -75,6 +75,10 @@
 
             <!-- Action bar -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="Instalados" Command="{Binding ShowInstalledCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                <Button Content="Recomendados" Command="{Binding ShowRecommendedCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="+ Agregar Mod Local" Command="{Binding AddModCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
                 <Button Content="Abrir carpeta" Command="{Binding OpenModsFolderCommand}"
@@ -93,7 +97,7 @@
                 <ListBox ItemsSource="{Binding Mods}"
                          Background="Transparent" BorderThickness="0"
                          ItemContainerStyle="{StaticResource FlushListBoxItem}"
-                         Visibility="{Binding IsSearching, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                         Visibility="{Binding ShowSearchResults, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
@@ -131,7 +135,7 @@
                 <ListBox ItemsSource="{Binding SearchResults}"
                          Background="Transparent" BorderThickness="0"
                          ItemContainerStyle="{StaticResource FlushListBoxItem}"
-                         Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibilityConverter}}">
+                         Visibility="{Binding ShowSearchResults, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">

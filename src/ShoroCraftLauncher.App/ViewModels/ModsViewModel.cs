@@ -39,6 +39,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
             if (string.IsNullOrEmpty(value) && SelectedProfile != null)
             {
                 IsSearching = false;
+                ShowSearchResults = false;
                 _ = LoadModsAsync(SelectedProfile.Id);
             }
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
@@ -46,6 +47,13 @@ public class ModsViewModel : BaseViewModel, IDisposable
     }
 
     public ObservableCollection<Mod> SearchResults { get; } = new();
+
+    private bool _showSearchResults;
+    public bool ShowSearchResults
+    {
+        get => _showSearchResults;
+        set => SetProperty(ref _showSearchResults, value);
+    }
 
     private string _selectedProvider = "Modrinth";
     public string SelectedProvider
@@ -68,6 +76,8 @@ public class ModsViewModel : BaseViewModel, IDisposable
     public ICommand RefreshCommand { get; }
     public ICommand SearchCommand { get; }
     public ICommand InstallFromSearchCommand { get; }
+    public ICommand ShowInstalledCommand { get; }
+    public ICommand ShowRecommendedCommand { get; }
 
     public ModsViewModel(
         IProfileService profileService,
@@ -89,6 +99,8 @@ public class ModsViewModel : BaseViewModel, IDisposable
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         SearchCommand = new RelayCommand(async _ => await SearchMods(), _ => SelectedProfile != null && !string.IsNullOrWhiteSpace(SearchQuery) && !IsBusy);
         InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p), _ => SelectedProfile != null && !IsBusy);
+        ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
+        ShowRecommendedCommand = new RelayCommand(async _ => await LoadRecommended(), _ => SelectedProfile != null && !IsBusy);
 
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
     }
@@ -116,6 +128,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
 
         IsSearching = true;
         IsBusy = true;
+        ShowSearchResults = true;
         StatusMessage = "Buscando mods...";
 
         try
@@ -139,6 +152,31 @@ public class ModsViewModel : BaseViewModel, IDisposable
         finally
         {
             IsSearching = false;
+            IsBusy = false;
+        }
+    }
+
+    private async Task LoadRecommended()
+    {
+        if (SelectedProfile == null) return;
+
+        IsBusy = true;
+        StatusMessage = "Cargando mods recomendados...";
+        try
+        {
+            var mods = await _modService.GetRecommendedModsAsync();
+            SearchResults.Clear();
+            foreach (var m in mods) SearchResults.Add(m);
+            ShowSearchResults = true;
+            StatusMessage = $"{SearchResults.Count} mods recomendados.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load recommended mods");
+            StatusMessage = $"Error al cargar recomendados: {ex.Message}";
+        }
+        finally
+        {
             IsBusy = false;
         }
     }
@@ -170,6 +208,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
             await _modService.InstallFromSearchAsync(SelectedProfile.Id, searchResult, SelectedProvider);
             StatusMessage = $"{searchResult.Name} instalado correctamente.";
             IsSearching = false;
+            ShowSearchResults = false;
             await LoadModsAsync(SelectedProfile.Id);
         }
         catch (Exception ex)
