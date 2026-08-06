@@ -17,6 +17,7 @@ public interface ILauncherService
     IReadOnlyList<string> LogHistory { get; }
     event Action<string>? LogOutput;
     event Action<double, string>? ProgressChanged;
+    event Action? ProgressCompleted;
     event Action? GameExited;
     void Log(string message);
 }

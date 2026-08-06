@@ -57,6 +57,41 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _isGameRunning, value);
     }
 
+    private bool _isDownloading;
+    public bool IsDownloading
+    {
+        get => _isDownloading;
+        set => SetProperty(ref _isDownloading, value);
+    }
+
+    private double _downloadProgress;
+    public double DownloadProgress
+    {
+        get => _downloadProgress;
+        set => SetProperty(ref _downloadProgress, value);
+    }
+
+    private bool _isIndeterminate;
+    public bool IsIndeterminate
+    {
+        get => _isIndeterminate;
+        set => SetProperty(ref _isIndeterminate, value);
+    }
+
+    private string _progressPercent = string.Empty;
+    public string ProgressPercent
+    {
+        get => _progressPercent;
+        set => SetProperty(ref _progressPercent, value);
+    }
+
+    private string _progressText = string.Empty;
+    public string ProgressText
+    {
+        get => _progressText;
+        set => SetProperty(ref _progressText, value);
+    }
+
     public ICommand ClearLogCommand { get; }
     public ICommand CopyLogCommand { get; }
     public ICommand CopyRelevantLogCommand { get; }
@@ -73,6 +108,8 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         _logService.LogReceived += OnLogReceived;
         _onGameExited = () => IsGameRunning = false;
         _launcherService.GameExited += _onGameExited;
+        _launcherService.ProgressChanged += OnProgressChanged;
+        _launcherService.ProgressCompleted += OnProgressCompleted;
         IsGameRunning = launcherService.IsGameRunning;
 
         ClearLogCommand = new RelayCommand(_ => ClearLog());
@@ -103,6 +140,28 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         App.Current.Dispatcher.BeginInvoke(() =>
         {
             AddLogEvent(logEvent);
+        });
+    }
+
+    private void OnProgressChanged(double pct, string msg)
+    {
+        App.Current.Dispatcher.BeginInvoke(() =>
+        {
+            IsDownloading = true;
+            IsIndeterminate = pct < 0;
+            ProgressPercent = pct >= 0 ? $"{Math.Floor(pct):0}%" : string.Empty;
+            if (pct >= 0)
+                DownloadProgress = pct;
+            ProgressText = msg;
+        });
+    }
+
+    private void OnProgressCompleted()
+    {
+        App.Current.Dispatcher.BeginInvoke(() =>
+        {
+            IsDownloading = false;
+            IsIndeterminate = false;
         });
     }
 
@@ -217,5 +276,7 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
     {
         _logService.LogReceived -= OnLogReceived;
         _launcherService.GameExited -= _onGameExited;
+        _launcherService.ProgressChanged -= OnProgressChanged;
+        _launcherService.ProgressCompleted -= OnProgressCompleted;
     }
 }

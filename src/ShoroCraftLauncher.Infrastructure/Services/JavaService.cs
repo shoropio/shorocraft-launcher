@@ -116,6 +116,14 @@ public class JavaService : IJavaService
         try
         {
             var launcher = new CmlLib.Core.MinecraftLauncher(minecraftPath);
+            if (progress != null)
+            {
+                launcher.FileProgressChanged += (_, e) =>
+                {
+                    if (e.TotalTasks > 0)
+                        progress.Report((double)e.ProgressedTasks / e.TotalTasks * 100);
+                };
+            }
             await launcher.InstallAsync(minecraftVersion);
             var binPath = path.GetJavaBinaryPath(javaVer, new CmlLib.Core.Rules.RulesEvaluatorContext(CmlLib.Core.Rules.LauncherOSRule.Current));
             return File.Exists(binPath) ? binPath : string.Empty;

@@ -156,15 +156,23 @@ public class ModService : IModService
         string fileName;
         string modVersion;
         long fileSize;
+        IReadOnlyList<ModrinthDependency>? dependencies = null;
 
         if (provider.Equals("CurseForge", StringComparison.OrdinalIgnoreCase))
             (downloadUrl, fileName, modVersion, fileSize) = await ResolveCurseForgeDownloadAsync(searchResult, profile);
         else
-            (downloadUrl, fileName, modVersion, fileSize) = await ResolveModrinthDownloadAsync(searchResult, profile);
+        {
+            var resolved = await ResolveModrinthDownloadAsync(searchResult, profile);
+            downloadUrl = resolved.Url;
+            fileName = resolved.FileName;
+            modVersion = resolved.Version;
+            fileSize = resolved.Size;
+            dependencies = resolved.Dependencies;
+        }
 
         var destPath = Path.Combine(modsDir, fileName);
 
-        if (File.Exists(destPath))
+        if (File.Exists(destPath) || File.Exists(destPath + ".disabled"))
             throw new Exception($"El mod '{fileName}' ya existe en este perfil.");
 
         _logger.LogInformation("Downloading mod from {Url}", downloadUrl);
@@ -190,6 +198,10 @@ public class ModService : IModService
         await _modRepository.CreateAsync(mod);
         _logger.LogInformation("Mod {Name} installed from {Provider}", mod.Name, provider);
         _logService.Info("ModService", "InstallFromSearch", $"'{searchResult.Name}' instalado correctamente.");
+
+        if (dependencies is { Count: > 0 })
+            await InstallRequiredDependenciesAsync(profileId, modsDir, profile, dependencies);
+
         return mod;
     }
 
@@ -200,15 +212,13 @@ public class ModService : IModService
         return $"{bytes / (1024.0 * 1024.0):F2} MB";
     }
 
-    private async Task<(string url, string fileName, string version, long size)> ResolveModrinthDownloadAsync(Mod searchResult, Profile profile)
+    private async Task<ModrinthVersionInfo> ResolveModrinthDownloadAsync(Mod searchResult, Profile profile)
     {
         var projectId = searchResult.FileName;
-        var url = $"https://api.modrinth.com/v2/project/{projectId}/version";
+        var projectSlug = await GetProjectSlugAsync(projectId);
+        EnsureUserAgent();
 
-        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
-
-        var response = await _httpClient.GetAsync(url);
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
@@ -217,37 +227,251 @@ public class ModService : IModService
         var loader = profile.Type.ToString().ToLowerInvariant();
         var mcVersion = profile.MinecraftVersion;
 
+        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true);
+        if (resolved == null)
+        {
+            _logService.Warning("ModService", "ResolveVersion",
+                $"No hay versión estable de '{searchResult.Name}' para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
+            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+        }
+
+        if (resolved == null)
+            throw new Exception($"No se encontró una versión de '{searchResult.Name}' compatible con Minecraft {mcVersion} ({loader}).");
+
+        return resolved with { ProjectSlug = projectSlug };
+    }
+
+    private static ModrinthVersionInfo? FindBestVersion(
+        System.Text.Json.JsonDocument doc,
+        string mcVersion,
+        string loader,
+        string projectId,
+        bool preferRelease)
+    {
         foreach (var version in doc.RootElement.EnumerateArray())
         {
-            var gameVersions = version.GetProperty("game_versions");
+            if (preferRelease)
+            {
+                var versionType = version.TryGetProperty("version_type", out var vt) ? vt.GetString() : null;
+                if (!string.Equals(versionType, "release", StringComparison.OrdinalIgnoreCase))
+                    continue;
+            }
+
             bool matchesMc = false;
-            foreach (var gv in gameVersions.EnumerateArray())
+            foreach (var gv in version.GetProperty("game_versions").EnumerateArray())
             {
                 if (gv.GetString() == mcVersion) { matchesMc = true; break; }
             }
             if (!matchesMc) continue;
 
-            var loaders = version.GetProperty("loaders");
             bool matchesLoader = false;
-            foreach (var l in loaders.EnumerateArray())
+            foreach (var l in version.GetProperty("loaders").EnumerateArray())
             {
                 if (l.GetString() == loader) { matchesLoader = true; break; }
             }
             if (!matchesLoader) continue;
 
             var files = version.GetProperty("files");
-            if (files.GetArrayLength() > 0)
-            {
-                var file = files[0];
-                var fileUrl = file.GetProperty("url").GetString() ?? "";
-                var fName = file.GetProperty("filename").GetString() ?? $"{projectId}.jar";
-                var fSize = file.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
-                var vStr = version.GetProperty("version_number").GetString() ?? "unknown";
-                return (fileUrl, fName, vStr, fSize);
-            }
+            if (files.GetArrayLength() == 0) continue;
+
+            var file = files[0];
+            var fileUrl = file.GetProperty("url").GetString() ?? "";
+            var fName = file.GetProperty("filename").GetString() ?? $"{projectId}.jar";
+            var fSize = file.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
+            var vStr = version.GetProperty("version_number").GetString() ?? "unknown";
+            return new ModrinthVersionInfo(fileUrl, fName, vStr, fSize, string.Empty, ParseDependencies(version));
         }
 
-        throw new Exception($"No se encontró una versión de '{searchResult.Name}' compatible con Minecraft {mcVersion} ({loader}).");
+        return null;
+    }
+
+    private static ModrinthVersionInfo? FindVersionById(System.Text.Json.JsonDocument doc, string versionId)
+    {
+        foreach (var version in doc.RootElement.EnumerateArray())
+        {
+            if (!string.Equals(
+                    version.TryGetProperty("id", out var id) ? id.GetString() : null,
+                    versionId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var files = version.GetProperty("files");
+            if (files.GetArrayLength() == 0) continue;
+
+            var file = files[0];
+            return new ModrinthVersionInfo(
+                file.GetProperty("url").GetString() ?? "",
+                file.GetProperty("filename").GetString() ?? "",
+                version.GetProperty("version_number").GetString() ?? "unknown",
+                file.TryGetProperty("size", out var s) ? s.GetInt64() : 0L,
+                string.Empty,
+                ParseDependencies(version));
+        }
+
+        return null;
+    }
+
+    private static List<ModrinthDependency> ParseDependencies(System.Text.Json.JsonElement version)
+    {
+        var list = new List<ModrinthDependency>();
+        if (!version.TryGetProperty("dependencies", out var dependencies)) return list;
+        foreach (var d in dependencies.EnumerateArray())
+        {
+            var projectId = d.TryGetProperty("project_id", out var p) ? p.GetString() : null;
+            if (string.IsNullOrWhiteSpace(projectId)) continue;
+            var versionId = d.TryGetProperty("version_id", out var v) ? v.GetString() : null;
+            var depType = d.TryGetProperty("dependency_type", out var t) ? t.GetString() : null;
+            list.Add(new ModrinthDependency(projectId, versionId ?? "", depType ?? ""));
+        }
+        return list;
+    }
+
+    private async Task<string> GetProjectSlugAsync(string projectId)
+        => (await GetProjectInfoAsync(projectId)).slug;
+
+    private async Task<(string slug, string title, string icon)> GetProjectInfoAsync(string projectId)
+    {
+        try
+        {
+            EnsureUserAgent();
+            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}");
+            response.EnsureSuccessStatusCode();
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = doc.RootElement;
+            var slug = root.TryGetProperty("slug", out var s) ? s.GetString() ?? projectId : projectId;
+            var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? projectId : projectId;
+            var icon = root.TryGetProperty("icon_url", out var i) ? i.GetString() ?? string.Empty : string.Empty;
+            return (slug, title, icon);
+        }
+        catch
+        {
+            return (projectId, projectId, string.Empty);
+        }
+    }
+
+    private void EnsureUserAgent()
+    {
+        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+    }
+
+    private async Task InstallRequiredDependenciesAsync(int profileId, string modsDir, Profile profile, IReadOnlyList<ModrinthDependency> dependencies)
+    {
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, dependencies, visited);
+    }
+
+    private async Task InstallDependenciesRecursiveAsync(int profileId, string modsDir, Profile profile, IReadOnlyList<ModrinthDependency> dependencies, HashSet<string> visited)
+    {
+        foreach (var dep in dependencies.Where(d => d.DependencyType.Equals("required", StringComparison.OrdinalIgnoreCase)))
+            await InstallDependencyAsync(profileId, modsDir, profile, dep, visited);
+    }
+
+    private async Task InstallDependencyAsync(int profileId, string modsDir, Profile profile, ModrinthDependency dependency, HashSet<string> visited)
+    {
+        if (dependency.DependencyType.Equals("incompatible", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (!visited.Add(dependency.ProjectId))
+            return;
+
+        var (slug, title, icon) = await GetProjectInfoAsync(dependency.ProjectId);
+        var resolved = await ResolveDependencyVersionAsync(dependency.ProjectId, dependency.VersionId, profile);
+        if (resolved == null)
+        {
+            _logService.Warning("ModService", "InstallDependency",
+                $"No se encontró una versión compatible de la dependencia '{title}' para Minecraft {profile.MinecraftVersion} ({profile.Type}).");
+            return;
+        }
+
+        var destPath = Path.Combine(modsDir, resolved.FileName);
+
+        if (File.Exists(destPath) || File.Exists(destPath + ".disabled"))
+        {
+            _logService.Info("ModService", "InstallDependency", $"La dependencia '{title}' ya está instalada ({resolved.FileName}).");
+            await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited);
+            return;
+        }
+
+        var existing = (await _modRepository.GetByProfileIdAsync(profileId))
+            .FirstOrDefault(m => StartsWithModSlug(m.FileName, slug));
+        if (existing != null)
+        {
+            try
+            {
+                if (File.Exists(existing.FilePath)) File.Delete(existing.FilePath);
+                var disabledPath = existing.FilePath + ".disabled";
+                if (File.Exists(disabledPath)) File.Delete(disabledPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete outdated dependency file {Path}", existing.FilePath);
+            }
+            await _modRepository.DeleteAsync(existing.Id);
+            _logService.Info("ModService", "InstallDependency",
+                $"Reemplazando '{existing.FileName}' por la versión requerida '{resolved.FileName}'.");
+        }
+
+        _logService.Info("ModService", "InstallDependency", $"Instalando dependencia '{title}' ({resolved.FileName})...");
+        var bytes = await _httpClient.GetByteArrayAsync(resolved.Url);
+        await File.WriteAllBytesAsync(destPath, bytes);
+
+        var mod = new Mod
+        {
+            ProfileId = profileId,
+            Name = title,
+            FileName = resolved.FileName,
+            FilePath = destPath,
+            FileSizeBytes = resolved.Size > 0 ? resolved.Size : bytes.Length,
+            MinecraftVersion = profile.MinecraftVersion,
+            ModVersion = resolved.Version,
+            IconPath = icon,
+            Description = "Instalado automáticamente como dependencia.",
+            Status = ModStatus.Active
+        };
+        await _modRepository.CreateAsync(mod);
+        _logService.Info("ModService", "InstallDependency", $"Dependencia '{title}' instalada correctamente.");
+
+        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited);
+    }
+
+    private async Task<ModrinthVersionInfo?> ResolveDependencyVersionAsync(string projectId, string versionId, Profile profile)
+    {
+        EnsureUserAgent();
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
+        if (!response.IsSuccessStatusCode) return null;
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+        var loader = profile.Type.ToString().ToLowerInvariant();
+        var mcVersion = profile.MinecraftVersion;
+
+        if (!string.IsNullOrEmpty(versionId))
+        {
+            return FindVersionById(doc, versionId)
+                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true)
+                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+        }
+
+        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true);
+        if (resolved == null)
+        {
+            _logService.Warning("ModService", "ResolveVersion",
+                $"No hay versión estable de la dependencia para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
+            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+        }
+
+        return resolved;
+    }
+
+    private static bool StartsWithModSlug(string fileName, string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return false;
+        return fileName.StartsWith(slug + "-", StringComparison.OrdinalIgnoreCase)
+            || fileName.StartsWith(slug + "_", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<(string url, string fileName, string version, long size)> ResolveCurseForgeDownloadAsync(Mod searchResult, Profile profile)
@@ -332,7 +556,7 @@ public class ModService : IModService
         var fileName = Path.GetFileName(sourceFilePath);
         var destPath = Path.Combine(modsDir, fileName);
 
-        if (File.Exists(destPath))
+        if (File.Exists(destPath) || File.Exists(destPath + ".disabled"))
             throw new Exception($"El mod '{fileName}' ya existe en este perfil.");
 
         File.Copy(sourceFilePath, destPath, false);
@@ -361,7 +585,30 @@ public class ModService : IModService
         var mod = await _modRepository.GetByIdAsync(modId)
             ?? throw new Exception($"Mod {modId} not found");
 
-        mod.Status = mod.Status == ModStatus.Active ? ModStatus.Inactive : ModStatus.Active;
+        if (mod.Status == ModStatus.Active)
+        {
+            var disabledPath = mod.FilePath + ".disabled";
+            if (File.Exists(mod.FilePath))
+            {
+                File.Move(mod.FilePath, disabledPath);
+                mod.FilePath = disabledPath;
+            }
+            mod.Status = ModStatus.Inactive;
+        }
+        else
+        {
+            var activePath = mod.FilePath.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                ? mod.FilePath[..^".disabled".Length]
+                : mod.FilePath;
+            if (!string.Equals(mod.FilePath, activePath, StringComparison.OrdinalIgnoreCase)
+                && File.Exists(mod.FilePath))
+            {
+                File.Move(mod.FilePath, activePath);
+                mod.FilePath = activePath;
+            }
+            mod.Status = ModStatus.Active;
+        }
+
         await _modRepository.UpdateAsync(mod);
         _logger.LogInformation("Mod {Name} toggled to {Status}", mod.Name, mod.Status);
         _logService.Info("ModService", "ToggleMod", $"Mod '{mod.Name}' {(mod.Status == ModStatus.Active ? "activado" : "desactivado")}.");

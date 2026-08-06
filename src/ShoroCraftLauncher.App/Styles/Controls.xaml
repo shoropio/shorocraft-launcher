@@ -70,12 +70,38 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="0">
-                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="0">
-                            <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}"
-                                       HorizontalAlignment="Left" RadiusX="0" RadiusY="0" />
-                        </Border>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="0" />
+                        <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}"
+                                   HorizontalAlignment="Left" RadiusX="0" RadiusY="0" />
+                        <Grid x:Name="PART_GlowRect" HorizontalAlignment="Left" Width="240"
+                              Visibility="Collapsed">
+                            <Grid.RenderTransform>
+                                <TranslateTransform />
+                            </Grid.RenderTransform>
+                            <Rectangle Fill="{TemplateBinding Foreground}" RadiusX="0" RadiusY="0" Opacity="0.4" />
+                        </Grid>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsIndeterminate" Value="True">
+                            <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="PART_GlowRect" Property="Visibility" Value="Visible" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="GlowAnimation">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PART_GlowRect"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                         From="-240" To="2000"
+                                                         Duration="0:0:1.6"
+                                                         RepeatBehavior="Forever" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="GlowAnimation" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

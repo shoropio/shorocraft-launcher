@@ -274,15 +274,15 @@ public class MainViewModel : BaseViewModel, IDisposable
         {
             IsGameRunning = true;
             StatusMessage = $"Juego iniciado (PID: {result.ProcessId})";
+            IsDownloading = false;
+            DownloadProgress = 0;
+            DownloadStatus = string.Empty;
         }
         else
         {
             StatusMessage = $"Error: {result.ErrorMessage}";
         }
 
-        IsDownloading = false;
-        DownloadProgress = 0;
-        DownloadStatus = string.Empty;
         IsBusy = false;
     }
 

@@ -18,6 +18,7 @@ public class LauncherService : ILauncherService
 
     public event Action<string>? LogOutput;
     public event Action<double, string>? ProgressChanged;
+    public event Action? ProgressCompleted;
     public event Action? GameExited;
     public bool IsGameRunning => _gameProcess is { HasExited: false };
     public IReadOnlyList<string> LogHistory
@@ -84,7 +85,14 @@ public class LauncherService : ILauncherService
                 {
                     _logger.LogInformation("Recommended Java not found, starting auto-download");
                     Log("[INFO] Descargando Java necesario para esta versión...");
-                    recommended = await _javaService.DownloadJavaForVersionAsync(profile.MinecraftVersion);
+                    recommended = await _javaService.DownloadJavaForVersionAsync(
+                        profile.MinecraftVersion,
+                        new Progress<double>(pct =>
+                        {
+                            var msg = $"Descargando Java necesario... {pct:0}%";
+                            Log($"[INFO] {msg}");
+                            ProgressChanged?.Invoke(pct, msg);
+                        }));
                 }
                 
                 if (string.IsNullOrEmpty(recommended))
@@ -157,6 +165,7 @@ public class LauncherService : ILauncherService
 
             _logger.LogInformation("Game launched with PID {ProcessId}", process.Id);
             _logService?.Info("Launch", "ProcessStarted", "Minecraft iniciado.", new { process.Id });
+            ProgressCompleted?.Invoke();
             return new LaunchResult
             {
                 Success = true,
