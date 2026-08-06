@@ -9,7 +9,6 @@
                 <ResourceDictionary Source="Styles/Controls.xaml" />
                 <ResourceDictionary Source="Converters/Converters.xaml" />
                 <ResourceDictionary Source="Styles/DataTemplates.xaml" />
-                <ResourceDictionary Source="Locales/es-ES.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

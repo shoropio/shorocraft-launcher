@@ -32,9 +32,10 @@ public class MinecraftService : IMinecraftService
 
     public string GetDefaultGameDirectory(string profileName)
     {
+        var safeName = SanitizeFolderName(profileName);
         return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            ".minecraft");
+            ".minecraft", safeName);
     }
 
     public string GetModsDirectory(string gameDir) => Path.Combine(gameDir, "mods");

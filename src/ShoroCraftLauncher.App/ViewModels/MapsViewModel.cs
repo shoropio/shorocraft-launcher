@@ -10,12 +10,14 @@ namespace ShoroCraftLauncher.App.ViewModels;
 public class MapsViewModel : BaseViewModel
 {
     private readonly IGameMapService _mapService;
-    private readonly IProfileRepository _profileRepo;
     private readonly ILogger<MapsViewModel> _logger;
     private readonly ILogService _logService;
+    private readonly IDialogService _dialogService;
 
     public ObservableCollection<GameMap> Maps { get; } = new();
-    public ObservableCollection<Profile> Profiles { get; } = new();
+    public ObservableCollection<Profile> Profiles => _profileService.Profiles;
+
+    private readonly IProfileService _profileService;
 
     private Profile? _selectedProfile;
     public Profile? SelectedProfile
@@ -35,12 +37,14 @@ public class MapsViewModel : BaseViewModel
 
     public MapsViewModel(
         IGameMapService mapService,
-        IProfileRepository profileRepo,
+        IProfileService profileService,
+        IDialogService dialogService,
         ILogger<MapsViewModel> logger,
         ILogService logService)
     {
         _mapService = mapService;
-        _profileRepo = profileRepo;
+        _profileService = profileService;
+        _dialogService = dialogService;
         _logger = logger;
         _logService = logService;
 
@@ -49,15 +53,7 @@ public class MapsViewModel : BaseViewModel
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder());
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadMapsAsync(SelectedProfile.Id); });
 
-        _ = LoadProfilesAsync();
-    }
-
-    private async Task LoadProfilesAsync()
-    {
-        var profiles = await _profileRepo.GetAllAsync();
-        Profiles.Clear();
-        foreach (var p in profiles) Profiles.Add(p);
-        SelectedProfile = profiles.FirstOrDefault();
+        SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
     private async Task LoadMapsAsync(int profileId)
@@ -81,34 +77,30 @@ public class MapsViewModel : BaseViewModel
     private async Task AddMap()
     {
         if (SelectedProfile == null) return;
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Mapas (*.zip;*.mcworld)|*.zip;*.mcworld",
-            Multiselect = true,
-            Title = "Seleccionar mapas"
-        };
+        var files = _dialogService.ShowOpenFileDialog(
+            "Mapas (*.zip;*.mcworld)|*.zip;*.mcworld",
+            "Seleccionar mapas",
+            multiselect: true);
+        if (files == null) return;
 
-        if (dialog.ShowDialog() == true)
+        IsBusy = true;
+        var added = 0;
+        foreach (var file in files)
         {
-            IsBusy = true;
-            var added = 0;
-            foreach (var file in dialog.FileNames)
+            try
             {
-                try
-                {
-                    await _mapService.AddMapAsync(SelectedProfile.Id, file);
-                    added++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to add map {File}", file);
-                    StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
-                }
+                await _mapService.AddMapAsync(SelectedProfile.Id, file);
+                added++;
             }
-            await LoadMapsAsync(SelectedProfile.Id);
-            StatusMessage = $"{added} mapas agregados.";
-            IsBusy = false;
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to add map {File}", file);
+                StatusMessage = $"Error al agregar {Path.GetFileName(file)}: {ex.Message}";
+            }
         }
+        await LoadMapsAsync(SelectedProfile.Id);
+        StatusMessage = $"{added} mapas agregados.";
+        IsBusy = false;
     }
 
     private async Task RemoveMap(object? mapId)

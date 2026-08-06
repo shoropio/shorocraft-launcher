@@ -36,7 +36,7 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+        <Grid Grid.Column="1" Margin="0,0,18,0" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -92,6 +92,7 @@
             <Grid Grid.Row="4">
                 <ListBox ItemsSource="{Binding Mods}"
                          Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource FlushListBoxItem}"
                          Visibility="{Binding IsSearching, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -104,11 +105,11 @@
                                     <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
-                                        <WrapPanel Margin="0,6,0,0">
-                                            <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
-                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="0,0,14,0" />
-                                            <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" />
-                                        </WrapPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                                            <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="18,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" Margin="18,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
@@ -129,6 +130,7 @@
                 <!-- Search Results -->
                 <ListBox ItemsSource="{Binding SearchResults}"
                          Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource FlushListBoxItem}"
                          Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>

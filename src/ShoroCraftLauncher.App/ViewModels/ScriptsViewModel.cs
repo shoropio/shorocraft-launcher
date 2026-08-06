@@ -10,11 +10,13 @@ namespace ShoroCraftLauncher.App.ViewModels;
 public class ScriptsViewModel : BaseViewModel
 {
     private readonly IScriptService _scriptService;
-    private readonly IProfileRepository _profileRepo;
     private readonly ILogger<ScriptsViewModel> _logger;
+    private readonly IDialogService _dialogService;
 
     public ObservableCollection<Script> Scripts { get; } = new();
-    public ObservableCollection<Profile> Profiles { get; } = new();
+    public ObservableCollection<Profile> Profiles => _profileService.Profiles;
+
+    private readonly IProfileService _profileService;
 
     private Profile? _selectedProfile;
     public Profile? SelectedProfile
@@ -51,26 +53,20 @@ public class ScriptsViewModel : BaseViewModel
 
     public ScriptsViewModel(
         IScriptService scriptService,
-        IProfileRepository profileRepo,
+        IProfileService profileService,
+        IDialogService dialogService,
         ILogger<ScriptsViewModel> logger)
     {
         _scriptService = scriptService;
-        _profileRepo = profileRepo;
+        _profileService = profileService;
+        _dialogService = dialogService;
         _logger = logger;
 
         ImportScriptCommand = new RelayCommand(async _ => await ImportScript());
         SaveScriptCommand = new RelayCommand(async _ => await SaveScript(), _ => SelectedScript != null);
         DeleteScriptCommand = new RelayCommand(async _ => await DeleteScript(), _ => SelectedScript != null);
 
-        _ = LoadProfilesAsync();
-    }
-
-    private async Task LoadProfilesAsync()
-    {
-        var profiles = await _profileRepo.GetAllAsync();
-        Profiles.Clear();
-        foreach (var p in profiles) Profiles.Add(p);
-        SelectedProfile = profiles.FirstOrDefault();
+        SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
     private async Task LoadScriptsAsync(int profileId)
@@ -107,28 +103,24 @@ public class ScriptsViewModel : BaseViewModel
     private async Task ImportScript()
     {
         if (SelectedProfile == null) return;
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Todos los archivos (*.*)|*.*",
-            Multiselect = false,
-            Title = "Seleccionar archivo de configuración/script"
-        };
+        var files = _dialogService.ShowOpenFileDialog(
+            "Todos los archivos (*.*)|*.*",
+            "Seleccionar archivo de configuración/script",
+            multiselect: false);
+        if (files == null) return;
 
-        if (dialog.ShowDialog() == true)
+        IsBusy = true;
+        try
         {
-            IsBusy = true;
-            try
-            {
-                await _scriptService.ImportScriptAsync(SelectedProfile.Id, dialog.FileName);
-                await LoadScriptsAsync(SelectedProfile.Id);
-                StatusMessage = "Script importado.";
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Error: {ex.Message}";
-            }
-            IsBusy = false;
+            await _scriptService.ImportScriptAsync(SelectedProfile.Id, files[0]);
+            await LoadScriptsAsync(SelectedProfile.Id);
+            StatusMessage = "Script importado.";
         }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        IsBusy = false;
     }
 
     private async Task SaveScript()

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Net.Http;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,7 +83,7 @@ public partial class App : Application
                     options.UseSqlite($"Data Source={dbPath}"));
 
                 services.AddSingleton<DbInitializer>();
-                services.AddHttpClient();
+                services.AddSingleton(new HttpClient());
 
                 services.AddSingleton<IProfileRepository, ProfileRepository>();
                 services.AddSingleton<IModRepository, ModRepository>();
@@ -127,6 +129,13 @@ public partial class App : Application
         try
         {
             base.OnStartup(e);
+
+            var culture = CultureInfo.CurrentUICulture;
+            var locale = culture.Name.StartsWith("es")
+                ? "Locales/es-ES.xaml"
+                : "Locales/en-US.xaml";
+            var localeDict = new ResourceDictionary { Source = new Uri(locale, UriKind.Relative) };
+            Resources.MergedDictionaries.Add(localeDict);
 
             await _host.StartAsync();
             _logService = _host.Services.GetRequiredService<ILogService>();

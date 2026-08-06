@@ -6,10 +6,12 @@ using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class ConsoleViewModel : BaseViewModel
+public class ConsoleViewModel : BaseViewModel, IDisposable
 {
     private readonly ILogService _logService;
+    private readonly ILauncherService _launcherService;
     private readonly List<LogEvent> _allEvents = new();
+    private readonly Action _onGameExited;
 
     public ObservableCollection<string> LogLines { get; } = new();
     public ObservableCollection<string> LevelFilters { get; } = new() { "Todos", "Trace", "Debug", "Info", "Warning", "Error", "Critical" };
@@ -62,13 +64,15 @@ public class ConsoleViewModel : BaseViewModel
     public ConsoleViewModel(ILogService logService, ILauncherService launcherService)
     {
         _logService = logService;
+        _launcherService = launcherService;
 
         foreach (var logEvent in _logService.RecentEvents)
             AddLogEvent(logEvent, refresh: false);
         ApplyFilters();
 
         _logService.LogReceived += OnLogReceived;
-        launcherService.GameExited += () => IsGameRunning = false;
+        _onGameExited = () => IsGameRunning = false;
+        _launcherService.GameExited += _onGameExited;
         IsGameRunning = launcherService.IsGameRunning;
 
         ClearLogCommand = new RelayCommand(_ => ClearLog());
@@ -131,9 +135,9 @@ public class ConsoleViewModel : BaseViewModel
         LogLines.Clear();
         foreach (var logEvent in _allEvents.Where(PassesFilters).TakeLast(1000))
         {
-            var cleaned = CleanLogLine(FormatLogEvent(logEvent));
-            if (string.IsNullOrWhiteSpace(cleaned) && cleaned.Contains("log4j")) continue;
-            if (string.IsNullOrWhiteSpace(cleaned)) continue;
+            var formatted = FormatLogEvent(logEvent);
+            var cleaned = CleanLogLine(formatted);
+            if (string.IsNullOrWhiteSpace(cleaned) || formatted.Contains("log4j")) continue;
             LogLines.Add(cleaned);
         }
 
@@ -207,5 +211,11 @@ public class ConsoleViewModel : BaseViewModel
             System.Windows.Clipboard.SetText(text);
             StatusMessage = "Errores y advertencias copiados.";
         }
+    }
+
+    public void Dispose()
+    {
+        _logService.LogReceived -= OnLogReceived;
+        _launcherService.GameExited -= _onGameExited;
     }
 }

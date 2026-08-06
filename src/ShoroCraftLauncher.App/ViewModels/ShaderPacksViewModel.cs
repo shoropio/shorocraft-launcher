@@ -10,11 +10,13 @@ namespace ShoroCraftLauncher.App.ViewModels;
 public class ShaderPacksViewModel : BaseViewModel
 {
     private readonly IShaderPackService _packService;
-    private readonly IProfileRepository _profileRepo;
     private readonly ILogger<ShaderPacksViewModel> _logger;
+    private readonly IDialogService _dialogService;
 
     public ObservableCollection<ShaderPack> Packs { get; } = new();
-    public ObservableCollection<Profile> Profiles { get; } = new();
+    public ObservableCollection<Profile> Profiles => _profileService.Profiles;
+
+    private readonly IProfileService _profileService;
 
     private Profile? _selectedProfile;
     public Profile? SelectedProfile
@@ -42,11 +44,13 @@ public class ShaderPacksViewModel : BaseViewModel
 
     public ShaderPacksViewModel(
         IShaderPackService packService,
-        IProfileRepository profileRepo,
+        IProfileService profileService,
+        IDialogService dialogService,
         ILogger<ShaderPacksViewModel> logger)
     {
         _packService = packService;
-        _profileRepo = profileRepo;
+        _profileService = profileService;
+        _dialogService = dialogService;
         _logger = logger;
 
         AddPackCommand = new RelayCommand(async _ => await AddPack());
@@ -55,15 +59,7 @@ public class ShaderPacksViewModel : BaseViewModel
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder());
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id); });
 
-        _ = LoadProfilesAsync();
-    }
-
-    private async Task LoadProfilesAsync()
-    {
-        var profiles = await _profileRepo.GetAllAsync();
-        Profiles.Clear();
-        foreach (var p in profiles) Profiles.Add(p);
-        SelectedProfile = profiles.FirstOrDefault();
+        SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
     private async Task LoadPacksAsync(int profileId)
@@ -92,26 +88,22 @@ public class ShaderPacksViewModel : BaseViewModel
     private async Task AddPack()
     {
         if (SelectedProfile == null) return;
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Shader Packs (*.zip)|*.zip",
-            Multiselect = true,
-            Title = "Seleccionar shader packs"
-        };
+        var files = _dialogService.ShowOpenFileDialog(
+            "Shader Packs (*.zip)|*.zip",
+            "Seleccionar shader packs",
+            multiselect: true);
+        if (files == null) return;
 
-        if (dialog.ShowDialog() == true)
+        IsBusy = true;
+        var added = 0;
+        foreach (var file in files)
         {
-            IsBusy = true;
-            var added = 0;
-            foreach (var file in dialog.FileNames)
-            {
-                try { await _packService.AddPackAsync(SelectedProfile.Id, file); added++; }
-                catch (Exception ex) { _logger.LogWarning(ex, "Failed to add shader"); }
-            }
-            await LoadPacksAsync(SelectedProfile.Id);
-            StatusMessage = $"{added} shaders agregados.";
-            IsBusy = false;
+            try { await _packService.AddPackAsync(SelectedProfile.Id, file); added++; }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to add shader"); }
         }
+        await LoadPacksAsync(SelectedProfile.Id);
+        StatusMessage = $"{added} shaders agregados.";
+        IsBusy = false;
     }
 
     private async Task TogglePack(object? packId)

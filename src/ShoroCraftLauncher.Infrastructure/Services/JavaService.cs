@@ -97,24 +97,34 @@ public class JavaService : IJavaService
     public async Task<string> DownloadJavaForVersionAsync(string minecraftVersion, IProgress<double>? progress = null)
     {
         _logger.LogInformation("Downloading Java for Minecraft {Version}", minecraftVersion);
-        
-        var javaDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "java");
 
-        var minecraftPath = new CmlLib.Core.MinecraftPath(); // Default path for versions
-        var launcher = new CmlLib.Core.MinecraftLauncher(minecraftPath);
-        
-        // This is a simplified version. CmlLib.Core has internal logic to decide which Java to download.
-        // We'll use the runtime handler.
-        return string.Empty;
-        /*
-        var javaHandler = new CmlLib.Core.Java.MinecraftJavaRuntime(minecraftPath);
-        var major = ParseVersion(minecraftVersion);
+        var major = await GetRecommendedJavaMajorAsync(minecraftVersion);
         var component = major >= 21 ? "java-runtime-delta" : major >= 17 ? "java-runtime-alpha" : "jre-legacy";
-        var javaPath = await javaHandler.CheckAndDownloadAsync(component);
-        return javaPath;
-        */
+
+        var minecraftPath = new CmlLib.Core.MinecraftPath();
+        var path = new CmlLib.Core.Java.MinecraftJavaPathResolver(minecraftPath);
+        var javaVer = new CmlLib.Core.Java.JavaVersion(component);
+
+        try
+        {
+            var binPath = path.GetJavaBinaryPath(javaVer, new CmlLib.Core.Rules.RulesEvaluatorContext(CmlLib.Core.Rules.LauncherOSRule.Current));
+            if (File.Exists(binPath))
+                return binPath;
+        }
+        catch { }
+
+        try
+        {
+            var launcher = new CmlLib.Core.MinecraftLauncher(minecraftPath);
+            await launcher.InstallAsync(minecraftVersion);
+            var binPath = path.GetJavaBinaryPath(javaVer, new CmlLib.Core.Rules.RulesEvaluatorContext(CmlLib.Core.Rules.LauncherOSRule.Current));
+            return File.Exists(binPath) ? binPath : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to download Java for component {Component}", component);
+            return string.Empty;
+        }
     }
 
     public async Task<JavaInfo?> DownloadJavaAsync(IProgress<double>? progress = null)
