@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -8,7 +7,6 @@ namespace ShoroCraftLauncher.Infrastructure.Authentication;
 public class AuthenticationService : IAuthenticationService
 {
     private readonly ILogger<AuthenticationService> _logger;
-    private const string CredentialTarget = "ShoroCraftLauncher_Minecraft";
 
     public AuthenticationService(ILogger<AuthenticationService> logger)
     {
@@ -56,31 +54,101 @@ public class AuthenticationService : IAuthenticationService
                 };
             }
 
-            return new AuthResult { Success = false, ErrorMessage = "Inicio de sesion cancelado o fallido." };
-        } catch (Exception ex) {
+            return new AuthResult { Success = false, ErrorMessage = "Inicio de sesión cancelado o fallido." };
+        }
+        catch (Exception ex)
+        {
+            if (IsCancellation(ex))
+            {
+                _logger.LogInformation("Microsoft authentication canceled by user");
+                return new AuthResult { Success = false, ErrorMessage = "Inicio de sesión Microsoft cancelado." };
+            }
+
             _logger.LogError(ex, "Microsoft authentication failed");
             return new AuthResult { Success = false, ErrorMessage = GetFriendlyMicrosoftAuthError(ex) };
         }
     }
 
+    public async Task<AuthResult> AuthenticateSilentlyAsync()
+    {
+        _logger.LogInformation("Attempting silent Microsoft authentication");
+
+        try
+        {
+            var loginHandler = new CmlLib.Core.Auth.Microsoft.JELoginHandlerBuilder()
+                .Build();
+
+            var session = await loginHandler.AuthenticateSilently();
+            if (session != null)
+            {
+                return new AuthResult
+                {
+                    Success = true,
+                    AccessToken = session.AccessToken,
+                    Uuid = session.UUID,
+                    Username = session.Username
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("Silent Microsoft authentication failed: {Message}", ex.Message);
+        }
+
+        return new AuthResult { Success = false, ErrorMessage = "No hay sesión guardada." };
+    }
+
+    private static bool IsCancellation(Exception ex)
+    {
+        foreach (var inner in Flatten(ex))
+        {
+            if (inner is OperationCanceledException) return true;
+        }
+        return false;
+    }
+
+    private static IEnumerable<Exception> Flatten(Exception ex)
+    {
+        if (ex is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+            {
+                foreach (var nested in Flatten(inner))
+                    yield return nested;
+            }
+        }
+        else
+        {
+            yield return ex;
+            if (ex.InnerException != null)
+            {
+                foreach (var nested in Flatten(ex.InnerException))
+                    yield return nested;
+            }
+        }
+    }
+
     private static string GetFriendlyMicrosoftAuthError(Exception ex)
     {
-        if (ex.GetType().Name == "JEAuthException" &&
-            ex.Message.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+        var messages = Flatten(ex).Select(e => e.Message);
+
+        if ((ex.GetType().Name == "JEAuthException" &&
+             messages.Any(m => m.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase))) ||
+            messages.Any(m => m.Contains("Java edition not owned", StringComparison.OrdinalIgnoreCase)))
         {
             return "Esta cuenta no tiene Minecraft Java activo.";
         }
 
-        if (ex.Message.Contains("default WebUI", StringComparison.OrdinalIgnoreCase) ||
-            ex.Message.Contains("WebView", StringComparison.OrdinalIgnoreCase))
+        if (messages.Any(m => m.Contains("default WebUI", StringComparison.OrdinalIgnoreCase) ||
+                              m.Contains("WebView", StringComparison.OrdinalIgnoreCase)))
         {
-            return "No se pudo abrir la ventana de inicio de sesion Microsoft. Verifica que Microsoft Edge WebView2 este instalado.";
+            return "No se pudo abrir la ventana de inicio de sesión Microsoft. Verifica que Microsoft Edge WebView2 esté instalado.";
         }
 
-        if (ex.Message.Contains("cancel", StringComparison.OrdinalIgnoreCase))
-            return "Inicio de sesion Microsoft cancelado.";
+        if (messages.Any(m => m.Contains("cancel", StringComparison.OrdinalIgnoreCase)))
+            return "Inicio de sesión Microsoft cancelado.";
 
-        return "No se pudo iniciar sesion con Microsoft. Revisa tu conexion e intentalo de nuevo.";
+        return "No se pudo iniciar sesión con Microsoft. Revisa tu conexión e inténtalo de nuevo.";
     }
 
     public async Task<AuthResult> AuthenticateOfflineAsync(string username)
@@ -95,22 +163,23 @@ public class AuthenticationService : IAuthenticationService
         return new AuthResult
         {
             Success = true,
+            IsOffline = true,
             AccessToken = "offline",
             Uuid = uuid,
             Username = username
         };
     }
 
-    public async Task<bool> ValidateTokenAsync(string accessToken)
+    public Task<bool> ValidateTokenAsync(string accessToken)
     {
         try
         {
             var parts = accessToken.Split('|');
-            if (parts.Length == 0) return false;
-
-            return !string.IsNullOrEmpty(parts[0]);
-        } catch {
-            return false;
+            return Task.FromResult(parts.Length > 0 && !string.IsNullOrEmpty(parts[0]));
+        }
+        catch
+        {
+            return Task.FromResult(false);
         }
     }
 
@@ -118,29 +187,14 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                var advapi32 = NativeLibrary.Load("advapi32.dll");
-                var credentialRead = NativeLibrary.GetExport(advapi32, "CredReadW");
-                var credentialWrite = NativeLibrary.GetExport(advapi32, "CredWriteW");
-                var credentialDelete = NativeLibrary.GetExport(advapi32, "CredDeleteW");
-                NativeLibrary.Free(advapi32);
-            }
-        } catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to clear stored credentials");
+            var loginHandler = new CmlLib.Core.Auth.Microsoft.JELoginHandlerBuilder()
+                .Build();
+            await loginHandler.Signout();
+            _logger.LogInformation("Microsoft session cleared");
         }
-    }
-
-    public async Task<string?> GetStoredTokenAsync()
-    {
-        try
+        catch (Exception ex)
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return null;
-
-            return null;
-        } catch {
-            return null;
+            _logger.LogWarning(ex, "Failed to clear stored Microsoft session");
         }
     }
 

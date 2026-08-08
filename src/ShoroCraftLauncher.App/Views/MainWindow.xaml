@@ -134,6 +134,9 @@
                                     FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6" />
                             <Button Content="{DynamicResource User_LoginOffline}" Command="{Binding LoginOfflineCommand}"
                                     Style="{StaticResource SecondaryButton}"
+                                    FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6" />
+                            <Button Content="Cerrar sesión" Command="{Binding LogoutCommand}"
+                                    Style="{StaticResource DangerButton}"
                                     FontSize="12" Padding="14,7" Height="32" />
                         </StackPanel>
                     </Border>

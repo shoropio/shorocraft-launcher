@@ -139,6 +139,7 @@ public class MainViewModel : BaseViewModel, IDisposable
     public ICommand StopGameCommand { get; }
     public ICommand LoginCommand { get; }
     public ICommand LoginOfflineCommand { get; }
+    public ICommand LogoutCommand { get; }
 
     public MainViewModel(
         IServiceProvider serviceProvider,
@@ -185,6 +186,7 @@ public class MainViewModel : BaseViewModel, IDisposable
         StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning);
         LoginCommand = new RelayCommand(async _ => await LoginMicrosoft());
         LoginOfflineCommand = new RelayCommand(async _ => await LoginOffline());
+        LogoutCommand = new RelayCommand(async _ => await Logout());
 
         _gameExitedHandler = () =>
         {
@@ -220,7 +222,26 @@ public class MainViewModel : BaseViewModel, IDisposable
     private async Task LoadInitialDataAsync()
     {
         await _profileService.LoadProfilesAsync();
+        await TryRestoreSessionAsync();
         SelectedNav = "Nav_Dashboard";
+    }
+
+    private async Task TryRestoreSessionAsync()
+    {
+        try
+        {
+            _currentAuth = await _authService.AuthenticateSilentlyAsync();
+            if (_currentAuth.Success)
+            {
+                Username = _currentAuth.Username ?? Username;
+                IsAuthenticated = true;
+                AuthStatus = $"Microsoft: {_currentAuth.Username}";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceWarning($"Failed to restore session: {ex.Message}");
+        }
     }
 
     private void NavigateTo(string navName)
@@ -332,6 +353,26 @@ public class MainViewModel : BaseViewModel, IDisposable
         {
             StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación.";
         }
+        IsBusy = false;
+    }
+
+    private async Task Logout()
+    {
+        var result = System.Windows.MessageBox.Show(
+            "¿Cerrar sesión? Se eliminarán las credenciales guardadas y volverás al modo offline.",
+            "Cerrar sesión",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+        if (result != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        await _authService.LogoutAsync();
+        _currentAuth = null;
+        IsAuthenticated = false;
+        AuthStatus = "User_NotAuthenticated";
+        Username = Environment.UserName;
+        SkinUrl = null;
+        StatusMessage = "Sesión cerrada.";
         IsBusy = false;
     }
 
