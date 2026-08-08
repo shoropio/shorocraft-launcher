@@ -26,8 +26,10 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="+ Agregar Mapas" Command="{Binding AddMapCommand}"
+                <Button Content="+ Agregar Mundo" Command="{Binding AddMapCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                <Button Content="Respaldo de mundos" Command="{Binding BackupWorldsCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="Actualizar" Command="{Binding RefreshCommand}"
@@ -45,19 +47,34 @@
                         <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
+                                <Image Grid.Column="0" Source="{Binding PreviewImagePath}"
+                                       Width="56" Height="56" Margin="0,0,14,0"
+                                       Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PreviewImagePath}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
                                     <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}"
                                                Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button Content="Eliminar" Style="{StaticResource DangerButton}"
                                             Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemoveMapCommand}"
-                                            CommandParameter="{Binding Id}" />
+                                            CommandParameter="{Binding}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
