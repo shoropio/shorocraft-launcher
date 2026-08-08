@@ -11,6 +11,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
 {
     private readonly IProfileService _profileService;
     private readonly IModService _modService;
+    private readonly IModpackService _modpackService;
     private readonly ILogger<ModsViewModel> _logger;
     private readonly IDialogService _dialogService;
 
@@ -78,17 +79,20 @@ public class ModsViewModel : BaseViewModel, IDisposable
     public ICommand InstallFromSearchCommand { get; }
     public ICommand ShowInstalledCommand { get; }
     public ICommand ShowRecommendedCommand { get; }
+    public ICommand ImportModpackCommand { get; }
 
     public ModsViewModel(
         IProfileService profileService,
         IModService modService,
         ILogger<ModsViewModel> logger,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IModpackService modpackService)
     {
         _profileService = profileService;
         _modService = modService;
         _logger = logger;
         _dialogService = dialogService;
+        _modpackService = modpackService;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
@@ -101,6 +105,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
         InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p), _ => SelectedProfile != null && !IsBusy);
         ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         ShowRecommendedCommand = new RelayCommand(async _ => await LoadRecommended(), _ => SelectedProfile != null && !IsBusy);
+        ImportModpackCommand = new RelayCommand(async _ => await ImportModpack(), _ => SelectedProfile != null && !IsBusy);
 
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
     }
@@ -174,6 +179,57 @@ public class ModsViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to load recommended mods");
             StatusMessage = $"Error al cargar recomendados: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ImportModpack()
+    {
+        if (SelectedProfile == null)
+        {
+            StatusMessage = "Selecciona un perfil antes de importar un modpack.";
+            return;
+        }
+
+        var file = _dialogService.ShowOpenFileDialog(
+            "Modpacks Modrinth (*.mrpack)|*.mrpack",
+            "Seleccionar modpack",
+            multiselect: false);
+        if (file == null || file.Length == 0) return;
+
+        IsBusy = true;
+        StatusMessage = "Importando modpack...";
+        try
+        {
+            var result = await _modpackService.ImportFromFileAsync(SelectedProfile.Id, file[0]);
+            ShowSearchResults = false;
+            await LoadModsAsync(SelectedProfile.Id);
+            StatusMessage = $"Modpack '{result.ModpackName}' importado ({result.ModsInstalled} mods).";
+
+            var extra = new System.Collections.Generic.List<string>();
+            if (!string.IsNullOrEmpty(result.MinecraftVersion))
+                extra.Add($"Requiere Minecraft {result.MinecraftVersion}");
+            if (!string.IsNullOrEmpty(result.RequiredLoader))
+                extra.Add($"Requiere {result.RequiredLoader}");
+            var detail = string.Join("\n", extra.Concat(result.Warnings.Take(5)));
+
+            System.Windows.MessageBox.Show(
+                $"Modpack '{result.ModpackName}' importado correctamente.\n" +
+                $"{result.ModsInstalled} mods y {result.FilesInstalled} archivos instalados." +
+                (string.IsNullOrEmpty(detail) ? "" : $"\n\n{detail}"),
+                "Modpack importado",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import modpack");
+            StatusMessage = $"Error al importar modpack: {ex.Message}";
+            System.Windows.MessageBox.Show(ex.Message, "Error al importar modpack",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally
         {

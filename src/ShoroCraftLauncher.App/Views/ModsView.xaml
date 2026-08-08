@@ -81,6 +81,8 @@
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="+ Agregar Mod Local" Command="{Binding AddModCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                <Button Content="Importar Modpack (.mrpack)" Command="{Binding ImportModpackCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
                 <Button Content="Abrir carpeta" Command="{Binding OpenModsFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
                 <Button Content="Actualizar" Command="{Binding RefreshCommand}"

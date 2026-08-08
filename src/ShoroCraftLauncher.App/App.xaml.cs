@@ -104,6 +104,7 @@ public partial class App : Application
                 services.AddSingleton<IShaderPackService, ShaderPackService>();
                 services.AddSingleton<IScriptService, ScriptService>();
                 services.AddSingleton<IGameMapService, GameMapService>();
+                services.AddSingleton<IModpackService, ModpackService>();
                 services.AddSingleton<IProfileService, ProfileService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IUpdaterService, UpdaterService>();
