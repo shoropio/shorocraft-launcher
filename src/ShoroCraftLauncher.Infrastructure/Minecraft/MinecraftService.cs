@@ -22,6 +22,7 @@ public class MinecraftService : IMinecraftService
     private const string FabricInstallerVersionsUrl = "https://meta.fabricmc.net/v2/versions/installer";
     private const string QuiltGameVersionsUrl = "https://meta.quiltmc.org/v3/versions/game";
     private const string QuiltInstallerVersionsUrl = "https://meta.quiltmc.org/v3/versions/installer";
+    private const string NeoForgeMetadataUrl = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
 
     public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null)
     {
@@ -175,6 +176,7 @@ public class MinecraftService : IMinecraftService
         var installerUrl = loaderType.ToLower() switch
         {
             "forge" => $"https://maven.minecraftforge.net/net/minecraftforge/forge/{versionId}-{loaderVersion}/forge-{versionId}-{loaderVersion}-installer.jar",
+            "neoforge" => $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{versionId}-{loaderVersion}/neoforge-{versionId}-{loaderVersion}-installer.jar",
             "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{installerVersion}/fabric-installer-{installerVersion}.jar",
             "quilt" => $"https://maven.quiltmc.net/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
             _ => throw new Exception($"Unknown loader: {loaderType}")
@@ -230,6 +232,7 @@ public class MinecraftService : IMinecraftService
         var args = loaderType.ToLower() switch
         {
             "forge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\"",
+            "neoforge" => $"-jar \"{installerPath}\" --installClient \"{gameDir}\"",
             "fabric" => $"-jar \"{installerPath}\" client -dir \"{gameDir}\" -mcversion {versionId} -loader {loaderVersion}",
             "quilt" => $"-jar \"{installerPath}\" install client {versionId} --install-dir=\"{gameDir}\"",
             _ => throw new Exception($"Unknown loader: {loaderType}")
@@ -459,6 +462,7 @@ public class MinecraftService : IMinecraftService
             return loaderType.ToLower() switch
             {
                 "forge" => await ResolveLatestForgeVersionAsync(mcVersion),
+                "neoforge" => await ResolveLatestNeoForgeVersionAsync(mcVersion),
                 "fabric" => await ResolveLatestFabricLoaderVersionAsync(mcVersion),
                 "quilt" => await ResolveLatestQuiltInstallerVersionAsync(mcVersion),
                 _ => "latest"
@@ -485,6 +489,29 @@ public class MinecraftService : IMinecraftService
 
         _logger.LogWarning("No Forge version found for MC {McVersion}, falling back to 'latest'", mcVersion);
         return "latest";
+    }
+
+    private async Task<string> ResolveLatestNeoForgeVersionAsync(string mcVersion)
+    {
+        var xml = await _httpClient.GetStringAsync(NeoForgeMetadataUrl);
+        var doc = System.Xml.Linq.XDocument.Parse(xml);
+        var versions = doc.Root?
+            .Element("versioning")?
+            .Element("versions")?
+            .Elements("version")
+            .Select(v => v.Value)
+            .Where(v => v.StartsWith($"{mcVersion.Substring(2)}.", StringComparison.OrdinalIgnoreCase))
+            .Select(v => new { Raw = v, Parsed = Version.TryParse(v, out var ver) ? ver : new Version(0, 0, 0) })
+            .OrderBy(x => x.Parsed)
+            .ToList();
+
+        if (versions == null || versions.Count == 0)
+        {
+            _logger.LogWarning("No NeoForge version found for MC {McVersion}, falling back to 'latest'", mcVersion);
+            return "latest";
+        }
+
+        return versions.Last().Raw;
     }
 
     private async Task<string> ResolveLatestFabricLoaderVersionAsync(string mcVersion)

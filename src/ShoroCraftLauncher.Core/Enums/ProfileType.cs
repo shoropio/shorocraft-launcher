@@ -4,6 +4,7 @@ public enum ProfileType
 {
     Vanilla,
     Forge,
+    NeoForge,
     Fabric,
     Quilt,
     OptiFine,

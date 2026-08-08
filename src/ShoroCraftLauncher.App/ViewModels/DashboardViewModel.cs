@@ -110,6 +110,13 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     }
 
     private string? _launcherUpdateUrl;
+    private string? _latestVersion;
+    private bool _isInstallingUpdate;
+    public bool IsInstallingUpdate
+    {
+        get => _isInstallingUpdate;
+        set => SetProperty(ref _isInstallingUpdate, value);
+    }
 
     private bool _isIrisSodiumInstalled;
     public bool IsIrisSodiumInstalled
@@ -197,11 +204,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"));
         InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""));
         ApplyProfileCommand = new RelayCommand(async _ => await ApplyProfile());
-        DownloadLauncherUpdateCommand = new RelayCommand(_ => 
-        {
-            if (!string.IsNullOrEmpty(_launcherUpdateUrl))
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_launcherUpdateUrl) { UseShellExecute = true });
-        });
+        DownloadLauncherUpdateCommand = new RelayCommand(async _ => await InstallLauncherUpdateAsync());
         
         InstallIrisCommand = new RelayCommand(async _ => await InstallIris(), _ => SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
         OptiFineInfoCommand = new RelayCommand(_ => 
@@ -243,6 +246,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             if (isUpdateAvailable)
             {
                 HasLauncherUpdate = true;
+                _latestVersion = latestVersion;
                 LauncherUpdateMessage = $"¡ShoroCraft Launcher {latestVersion} disponible!";
                 _launcherUpdateUrl = downloadUrl;
             }
@@ -256,6 +260,49 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             StatusMessage = "Error al cargar dashboard.";
         }
         IsBusy = false;
+    }
+
+    private async Task InstallLauncherUpdateAsync()
+    {
+        if (string.IsNullOrEmpty(_launcherUpdateUrl))
+        {
+            System.Windows.MessageBox.Show("No se encontró una actualización disponible para descargar.",
+                "Actualizar Launcher", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            return;
+        }
+
+        IsInstallingUpdate = true;
+        try
+        {
+            var installerPath = await _updaterService.DownloadUpdateAsync(_launcherUpdateUrl, _latestVersion ?? "latest");
+            if (installerPath == null)
+            {
+                System.Windows.MessageBox.Show("No se pudo descargar el instalador. Revisa tu conexión e inténtalo de nuevo.",
+                    "Error al actualizar", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = System.Windows.MessageBox.Show(
+                "Se descargó la nueva versión. El instalador se abrirá y el Launcher se cerrará. ¿Continuar?",
+                "Actualizar Launcher",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+            if (result != System.Windows.MessageBoxResult.Yes)
+                return;
+
+            await _updaterService.LaunchInstallerAsync(installerPath);
+            System.Windows.Application.Current?.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update install failed");
+            System.Windows.MessageBox.Show("Ocurrió un error al instalar la actualización.", "Error",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+        finally
+        {
+            IsInstallingUpdate = false;
+        }
     }
 
     private async Task UpdateProfileDetailsAsync()
@@ -453,6 +500,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                     installed!.Contains(version.VersionId, StringComparison.OrdinalIgnoreCase)
                     && (installed.Contains("fabric", StringComparison.OrdinalIgnoreCase)
                         || installed.Contains("forge", StringComparison.OrdinalIgnoreCase)
+                        || installed.Contains("neoforge", StringComparison.OrdinalIgnoreCase)
                         || installed.Contains("quilt", StringComparison.OrdinalIgnoreCase)
                         || installed.Contains("optifine", StringComparison.OrdinalIgnoreCase)));
         }

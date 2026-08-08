@@ -25,6 +25,36 @@
                 </Grid>
             </Border>
 
+            <!-- Update Banner -->
+            <Border Padding="16" Margin="0,0,0,16"
+                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource CardBorder}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLauncherUpdate}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="⬆" FontSize="22" VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LauncherUpdateMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" />
+                        <TextBlock Text="Descarga e instala la nueva versión automáticamente." Style="{StaticResource CardSubtitle}" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Instalar actualización" Command="{Binding DownloadLauncherUpdateCommand}"
+                            IsEnabled="{Binding IsInstallingUpdate, Converter={StaticResource InverseBoolConverter}}"
+                            Style="{StaticResource PrimaryButton}" Padding="18,8" FontSize="13" />
+                </Grid>
+            </Border>
+
             <!-- Stats Cards -->
             <Grid Margin="0,0,0,16">
                 <Grid.RowDefinitions>
@@ -206,6 +236,9 @@
                                 <WrapPanel>
                                 <Button Content="Instalar Forge" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="Forge:latest"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                <Button Content="Instalar NeoForge" Command="{Binding InstallLoaderCommand}"
+                                    CommandParameter="NeoForge:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="Instalar Fabric" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="Fabric:latest"

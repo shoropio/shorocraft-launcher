@@ -90,6 +90,7 @@ public class ModService : IModService
         var loaderTypeId = loaderType.ToLowerInvariant() switch
         {
             "forge" => 1,
+            "neoforge" => 6,
             "fabric" => 4,
             "quilt" => 5,
             _ => 0
@@ -496,6 +497,7 @@ public class ModService : IModService
         var loaderTypeId = profile.Type.ToString().ToLowerInvariant() switch
         {
             "forge" => 1,
+            "neoforge" => 6,
             "fabric" => 4,
             "quilt" => 5,
             _ => 0
