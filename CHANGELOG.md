@@ -6,6 +6,20 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.1.0] - 2026-08-07
+
+### ✨ Nuevo
+- Actualizador automático del launcher: detecta nueva versión, descarga el instalador y reinicia la aplicación con un banner en el dashboard.
+- Mundos por perfil: extracción de mundos `.zip`/`.mcworld` directamente a la carpeta `saves`, escaneo de mundos existentes en disco, preview de `icon.png` y botón "Respaldo de mundos".
+- Importación de modpacks Modrinth (`.mrpack`): descarga y verificación SHA-1 de mods, respeta `env.client`, aplica `overrides/` y registra los mods en la base de datos.
+- Soporte de NeoForge: instalación del loader, detección de versión más reciente, filtrado de mods por loader en CurseForge y botón "Instalar NeoForge".
+- Cuenta Microsoft online: restauración automática de la sesión al arrancar (login silencioso) y botón "Cerrar sesión".
+
+### 🔧 Correcciones
+- Corregido crash de arranque (`AccessViolationException`) causado por el P/Invoke a `CredEnumerateW` al enumerar credenciales de Windows; el logout ahora usa `JELoginHandler.Signout()`.
+- El cierre del cuadro de inicio de sesión Microsoft ya no se registra como error: se muestra el mensaje "Inicio de sesión Microsoft cancelado" sin stack trace.
+- Reducido el ruido en consola al fallar el login silencioso (sin sesión guardada).
+
 ## [1.0.2] - 2026-05-22
 
 ### ✨ Nuevo
