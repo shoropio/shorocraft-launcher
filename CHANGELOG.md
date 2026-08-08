@@ -6,6 +6,11 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.1.1] - 2026-08-08
+
+### 🔧 Correcciones
+- La versión mostrada en Ajustes y enviada al juego (`minecraft.launcher.version`) ahora se lee del ensamblado, por lo que refleja la versión real del launcher en lugar del valor fijo "1.0.0".
+
 ## [1.1.0] - 2026-08-07
 
 ### ✨ Nuevo

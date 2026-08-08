@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -406,7 +407,7 @@ public class MinecraftService : IMinecraftService
             JavaPath = javaPath,
             VersionType = "ShoroCraft Launcher",
             GameLauncherName = "ShoroCraft",
-            GameLauncherVersion = "1.0.0",
+            GameLauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0",
             ScreenWidth = profile.WindowWidth,
             ScreenHeight = profile.WindowHeight,
             FullScreen = profile.IsFullscreen

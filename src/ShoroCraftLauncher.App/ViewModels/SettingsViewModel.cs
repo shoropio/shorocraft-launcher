@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
@@ -61,7 +62,7 @@ public class SettingsViewModel : BaseViewModel
         set => SetProperty(ref _curseForgeApiKey, value);
     }
 
-    private string _launcherVersion = "1.0.0";
+    private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
     public string LauncherVersion
     {
         get => _launcherVersion;
@@ -123,7 +124,7 @@ public class SettingsViewModel : BaseViewModel
             GameDir = settings.GetValueOrDefault("game_directory") ?? string.Empty;
             Language = settings.GetValueOrDefault("language") ?? "es";
             CurseForgeApiKey = settings.GetValueOrDefault("curseforge_api_key") ?? string.Empty;
-            LauncherVersion = settings.GetValueOrDefault("launcher_version") ?? "1.0.0";
+            LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
             _totalSizeBytes = await CalculateTotalSizeAsync();
             OnPropertyChanged(nameof(TotalSizeFormatted));
