@@ -6,6 +6,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.3.0] - 2026-08-08
+
+### ✨ Nuevo
+- Módulo de servidores: nueva sección "Servidores" en la barra lateral para crear y gestionar servidores Vanilla y Paper desde el launcher.
+- El launcher descarga automáticamente el jar del servidor (con barra de progreso), genera `eula.txt` y `server.properties`, e inicia el proceso Java con consola interactiva: comandos, detener, reiniciar, despertar y copiar la consola.
+- La pausa automática por servidor vacío se deshabilita (`pause-when-empty-seconds=0`) para que la consola siempre responda.
+
 ## [1.2.1] - 2026-08-08
 
 ### 🔧 Correcciones
