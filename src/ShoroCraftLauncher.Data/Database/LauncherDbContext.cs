@@ -15,6 +15,7 @@ public class LauncherDbContext : DbContext
     public DbSet<DownloadHistory> DownloadHistories => Set<DownloadHistory>();
     public DbSet<LogEntry> LogEntries => Set<LogEntry>();
     public DbSet<GameMap> GameMaps => Set<GameMap>();
+    public DbSet<MinecraftServer> MinecraftServers => Set<MinecraftServer>();
 
     public LauncherDbContext(DbContextOptions<LauncherDbContext> options) : base(options) { }
 
@@ -117,6 +118,19 @@ public class LauncherDbContext : DbContext
             e.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(m => m.PreviewImagePath).HasMaxLength(500);
             e.HasIndex(m => m.ProfileId);
+        });
+
+        modelBuilder.Entity<MinecraftServer>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Name).IsRequired().HasMaxLength(100);
+            e.Property(s => s.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.MinecraftVersion).HasMaxLength(50);
+            e.Property(s => s.LoaderVersion).HasMaxLength(50);
+            e.Property(s => s.DirectoryPath).HasMaxLength(500);
+            e.Property(s => s.JavaPath).HasMaxLength(500);
+            e.Property(s => s.WorldName).HasMaxLength(100);
+            e.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
         });
     }
 }

@@ -24,6 +24,9 @@
     <DataTemplate DataType="{x:Type vm:MapsViewModel}">
         <v:MapsView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ServersViewModel}">
+        <v:ServersView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:ConsoleViewModel}">
         <v:ConsoleView />
     </DataTemplate>

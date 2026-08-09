@@ -64,6 +64,26 @@ public class DbInitializer
             cmd.ExecuteNonQuery();
 
             EnsureGameMapsStatusText(conn);
+
+            // Create MinecraftServers table if it doesn't exist
+            cmd.CommandText = @"
+                CREATE TABLE IF NOT EXISTS MinecraftServers (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name TEXT NOT NULL,
+                    Type TEXT NOT NULL,
+                    MinecraftVersion TEXT NOT NULL,
+                    LoaderVersion TEXT NULL,
+                    DirectoryPath TEXT NOT NULL,
+                    JavaPath TEXT NOT NULL,
+                    MinRamMB INTEGER NOT NULL,
+                    MaxRamMB INTEGER NOT NULL,
+                    Port INTEGER NOT NULL,
+                    WorldName TEXT NULL,
+                    Status TEXT NOT NULL,
+                    CreatedAt TEXT NOT NULL,
+                    UpdatedAt TEXT NOT NULL
+                )";
+            cmd.ExecuteNonQuery();
         }
         finally
         {

@@ -12,6 +12,7 @@ public interface IMinecraftService
     Task RepairInstallationAsync(string gameDir, IProgress<double>? progress = null);
     Task<System.Diagnostics.Process> LaunchGameAsync(Profile profile, string gameDir, string javaPath, string accessToken, string uuid, string username, Action<double, string>? onProgress = null);
     Task<string> ResolveVersionIdAsync(string versionId);
+    Task<string?> GetServerJarUrlAsync(string versionId);
     string GetDefaultGameDirectory(string profileName);
     string GetModsDirectory(string gameDir);
     string GetResourcePacksDirectory(string gameDir);

@@ -456,6 +456,21 @@ public class MinecraftService : IMinecraftService
         return "1.21";
     }
 
+    public async Task<string?> GetServerJarUrlAsync(string versionId)
+    {
+        try
+        {
+            var resolved = versionId.ToLower() == "latest" ? await ResolveVersionIdAsync("latest") : versionId;
+            var versionData = await FetchVersionDataAsync(resolved);
+            return versionData?.GetServerUrl();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve server jar URL for {Version}", versionId);
+            return null;
+        }
+    }
+
     public async Task<string> ResolveLatestLoaderVersionAsync(string loaderType, string mcVersion)
     {
         try
@@ -877,6 +892,15 @@ public class MinecraftService : IMinecraftService
             if (_doc.RootElement.TryGetProperty("downloads", out var downloads)
                 && downloads.TryGetProperty("client", out var client)
                 && client.TryGetProperty("url", out var url))
+                return url.GetString();
+            return null;
+        }
+
+        public string? GetServerUrl()
+        {
+            if (_doc.RootElement.TryGetProperty("downloads", out var downloads)
+                && downloads.TryGetProperty("server", out var server)
+                && server.TryGetProperty("url", out var url))
                 return url.GetString();
             return null;
         }

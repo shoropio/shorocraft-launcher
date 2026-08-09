@@ -93,6 +93,7 @@ public partial class App : Application
                 services.AddSingleton<IGameMapRepository, GameMapRepository>();
                 services.AddSingleton<IGameVersionRepository, GameVersionRepository>();
                 services.AddSingleton<ISettingsRepository, SettingsRepository>();
+                services.AddSingleton<IServerRepository, ServerRepository>();
 
                 services.AddSingleton<ILogService, LogService>();
                 services.AddSingleton<IMinecraftService, MinecraftService>();
@@ -106,6 +107,7 @@ public partial class App : Application
                 services.AddSingleton<IGameMapService, GameMapService>();
                 services.AddSingleton<IModpackService, ModpackService>();
                 services.AddSingleton<IProfileService, ProfileService>();
+                services.AddSingleton<IServerService, ServerService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IUpdaterService, UpdaterService>();
 
@@ -116,6 +118,7 @@ public partial class App : Application
                 services.AddTransient<ShaderPacksViewModel>();
                 services.AddTransient<ScriptsViewModel>();
                 services.AddTransient<MapsViewModel>();
+                services.AddTransient<ServersViewModel>();
                 services.AddSingleton<ConsoleViewModel>();
                 services.AddTransient<SettingsViewModel>();
 

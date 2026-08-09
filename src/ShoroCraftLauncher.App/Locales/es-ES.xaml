@@ -10,6 +10,7 @@
     <system:String x:Key="Nav_ShaderPacks">Shaders</system:String>
     <system:String x:Key="Nav_Scripts">Scripts</system:String>
     <system:String x:Key="Nav_Maps">Mapas</system:String>
+    <system:String x:Key="Nav_Servers">Servidores</system:String>
     <system:String x:Key="Nav_Console">Consola</system:String>
     <system:String x:Key="Nav_Settings">Configuración</system:String>
     

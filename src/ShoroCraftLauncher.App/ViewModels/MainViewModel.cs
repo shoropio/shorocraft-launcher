@@ -178,6 +178,7 @@ public class MainViewModel : BaseViewModel, IDisposable
         NavItems.Add(new NavItem { Name = "Nav_ShaderPacks", Icon = "✨" });
         NavItems.Add(new NavItem { Name = "Nav_Scripts", Icon = "📜" });
         NavItems.Add(new NavItem { Name = "Nav_Maps", Icon = "🗺️" });
+        NavItems.Add(new NavItem { Name = "Nav_Servers", Icon = "🛡️" });
         NavItems.Add(new NavItem { Name = "Nav_Console", Icon = "🖥️" });
         NavItems.Add(new NavItem { Name = "Nav_Settings", Icon = "⚙️" });
 
@@ -255,6 +256,7 @@ public class MainViewModel : BaseViewModel, IDisposable
             "Nav_ShaderPacks" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
             "Nav_Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
             "Nav_Maps" => _serviceProvider.GetRequiredService<MapsViewModel>(),
+            "Nav_Servers" => _serviceProvider.GetRequiredService<ServersViewModel>(),
             "Nav_Console" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
             "Nav_Settings" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
             _ => null
