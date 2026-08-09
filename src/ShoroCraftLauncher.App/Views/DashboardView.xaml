@@ -55,6 +55,39 @@
                 </Grid>
             </Border>
 
+            <!-- Minecraft Update Banner -->
+            <Border Padding="16" Margin="0,0,0,16"
+                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource CardBorder}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasUpdateNotification}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="🚀" FontSize="22" VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding UpdateNotificationMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" />
+                        <TextBlock Text="Tu perfil usa una versión anterior. Instala la nueva o ignórala por ahora." Style="{StaticResource CardSubtitle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Content="Instalar" Command="{Binding InstallMinecraftUpdateCommand}"
+                                Style="{StaticResource PrimaryButton}" Padding="18,8" FontSize="13" Margin="0,0,8,0" />
+                        <Button Content="Ignorar" Command="{Binding DismissMinecraftUpdateCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="18,8" FontSize="13" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Stats Cards -->
             <Grid Margin="0,0,0,16">
                 <Grid.RowDefinitions>

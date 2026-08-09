@@ -16,7 +16,10 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly IJavaService _javaService;
     private readonly IUpdaterService _updaterService;
     private readonly IModService _modService;
+    private readonly ISettingsRepository _settingsRepo;
     private readonly ILogger<DashboardViewModel> _logger;
+
+    private const string LastNotifiedVersionKey = "last_notified_minecraft_version";
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
     public ObservableCollection<GameVersion> AvailableVersions { get; } = new();
@@ -178,6 +181,10 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public ICommand InstallIrisCommand { get; }
     public ICommand OptiFineInfoCommand { get; }
     public ICommand RepairProfileCommand { get; }
+    public ICommand InstallMinecraftUpdateCommand { get; }
+    public ICommand DismissMinecraftUpdateCommand { get; }
+
+    private string? _latestAvailableVersion;
 
     public DashboardViewModel(
         IProfileService profileService,
@@ -187,6 +194,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IJavaService javaService,
         IUpdaterService updaterService,
         IModService modService,
+        ISettingsRepository settingsRepo,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -196,6 +204,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _javaService = javaService;
         _updaterService = updaterService;
         _modService = modService;
+        _settingsRepo = settingsRepo;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -213,6 +222,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://optifine.net/downloads") { UseShellExecute = true });
         });
         RepairProfileCommand = new RelayCommand(async _ => await RepairProfile());
+        InstallMinecraftUpdateCommand = new RelayCommand(async _ => await InstallMinecraftUpdateAsync());
+        DismissMinecraftUpdateCommand = new RelayCommand(async _ => await DismissMinecraftUpdateAsync());
     }
 
     private void OnSelectedProfileChanged()
@@ -401,17 +412,21 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             if (stableVersions.Count > 0)
             {
                 var latest = stableVersions[0].VersionId;
+                _latestAvailableVersion = latest;
                 if (SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla)
                 {
                     if (SelectedProfile.MinecraftVersion != "latest" && SelectedProfile.MinecraftVersion != latest)
                     {
-                        HasUpdateNotification = true;
-                        UpdateNotificationMessage = $"¡La nueva versión de Minecraft {latest} ya está disponible!";
+                        await CheckMinecraftUpdateNotificationAsync(latest);
                     }
                     else
                     {
                         HasUpdateNotification = false;
                     }
+                }
+                else
+                {
+                    HasUpdateNotification = false;
                 }
             }
 
@@ -438,6 +453,72 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             _launcherService.Log($"[ERROR] Error al obtener versiones: {ex.Message}");
         }
         IsBusy = false;
+    }
+
+    private async Task CheckMinecraftUpdateNotificationAsync(string latest)
+    {
+        try
+        {
+            _latestAvailableVersion = latest;
+            var lastNotified = await _settingsRepo.GetAsync(LastNotifiedVersionKey);
+            if (!string.IsNullOrEmpty(lastNotified) && IsVersionAtLeast(lastNotified, latest))
+            {
+                HasUpdateNotification = false;
+                return;
+            }
+
+            HasUpdateNotification = true;
+            UpdateNotificationMessage = $"¡La nueva versión de Minecraft {latest} ya está disponible!";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check Minecraft update notification");
+            HasUpdateNotification = false;
+        }
+    }
+
+    private static bool IsVersionAtLeast(string candidate, string baseline)
+    {
+        var candidateParts = candidate.Split('.').Select(part => int.TryParse(part, out var n) ? n : 0).ToArray();
+        var baselineParts = baseline.Split('.').Select(part => int.TryParse(part, out var n) ? n : 0).ToArray();
+
+        var length = Math.Max(candidateParts.Length, baselineParts.Length);
+        for (int i = 0; i < length; i++)
+        {
+            var a = i < candidateParts.Length ? candidateParts[i] : 0;
+            var b = i < baselineParts.Length ? baselineParts[i] : 0;
+            if (a != b)
+                return a > b;
+        }
+        return true;
+    }
+
+    private async Task InstallMinecraftUpdateAsync()
+    {
+        if (string.IsNullOrEmpty(_latestAvailableVersion))
+        {
+            HasUpdateNotification = false;
+            return;
+        }
+
+        HasUpdateNotification = false;
+        await InstallVersion(_latestAvailableVersion);
+    }
+
+    private async Task DismissMinecraftUpdateAsync()
+    {
+        HasUpdateNotification = false;
+        if (!string.IsNullOrEmpty(_latestAvailableVersion))
+        {
+            try
+            {
+                await _settingsRepo.SetAsync(LastNotifiedVersionKey, _latestAvailableVersion);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist dismissed Minecraft version");
+            }
+        }
     }
 
     private async Task UpdateComponentInstallStatesAsync()

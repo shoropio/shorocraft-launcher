@@ -6,6 +6,11 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [Unreleased]
+
+### ✨ Nuevo
+- Notificaciones de actualizaciones de Minecraft: banner en el dashboard que avisa cuando el perfil Vanilla usa una versión anterior a la más reciente, con opciones "Instalar" y "Ignorar"; la última versión notificada se guarda para no repetir el aviso.
+
 ## [1.1.1] - 2026-08-08
 
 ### 🔧 Correcciones
