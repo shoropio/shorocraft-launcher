@@ -9,19 +9,23 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="0,0,0,12">
                     <TextBlock Text="Servidores" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
                     <Button Content="Actualizar" Command="{Binding RefreshCommand}"
                             Style="{StaticResource SecondaryButton}" Padding="14,7" FontSize="12" />
                 </StackPanel>
 
                 <ListBox x:Name="ServerList"
-                         DockPanel.Dock="Top"
+                         Grid.Row="1"
                          ItemsSource="{Binding Servers}"
                          SelectedItem="{Binding SelectedServer}"
                          Background="Transparent" BorderThickness="0"
-                         Height="380"
                          ItemContainerStyle="{StaticResource FlushListBoxItem}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -47,24 +51,21 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <ScrollViewer DockPanel.Dock="Bottom" Margin="0,12,0,0"
-                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <Button Content="Iniciar" Command="{Binding StartServerCommand}"
-                                CommandParameter="{Binding SelectedServer}"
-                                Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
-                        <Button Content="Detener" Command="{Binding StopServerCommand}"
-                                CommandParameter="{Binding SelectedServer}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                        <Button Content="Despertar" Command="{Binding WakeServerCommand}"
-                                CommandParameter="{Binding SelectedServer}"
-                                Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                        <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
-                                CommandParameter="{Binding SelectedServer}"
-                                Style="{StaticResource DangerButton}" />
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
+                <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                    <Button Content="Iniciar" Command="{Binding StartServerCommand}"
+                            CommandParameter="{Binding SelectedServer}"
+                            Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
+                    <Button Content="Detener" Command="{Binding StopServerCommand}"
+                            CommandParameter="{Binding SelectedServer}"
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
+                    <Button Content="Despertar" Command="{Binding WakeServerCommand}"
+                            CommandParameter="{Binding SelectedServer}"
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
+                    <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
+                            CommandParameter="{Binding SelectedServer}"
+                            Style="{StaticResource DangerButton}" />
+                </StackPanel>
+            </Grid>
         </Border>
 
         <Grid Grid.Column="1" Margin="0,0,18,0">
