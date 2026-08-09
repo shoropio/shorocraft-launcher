@@ -129,7 +129,7 @@ public class DbInitializer
             new LauncherSetting { Key = "close_launcher_on_launch", Value = "false" },
             new LauncherSetting { Key = "keep_launcher_open", Value = "true" },
             new LauncherSetting { Key = "language", Value = "es" },
-            new LauncherSetting { Key = "launcher_version", Value = "1.1.1" }
+            new LauncherSetting { Key = "launcher_version", Value = "1.2.0" }
         );
 
         context.SaveChanges();
