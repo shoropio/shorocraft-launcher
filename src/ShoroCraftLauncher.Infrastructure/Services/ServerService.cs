@@ -12,6 +12,7 @@ public class ServerService : IServerService
 {
     private const string PaperApiBaseUrl = "https://api.papermc.io/v2/projects/paper";
     private const string ServerJarName = "server.jar";
+    private const string ServerPidFileName = "server.pid";
     private const int MaxLogLines = 2000;
 
     private readonly IServerRepository _repository;
@@ -163,6 +164,7 @@ public class ServerService : IServerService
 
         try
         {
+            await KillOrphanProcessAsync(server.DirectoryPath);
             Directory.CreateDirectory(server.DirectoryPath);
             if (!File.Exists(Path.Combine(server.DirectoryPath, "eula.txt")))
                 WriteEula(server.DirectoryPath);
@@ -245,13 +247,15 @@ public class ServerService : IServerService
                 var p = (Process)s!;
                 _logger.LogInformation("Server {ServerName} exited with code {ExitCode}", server.Name, p.ExitCode);
                 LogServer(server.Id, $"El servidor '{server.Name}' terminó con código {p.ExitCode}.");
-                CleanupProcess(server.Id);
+                CleanupProcess(server);
                 SetStatus(server, ServerStatus.Stopped);
             };
 
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+
+            await WritePidFileAsync(server.DirectoryPath, process.Id);
 
             lock (_lock)
             {
@@ -305,10 +309,27 @@ public class ServerService : IServerService
                 try { process.Kill(entireProcessTree: true); } catch { }
             }
 
-            CleanupProcess(server.Id);
+            CleanupProcess(server);
             SetStatus(server, ServerStatus.Stopped);
             LogServer(server.Id, $"[INFO] Servidor '{server.Name}' detenido.");
         }
+    }
+
+    public async Task StopAllAsync()
+    {
+        MinecraftServer[] running;
+        lock (_lock)
+        {
+            running = _servers
+                .Where(s => _processes.TryGetValue(s.Id, out var p) && p is { HasExited: false })
+                .ToArray();
+        }
+
+        if (running.Length == 0) return;
+
+        _logService?.Info("ServerService", "StopAll", $"Deteniendo {running.Length} servidor(es) en ejecución...");
+        var tasks = running.Select(s => Task.Run(() => StopAsync(s)));
+        await Task.WhenAll(tasks);
     }
 
     public Task SendCommandAsync(MinecraftServer server, string command)
@@ -439,12 +460,111 @@ public class ServerService : IServerService
         StatusChanged?.Invoke(status);
     }
 
-    private void CleanupProcess(int serverId)
+    private void CleanupProcess(MinecraftServer server)
     {
         lock (_lock)
         {
-            _processes.Remove(serverId);
+            _processes.Remove(server.Id);
         }
+        TryDelete(GetServerPidPath(server.DirectoryPath));
+    }
+
+    private static string GetServerPidPath(string directoryPath)
+        => Path.Combine(directoryPath, ServerPidFileName);
+
+    private async Task KillOrphanProcessAsync(string directoryPath)
+    {
+        var pidPath = GetServerPidPath(directoryPath);
+        if (!File.Exists(pidPath)) return;
+
+        try
+        {
+            var pidText = await File.ReadAllTextAsync(pidPath);
+            if (!int.TryParse(pidText.Trim(), out var pid) || pid <= 0)
+            {
+                TryDelete(pidPath);
+                return;
+            }
+
+            Process? orphan = null;
+            try
+            {
+                orphan = Process.GetProcessById(pid);
+            }
+            catch (ArgumentException) { }
+            catch (InvalidOperationException) { }
+
+            if (orphan == null)
+            {
+                TryDelete(pidPath);
+                return;
+            }
+
+            using (orphan)
+            {
+                if (orphan.HasExited)
+                {
+                    TryDelete(pidPath);
+                    return;
+                }
+
+                if (!IsJavaProcess(orphan))
+                {
+                    _logger.LogWarning("Pid file {PidPath} points to non-Java process {ProcessName} ({Pid}); not killing.", pidPath, orphan.ProcessName, pid);
+                    TryDelete(pidPath);
+                    return;
+                }
+
+                _logger.LogWarning("Killing orphan server process {ProcessName} ({Pid}) before starting.", orphan.ProcessName, pid);
+                _logService?.Warning("ServerService", "OrphanKill", $"Se detectó un proceso de servidor huérfano ({orphan.ProcessName}, PID {pid}) que retenía archivos del mundo; se detendrá antes de iniciar.");
+                try
+                {
+                    orphan.Kill(entireProcessTree: true);
+                    orphan.WaitForExit(5000);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to kill orphan server process {Pid}", pid);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up orphan server process for {DirectoryPath}", directoryPath);
+        }
+        finally
+        {
+            TryDelete(pidPath);
+        }
+    }
+
+    private async Task WritePidFileAsync(string directoryPath, int pid)
+    {
+        try
+        {
+            await File.WriteAllTextAsync(GetServerPidPath(directoryPath), pid.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write pid file for server at {DirectoryPath}", directoryPath);
+        }
+    }
+
+    private static bool IsJavaProcess(Process process)
+    {
+        var name = process.ProcessName;
+        return string.Equals(name, "java", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "javaw", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch { }
     }
 
     private void Log(string message)

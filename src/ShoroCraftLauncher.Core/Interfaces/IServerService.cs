@@ -25,6 +25,7 @@ public interface IServerService
     Task DeleteServerAsync(MinecraftServer server);
     Task<ServerLaunchResult> StartAsync(MinecraftServer server);
     Task StopAsync(MinecraftServer server);
+    Task StopAllAsync();
     Task SendCommandAsync(MinecraftServer server, string command);
     bool IsRunning(MinecraftServer server);
     IReadOnlyList<string> GetLogHistory(MinecraftServer server);

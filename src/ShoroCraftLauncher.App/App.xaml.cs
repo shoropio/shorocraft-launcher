@@ -180,6 +180,16 @@ public partial class App : Application
     {
         base.OnExit(e);
         _logService?.Info("App", "Shutdown", "ShoroCraft Launcher cerrando.");
+        try
+        {
+            var serverService = _host.Services.GetService<IServerService>();
+            if (serverService != null)
+                await serverService.StopAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _logService?.Error("App", "Shutdown", "Error deteniendo servidores durante el cierre.", ex);
+        }
         if (_logService != null)
             await _logService.FlushAsync();
         await _host.StopAsync();
