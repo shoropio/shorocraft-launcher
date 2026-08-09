@@ -2,10 +2,18 @@
 
 Launcher de Minecraft para Windows, construido con .NET 8, WPF, MVVM, SQLite y CmlLib.
 
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/download/dotnet/8.0)
-[![WPF](https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows)](https://learn.microsoft.com/dotnet/desktop/wpf/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-12.0-68217A?logo=csharp&logoColor=white)
+![WPF](https://img.shields.io/badge/WPF-Windows-0078D6?logo=windows&logoColor=white)
+![MVVM](https://img.shields.io/badge/MVVM-Arquitectura-6D28D9)
+![SQLite](https://img.shields.io/badge/SQLite-EF%20Core-0F9D58?logo=sqlite&logoColor=white)
+![CmlLib](https://img.shields.io/badge/CmlLib-Minecraft-4E8C1E)
+![Serilog](https://img.shields.io/badge/Serilog-Logging-9C4A2B?logo=serilog&logoColor=white)
+![xUnit](https://img.shields.io/badge/xUnit-Tests-4E7C9F?logo=xunit&logoColor=white)
+![Inno Setup](https://img.shields.io/badge/Inno%20Setup-Instalador-0080AA)
+![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?logo=windows&logoColor=white)
+![Release](https://img.shields.io/github/v/release/shoropio/shorocraft-launcher?label=release)
+![License](https://img.shields.io/github/license/shoropio/shorocraft-launcher)
 
 ## Caracteristicas
 
@@ -70,7 +78,7 @@ shorocraft-launcher/
 
 ## Lanzamiento
 
-La versión más reciente está disponible en GitHub Releases. La release `v1.1.0` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
+La versión más reciente está disponible en GitHub Releases. La release `v1.1.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
 
 ## Dependencias
 
@@ -159,3 +167,15 @@ test:     Pruebas
 ## Licencia
 
 Distribuido bajo licencia MIT. Consulta [LICENSE](LICENSE).
+
+## Créditos
+
+- Esta aplicación usa bibliotecas .NET de código abierto:
+- © 2026 Shoropio Corporation. Todos los derechos reservados.
+
+- [CmlLib.Core](https://github.com/AlphaBs/CmlLib.Core) y [CmlLib.Core.Auth.Microsoft](https://github.com/AlphaBs/CmlLib.Core.Auth.Microsoft) — integración con Minecraft y autenticación Microsoft
+- [Entity Framework Core](https://github.com/dotnet/efcore) y SQLite — persistencia local
+- [Serilog](https://github.com/serilog/serilog) — logging
+- [Microsoft.Extensions.Hosting](https://github.com/dotnet/runtime) — DI y configuración
+- [WebView2](https://developer.microsoft.com/microsoft-edge/webview2) — vistas embebidas
+- [xUnit](https://github.com/xunit/xunit) y [Moq](https://github.com/devlooped/moq) — pruebas
