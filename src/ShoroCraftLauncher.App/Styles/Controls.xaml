@@ -132,7 +132,7 @@
                 <ControlTemplate TargetType="ListBox">
                     <Border Background="{TemplateBinding Background}" CornerRadius="0">
                         <ScrollViewer Margin="0" Focusable="false">
-                            <ItemsPresenter />
+                            <ItemsPresenter Margin="0,12,0,0" />
                         </ScrollViewer>
                     </Border>
                 </ControlTemplate>

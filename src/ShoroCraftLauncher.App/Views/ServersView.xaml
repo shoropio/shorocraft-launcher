@@ -47,20 +47,23 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-                    <Button Content="Iniciar" Command="{Binding StartServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Detener" Command="{Binding StopServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Despertar" Command="{Binding WakeServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource DangerButton}" />
-                </StackPanel>
+                <ScrollViewer DockPanel.Dock="Bottom" Margin="0,12,0,0"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Button Content="Iniciar" Command="{Binding StartServerCommand}"
+                                CommandParameter="{Binding SelectedServer}"
+                                Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
+                        <Button Content="Detener" Command="{Binding StopServerCommand}"
+                                CommandParameter="{Binding SelectedServer}"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
+                        <Button Content="Despertar" Command="{Binding WakeServerCommand}"
+                                CommandParameter="{Binding SelectedServer}"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
+                        <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
+                                CommandParameter="{Binding SelectedServer}"
+                                Style="{StaticResource DangerButton}" />
+                    </StackPanel>
+                </ScrollViewer>
             </DockPanel>
         </Border>
 
