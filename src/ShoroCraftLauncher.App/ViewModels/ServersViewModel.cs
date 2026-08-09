@@ -16,6 +16,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
     private readonly Action _serversChangedHandler;
     private readonly Action<string> _logOutputHandler;
     private readonly Action<ServerStatus> _statusChangedHandler;
+    private readonly Action<double, string> _progressChangedHandler;
 
     public ObservableCollection<MinecraftServer> Servers { get; } = new();
     public ObservableCollection<string> LogLines { get; } = new();
@@ -100,11 +101,21 @@ public class ServersViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _isDownloading, value);
     }
 
+    private string _downloadStatus = string.Empty;
+    public string DownloadStatus
+    {
+        get => _downloadStatus;
+        set => SetProperty(ref _downloadStatus, value);
+    }
+
     public ICommand RefreshCommand { get; }
     public ICommand CreateServerCommand { get; }
     public ICommand DeleteServerCommand { get; }
     public ICommand StartServerCommand { get; }
     public ICommand StopServerCommand { get; }
+    public ICommand WakeServerCommand { get; }
+    public ICommand CopyConsoleCommand { get; }
+    public ICommand ClearConsoleCommand { get; }
     public ICommand SendCommandCommand { get; }
 
     public ServersViewModel(IServerService serverService, ILogger<ServersViewModel> logger)
@@ -117,6 +128,9 @@ public class ServersViewModel : BaseViewModel, IDisposable
         DeleteServerCommand = new RelayCommand(async p => await DeleteServer(p), _ => IsSelected);
         StartServerCommand = new RelayCommand(async p => await StartServer(p), _ => IsSelected);
         StopServerCommand = new RelayCommand(async p => await StopServer(p), _ => IsSelected);
+        WakeServerCommand = new RelayCommand(async _ => await WakeServer(), _ => IsSelected);
+        CopyConsoleCommand = new RelayCommand(_ => CopyConsole(), _ => LogLines.Count > 0);
+        ClearConsoleCommand = new RelayCommand(_ => ClearConsole(), _ => LogLines.Count > 0);
         SendCommandCommand = new RelayCommand(async _ => await SendCommand());
 
         _serversChangedHandler = () => Dispatcher(() => SyncServers());
@@ -126,10 +140,17 @@ public class ServersViewModel : BaseViewModel, IDisposable
             OnPropertyChanged(nameof(IsSelected));
             OnPropertyChanged(nameof(CanControl));
         });
+        _progressChangedHandler = (pct, msg) => Dispatcher(() =>
+        {
+            IsDownloading = true;
+            DownloadProgress = pct >= 0 ? pct : 0;
+            DownloadStatus = msg;
+        });
 
         _serverService.ServersChanged += _serversChangedHandler;
         _serverService.LogOutput += _logOutputHandler;
         _serverService.StatusChanged += _statusChangedHandler;
+        _serverService.ProgressChanged += _progressChangedHandler;
 
         _ = LoadAsync();
         _ = LoadVersionsAsync();
@@ -315,6 +336,30 @@ public class ServersViewModel : BaseViewModel, IDisposable
         CommandText = string.Empty;
     }
 
+    private async Task WakeServer()
+    {
+        if (SelectedServer == null) return;
+
+        LogLines.Add("> list");
+        await _serverService.SendCommandAsync(SelectedServer, "list");
+        StatusMessage = "Comando 'list' enviado para despertar el servidor.";
+    }
+
+    private void CopyConsole()
+    {
+        var text = string.Join(Environment.NewLine, LogLines);
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        System.Windows.Clipboard.SetText(text);
+        StatusMessage = "Consola copiada al portapapeles.";
+    }
+
+    private void ClearConsole()
+    {
+        LogLines.Clear();
+        StatusMessage = "Consola limpiada.";
+    }
+
     private static void Dispatcher(Action action)
     {
         var app = System.Windows.Application.Current;
@@ -330,5 +375,6 @@ public class ServersViewModel : BaseViewModel, IDisposable
         _serverService.ServersChanged -= _serversChangedHandler;
         _serverService.LogOutput -= _logOutputHandler;
         _serverService.StatusChanged -= _statusChangedHandler;
+        _serverService.ProgressChanged -= _progressChangedHandler;
     }
 }

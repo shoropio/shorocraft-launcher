@@ -62,6 +62,7 @@ public class ServerServiceTests
             var props = await File.ReadAllTextAsync(propsPath);
             Assert.Contains("server-port=25565", props);
             Assert.Contains("level-name=world", props);
+            Assert.Contains("pause-when-empty-seconds=0", props);
         }
         finally
         {

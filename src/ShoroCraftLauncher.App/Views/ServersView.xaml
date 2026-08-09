@@ -54,6 +54,9 @@
                     <Button Content="Detener" Command="{Binding StopServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
+                    <Button Content="Despertar" Command="{Binding WakeServerCommand}"
+                            CommandParameter="{Binding SelectedServer}"
+                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
                     <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource DangerButton}" />
@@ -103,7 +106,7 @@
                         <StackPanel>
                             <ProgressBar Width="160" Height="6" Value="{Binding DownloadProgress}"
                                          Style="{StaticResource AccentProgressBar}" />
-                            <TextBlock Text="Descargando jar..." FontSize="11" Margin="0,6,0,0"
+                            <TextBlock Text="{Binding DownloadStatus}" FontSize="11" Margin="0,6,0,0"
                                        Foreground="{StaticResource TextSecondaryBrush}" />
                         </StackPanel>
                     </Border>
@@ -112,6 +115,14 @@
 
             <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0">
                 <DockPanel>
+                    <Grid DockPanel.Dock="Top" Background="#0D0D18">
+                        <StackPanel Orientation="Horizontal" Margin="10,6">
+                            <Button Content="Copiar consola" Command="{Binding CopyConsoleCommand}"
+                                    Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" Margin="0,0,8,0" />
+                            <Button Content="Limpiar" Command="{Binding ClearConsoleCommand}"
+                                    Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" />
+                        </StackPanel>
+                    </Grid>
                     <Grid DockPanel.Dock="Bottom" Background="#0A0A14" Margin="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />

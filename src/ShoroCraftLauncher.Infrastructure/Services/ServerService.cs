@@ -167,6 +167,8 @@ public class ServerService : IServerService
             if (!File.Exists(Path.Combine(server.DirectoryPath, "eula.txt")))
                 WriteEula(server.DirectoryPath);
 
+            await EnsurePauseDisabledAsync(server.DirectoryPath);
+
             var jarPath = await EnsureServerJarAsync(server);
 
             var javaPath = server.JavaPath;
@@ -177,14 +179,16 @@ public class ServerService : IServerService
                 if (string.IsNullOrEmpty(javaPath))
                 {
                     Log($"Descargando Java necesario para el servidor...");
-                    javaPath = await _javaService.DownloadJavaForVersionAsync(
-                        server.MinecraftVersion,
-                        new Progress<double>(pct =>
-                        {
-                            var msg = $"Descargando Java necesario... {pct:0}%";
+                javaPath = await _javaService.DownloadJavaForVersionAsync(
+                    server.MinecraftVersion,
+                    new Progress<double>(pct =>
+                    {
+                        var whole = (int)pct;
+                        var msg = $"Descargando Java necesario... {whole}%";
+                        ProgressChanged?.Invoke(pct, msg);
+                        if (whole % 10 == 0)
                             Log($"[INFO] {msg}");
-                            ProgressChanged?.Invoke(pct, msg);
-                        }));
+                    }));
                 }
 
                 if (string.IsNullOrEmpty(javaPath))
@@ -378,6 +382,7 @@ public class ServerService : IServerService
             var buffer = new byte[81920];
             long readTotal = 0;
             int read;
+            int lastLoggedTenth = -1;
             while ((read = await contentStream.ReadAsync(buffer)) > 0)
             {
                 await fileStream.WriteAsync(buffer.AsMemory(0, read));
@@ -385,9 +390,14 @@ public class ServerService : IServerService
                 if (totalBytes > 0)
                 {
                     var pct = (double)readTotal / totalBytes * 100;
-                    var msg = $"Descargando jar del servidor... {pct:0}%";
-                    LogServer(server.Id, $"[INFO] {msg}");
+                    var whole = (int)pct;
+                    var msg = $"Descargando jar del servidor... {whole}%";
                     ProgressChanged?.Invoke(pct, msg);
+                    if (whole / 10 != lastLoggedTenth || readTotal >= totalBytes)
+                    {
+                        lastLoggedTenth = whole / 10;
+                        LogServer(server.Id, $"[INFO] {msg}");
+                    }
                 }
             }
         }
@@ -463,6 +473,18 @@ public class ServerService : IServerService
             + "eula=true\n");
     }
 
+    private static async Task EnsurePauseDisabledAsync(string directoryPath)
+    {
+        var propsPath = Path.Combine(directoryPath, "server.properties");
+        if (!File.Exists(propsPath)) return;
+
+        var content = await File.ReadAllTextAsync(propsPath);
+        if (content.Contains("pause-when-empty-seconds", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        await File.AppendAllTextAsync(propsPath, "pause-when-empty-seconds=0\n");
+    }
+
     private static void WriteServerProperties(string directoryPath, string? worldName)
     {
         var levelName = string.IsNullOrWhiteSpace(worldName) ? "world" : worldName;
@@ -473,7 +495,8 @@ public class ServerService : IServerService
             + "motd=A ShoroCraft server\n"
             + "online-mode=false\n"
             + "max-players=20\n"
-            + "view-distance=10\n");
+            + "view-distance=10\n"
+            + "pause-when-empty-seconds=0\n");
     }
 
     private static string SanitizeFolderName(string name)
