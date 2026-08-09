@@ -6,6 +6,11 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [Unreleased]
+
+### 🔧 Correcciones
+- El botón "Buscar actualizaciones" en Ajustes → Mantenimiento ahora consulta el repositorio GitHub de verdad y ofrece instalar la nueva versión; antes siempre respondía "No hay actualizaciones disponibles" (implementación simulada).
+
 ## [1.2.0] - 2026-08-08
 
 ### ✨ Nuevo

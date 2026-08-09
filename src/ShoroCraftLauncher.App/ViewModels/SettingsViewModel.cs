@@ -14,6 +14,7 @@ public class SettingsViewModel : BaseViewModel
     private readonly ISettingsRepository _settingsRepo;
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly ILogService _logService;
+    private readonly IUpdaterService _updaterService;
 
     private bool _closeOnLaunch;
     public bool CloseOnLaunch
@@ -96,11 +97,13 @@ public class SettingsViewModel : BaseViewModel
     public SettingsViewModel(
         ISettingsRepository settingsRepo,
         ILogger<SettingsViewModel> logger,
-        ILogService logService)
+        ILogService logService,
+        IUpdaterService updaterService)
     {
         _settingsRepo = settingsRepo;
         _logger = logger;
         _logService = logService;
+        _updaterService = updaterService;
 
         BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDir());
         SaveGameDirCommand = new RelayCommand(async _ => await SaveGameDir());
@@ -188,9 +191,69 @@ public class SettingsViewModel : BaseViewModel
 
     private async Task CheckUpdates()
     {
+        if (IsBusy) return;
+        IsBusy = true;
         StatusMessage = "Buscando actualizaciones...";
-        await Task.Delay(1000);
-        StatusMessage = "No hay actualizaciones disponibles.";
+        try
+        {
+            var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+            var (isUpdateAvailable, latestVersion, downloadUrl) = await _updaterService.CheckForUpdatesAsync(currentVersion);
+
+            if (isUpdateAvailable && !string.IsNullOrEmpty(downloadUrl))
+            {
+                var result = System.Windows.MessageBox.Show(
+                    $"Hay una nueva versión disponible: {latestVersion}\n\n¿Quieres descargarla e instalarla?",
+                    "Actualización disponible",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information);
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    await InstallUpdateAsync(downloadUrl, latestVersion ?? string.Empty);
+                    return;
+                }
+            }
+
+            StatusMessage = isUpdateAvailable
+                ? $"Actualización disponible: {latestVersion}. Puedes instalarla desde el dashboard."
+                : "No hay actualizaciones disponibles.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check for updates");
+            _logService.Error("Settings", "CheckUpdatesFailed", "Error al buscar actualizaciones.", ex);
+            StatusMessage = "Error al buscar actualizaciones.";
+        }
+        IsBusy = false;
+    }
+
+    private async Task InstallUpdateAsync(string downloadUrl, string version)
+    {
+        StatusMessage = "Descargando actualización...";
+        try
+        {
+            var installerPath = await _updaterService.DownloadUpdateAsync(downloadUrl, version);
+            if (installerPath == null)
+            {
+                StatusMessage = "No se pudo descargar el instalador. Revisa tu conexión.";
+                return;
+            }
+
+            var confirm = System.Windows.MessageBox.Show(
+                "Actualización descargada. El instalador se abrirá y el Launcher se cerrará. ¿Continuar?",
+                "Actualizar Launcher",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+            if (confirm != System.Windows.MessageBoxResult.Yes)
+                return;
+
+            await _updaterService.LaunchInstallerAsync(installerPath);
+            System.Windows.Application.Current?.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update install failed");
+            StatusMessage = $"Error al instalar la actualización: {ex.Message}";
+        }
     }
 
     private void OpenLogsFolder()
