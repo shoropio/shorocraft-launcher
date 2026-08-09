@@ -6,6 +6,14 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.3.1] - 2026-08-09
+
+### 🔧 Correcciones
+- Al iniciar un servidor, el launcher detecta y detiene procesos Java huérfanos de sesiones anteriores (vía `server.pid`) que retenían `logs/latest.log` y `session.lock`, evitando el fallo de arranque del servidor.
+- Los servidores en ejecución se detienen correctamente al cerrar el launcher, evitando que queden procesos huérfanos.
+- La consola (principal y de servidores) tiene padding superior y lateral de 12 px para que el texto no quede pegado a los bordes.
+- Los botones del panel de servidores quedan pegados bajo la lista (sin pegarse al fondo ni necesitar scroll).
+
 ## [1.3.0] - 2026-08-08
 
 ### ✨ Nuevo
