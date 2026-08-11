@@ -30,6 +30,11 @@ Launcher de Minecraft para Windows, construido con .NET 8, WPF, MVVM, SQLite y C
 | Servidores | Creacion y gestion de servidores Vanilla y Paper con consola interactiva |
 | Datos | Persistencia local con SQLite |
 
+## Documentacion
+
+- [Launcher](docs/launcher.md): arquitectura, compilacion, desarrollo y proceso de release.
+- [Servidores](docs/servers.md): modulo de servidores Vanilla/Paper, consola, estados y solucion de problemas.
+
 ## Requisitos
 
 - Windows 10 o Windows 11 x64
