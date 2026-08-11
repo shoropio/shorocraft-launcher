@@ -27,9 +27,14 @@ Launcher de Minecraft para Windows, construido con .NET 8, WPF, MVVM, SQLite y C
 | Shaders | Gestion de shader packs compatible con Iris y OptiFine |
 | Noticias | Feed de noticias en el dashboard |
 | Consola | Logs en tiempo real del proceso de Minecraft |
+| Servidores | Creacion y gestion de servidores Vanilla y Paper con consola interactiva |
 | Datos | Persistencia local con SQLite |
 
 ## Requisitos
+
+- Windows 10 o Windows 11 x64
+- [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Java 8, 17 o 21, detectado o descargado automaticamente por el launcher
 
 ## Export / Import y Backups
 
@@ -40,11 +45,6 @@ El launcher soporta exportar e importar perfiles, y gestionar copias de segurida
 - Copias de seguridad: crea backups de `Worlds`, `Scripts` o `Configs` en `%LocalAppData%\ShoroCraftLauncher\backups\{perfil}` y restaura/elimina desde la misma vista.
 
 Estas operaciones también están disponibles programáticamente vía `IProfileService`.
-
-
-- Windows 10 o Windows 11 x64
-- [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Java 8, 17 o 21, detectado o descargado automaticamente por el launcher
 
 ## Compilar
 
@@ -78,7 +78,7 @@ shorocraft-launcher/
 
 ## Lanzamiento
 
-La versión más reciente está disponible en GitHub Releases. La release `v1.1.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
+La versión más reciente está disponible en GitHub Releases. La release `v1.3.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
 
 ## Dependencias
 
@@ -110,6 +110,16 @@ Si no se encuentra la version adecuada, el launcher intenta descargarla en su ca
 ## Modrinth
 
 Desde la vista Mods puedes buscar mods en Modrinth, ver informacion basica y filtrar resultados por version de Minecraft y loader.
+
+## Servidores
+
+Desde la sección "Servidores" puedes crear servidores Vanilla o Paper y gestionarlos desde el launcher:
+
+- Descarga automatica del jar del servidor (Vanilla o Paper) con barra de progreso.
+- Generacion de `eula.txt` y `server.properties` (con `pause-when-empty-seconds=0`).
+- Consola interactiva en tiempo real: envio de comandos, detener, despertar (`list`) y copiar/limpiar la consola.
+- Los servidores se almacenan en `%LocalAppData%\ShoroCraftLauncher\servers\{nombre}`.
+- El launcher limpia procesos Java huerfanos (via `server.pid`) antes de iniciar y detiene los servidores al cerrar la aplicacion.
 
 ## Pruebas
 
@@ -163,6 +173,7 @@ test:     Pruebas
 - [x] Notificaciones de actualizaciones de Minecraft
 - [x] Soporte para CurseForge API
 - [x] Empaquetado como instalador (Inno Setup / .exe)
+- [x] Servidores Vanilla y Paper con consola interactiva
 
 ## Licencia
 
