@@ -6,6 +6,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.4.0] - 2026-08-11
+
+### ✨ Nuevo
+- Sistema de descargas reanudables para redes lentas o inestables: las descargas grandes (jar de servidor, cliente y librerías de Minecraft, instalador de actualización, modpacks, mods y shaders) se guardan en un archivo `.part` y, si la conexión se interrumpe, se reanudan desde donde iban mediante peticiones HTTP `Range` en lugar de empezar de cero.
+- Reintentos automáticos (hasta 5 intentos) con espera progresiva y timeout de inactividad por lectura (60 s) que aborta descargas que se quedan sin datos y las retoma.
+- Verificación opcional de tamaño y hash SHA-1 al completar la descarga (usada en la importación de modpacks).
+
 ## [1.3.1] - 2026-08-09
 
 ### 🔧 Correcciones

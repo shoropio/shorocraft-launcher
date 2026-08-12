@@ -1,10 +1,10 @@
 using System.IO.Compression;
-using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -15,7 +15,7 @@ public class ModpackService : IModpackService
     private readonly IMinecraftService _minecraftService;
     private readonly ILogService _logService;
     private readonly ILogger<ModpackService> _logger;
-    private readonly HttpClient _httpClient;
+    private readonly IResumableDownloadService _resumableDownloadService;
 
     public ModpackService(
         IModRepository modRepository,
@@ -23,14 +23,14 @@ public class ModpackService : IModpackService
         IMinecraftService minecraftService,
         ILogService logService,
         ILogger<ModpackService> logger,
-        HttpClient httpClient)
+        IResumableDownloadService resumableDownloadService)
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
         _minecraftService = minecraftService;
         _logService = logService;
         _logger = logger;
-        _httpClient = httpClient;
+        _resumableDownloadService = resumableDownloadService;
     }
 
     public async Task<ModpackImportResult> ImportFromFileAsync(int profileId, string mrpackPath, Action<string>? onProgress = null)
@@ -47,16 +47,13 @@ public class ModpackService : IModpackService
         var tempFile = Path.Combine(Path.GetTempPath(), $"mrpack_{Guid.NewGuid():N}.mrpack");
         try
         {
-            using var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            await using var input = await response.Content.ReadAsStreamAsync();
-            await using var output = File.Create(tempFile);
-            await input.CopyToAsync(output);
+            await _resumableDownloadService.DownloadAsync(url, tempFile);
             return await ImportCoreAsync(profileId, tempFile, onProgress);
         }
         finally
         {
             try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+            try { if (File.Exists(tempFile + ".part")) File.Delete(tempFile + ".part"); } catch { }
         }
     }
 
@@ -172,28 +169,7 @@ public class ModpackService : IModpackService
 
     private async Task DownloadWithHashCheckAsync(string url, string destPath, string? expectedSha1, long expectedSize)
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0");
-
-        using var response = await _httpClient.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Descarga fallida ({(int)response.StatusCode}).");
-
-        await using var input = await response.Content.ReadAsStreamAsync();
-        await using var output = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
-        await input.CopyToAsync(output);
-        await output.FlushAsync();
-
-        if (expectedSize > 0 && new FileInfo(destPath).Length != expectedSize)
-            throw new Exception("Tamaño del archivo no coincide.");
-
-        if (!string.IsNullOrEmpty(expectedSha1))
-        {
-            await using var fileStream = File.OpenRead(destPath);
-            var hash = Convert.ToHexString(await SHA1.HashDataAsync(fileStream)).ToLowerInvariant();
-            if (!string.Equals(hash, expectedSha1.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Hash SHA1 no coincide.");
-        }
+        await _resumableDownloadService.DownloadAsync(url, destPath, expectedSha1, expectedSize);
     }
 
     private static void CopyDirectory(string source, string dest)

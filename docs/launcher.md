@@ -4,7 +4,7 @@ Documentación del launcher de Minecraft para Windows.
 
 - **Stack**: .NET 8, WPF, MVVM, EF Core + SQLite, CmlLib, Serilog
 - **Plataforma**: Windows 10 / 11 x64
-- **Última release**: `v1.3.1`
+- **Última release**: `v1.4.0`
 
 ---
 
@@ -17,6 +17,7 @@ Documentación del launcher de Minecraft para Windows.
 - [Compilar desde código](#compilar-desde-código)
 - [Arquitectura](#arquitectura)
 - [Persistencia y rutas](#persistencia-y-rutas)
+- [Descargas reanudables](#descargas-reanudables)
 - [Autenticación](#autenticación)
 - [Java](#java)
 - [Pruebas](#pruebas)
@@ -47,6 +48,7 @@ ShoroCraft Launcher es un launcher de Minecraft orientado a modding que permite 
 | Consola | Logs en tiempo real del proceso de Minecraft |
 | Servidores | Creación y gestión de servidores Vanilla y Paper con consola interactiva (ver [`servers.md`](servers.md)) |
 | Actualizaciones | Detección de actualizaciones de Minecraft y del propio launcher |
+| Descargas reanudables | Reanudación con HTTP `Range`, reintentos y verificación SHA-1 en descargas grandes |
 | Datos | Persistencia local con SQLite |
 
 ## Requisitos
@@ -84,7 +86,8 @@ shorocraft-launcher/
 |   |-- ShoroCraftLauncher.App/             UI WPF, views, viewmodels y estilos
 |   |-- ShoroCraftLauncher.Core/            modelos, enums e interfaces
 |   |-- ShoroCraftLauncher.Data/            EF Core, SQLite y repositorios
-|   |-- ShoroCraftLauncher.Infrastructure/  servicios de Minecraft, Java, auth y logs
+|   |-- ShoroCraftLauncher.Infrastructure/  servicios de Minecraft, Java, auth, logs y descargas
+|   |   `-- Downloading/                    ResumableDownloadService (HTTP Range + `.part`)
 |   `-- ShoroCraftLauncher.Tests/           pruebas con xUnit
 |-- assets/
 |-- docs/
@@ -115,6 +118,16 @@ Toda la persistencia es local, bajo `%LocalAppData%\ShoroCraftLauncher`:
 | `%LocalAppData%\ShoroCraftLauncher\logs\launcher-*.log` | Logs del launcher (Serilog, retención de 7 días) |
 | `%LocalAppData%\ShoroCraftLauncher\servers\{nombre}` | Carpetas de servidores (ver [`servers.md`](servers.md)) |
 | `%LocalAppData%\ShoroCraftLauncher\backups\{perfil}` | Backups de mundos, scripts y configs |
+
+## Descargas reanudables
+
+Las descargas grandes (jar de servidor, cliente y librerías de Minecraft, instalador de actualización, modpacks, mods y shaders) usan `ResumableDownloadService` (`src/ShoroCraftLauncher.Infrastructure/Downloading/`):
+
+- El archivo se descarga a `<destino>.part`; si la conexión se interrumpe, el parcial se conserva y el siguiente intento continúa desde el byte donde quedó con una petición HTTP `Range` (respuesta `206 Partial Content`).
+- Si el servidor no soporta `Range` (responde `200`), la descarga se reinicia; si responde `416` (rango inválido), el `.part` se descarta y se vuelve a empezar.
+- Reintenta hasta 5 veces con espera progresiva; un timeout de inactividad de 60 s aborta descargas que se quedan sin datos y las retoma desde donde iban.
+- Al completar, verifica el tamaño y, opcionalmente, el hash SHA-1 (modpacks) antes de mover el archivo a su destino.
+- Se registra como singleton en `App.xaml.cs`; las librerías de Minecraft y los assets se guardan en rutas estables, por lo que sus `.part` sobreviven entre sesiones y se reanudan en el siguiente arranque.
 
 ## Autenticación
 
@@ -156,7 +169,7 @@ dotnet test ShoroCraftLauncher.sln --filter Category=Integration
 ### Agregar un servicio
 
 1. Define la interfaz en `src/ShoroCraftLauncher.Core/Interfaces/`.
-2. Implementa el servicio en `src/ShoroCraftLauncher.Infrastructure/Services/`.
+2. Implementa el servicio en `src/ShoroCraftLauncher.Infrastructure/Services/` (los de descargas, en `Downloading/`).
 3. Registra la dependencia en `App.xaml.cs`.
 
 ### Convención de commits

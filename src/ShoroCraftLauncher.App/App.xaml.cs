@@ -84,6 +84,8 @@ public partial class App : Application
 
                 services.AddSingleton<DbInitializer>();
                 services.AddSingleton(new HttpClient());
+                services.AddSingleton<ShoroCraftLauncher.Infrastructure.Downloading.IResumableDownloadService,
+                    ShoroCraftLauncher.Infrastructure.Downloading.ResumableDownloadService>();
 
                 services.AddSingleton<IProfileRepository, ProfileRepository>();
                 services.AddSingleton<IModRepository, ModRepository>();

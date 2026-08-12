@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Minecraft;
 
@@ -16,6 +17,7 @@ public class MinecraftService : IMinecraftService
     private readonly ILogger<MinecraftService> _logger;
     private readonly HttpClient _httpClient;
     private readonly ILogService? _logService;
+    private readonly IResumableDownloadService _resumableDownloadService;
     private const string VersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private const string ForgePromotionsUrl = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
     private const string FabricGameVersionsUrl = "https://meta.fabricmc.net/v2/versions/game";
@@ -25,11 +27,13 @@ public class MinecraftService : IMinecraftService
     private const string QuiltInstallerVersionsUrl = "https://meta.quiltmc.org/v3/versions/installer";
     private const string NeoForgeMetadataUrl = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
 
-    public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null)
+    public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null,
+        IResumableDownloadService? resumableDownloadService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
         _logService = logService;
+        _resumableDownloadService = resumableDownloadService ?? new ResumableDownloadService(httpClient);
     }
 
     public string GetDefaultGameDirectory(string profileName)
@@ -654,32 +658,7 @@ public class MinecraftService : IMinecraftService
     }
 
     private async Task DownloadFileAsync(string url, string destinationPath, IProgress<double>? progress)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-
-        var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        using var contentStream = await response.Content.ReadAsStreamAsync();
-        using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
-
-        if (totalBytes > 0)
-        {
-            var buffer = new byte[8192];
-            long readBytes = 0;
-            int read;
-            while ((read = await contentStream.ReadAsync(buffer)) > 0)
-            {
-                await fileStream.WriteAsync(buffer, 0, read);
-                readBytes += read;
-                progress?.Report((double)readBytes / totalBytes * 100);
-            }
-        }
-        else
-        {
-            await contentStream.CopyToAsync(fileStream);
-        }
-    }
+        => await _resumableDownloadService.DownloadAsync(url, destinationPath, progress);
 
     private static string GetMinecraftGameDir() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");

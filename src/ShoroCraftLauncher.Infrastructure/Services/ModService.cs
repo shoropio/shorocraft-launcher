@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -15,6 +16,7 @@ public class ModService : IModService
     private readonly ILogger<ModService> _logger;
     private readonly ILogService _logService;
     private readonly HttpClient _httpClient;
+    private readonly IResumableDownloadService _resumableDownloadService;
 
     public ModService(
         IModRepository modRepository,
@@ -23,7 +25,8 @@ public class ModService : IModService
         IMinecraftService minecraftService,
         ILogger<ModService> logger,
         ILogService logService,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        IResumableDownloadService? resumableDownloadService = null)
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
@@ -32,6 +35,7 @@ public class ModService : IModService
         _logger = logger;
         _logService = logService;
         _httpClient = httpClient;
+        _resumableDownloadService = resumableDownloadService ?? new ResumableDownloadService(httpClient);
     }
 
     public async Task<List<Mod>> SearchModsAsync(string provider, string query, string minecraftVersion, string loaderType)
@@ -178,9 +182,9 @@ public class ModService : IModService
 
         _logger.LogInformation("Downloading mod from {Url}", downloadUrl);
         _logService.Info("ModService", "DownloadMod", $"Descargando {fileName} ({FormatFileSize(fileSize)})...");
-        var bytes = await _httpClient.GetByteArrayAsync(downloadUrl);
-        await File.WriteAllBytesAsync(destPath, bytes);
-        _logService.Info("ModService", "DownloadMod", $"Descarga completada ({FormatFileSize(bytes.Length)}).");
+        await _resumableDownloadService.DownloadAsync(downloadUrl, destPath);
+        var downloadedBytes = new FileInfo(destPath).Length;
+        _logService.Info("ModService", "DownloadMod", $"Descarga completada ({FormatFileSize(downloadedBytes)}).");
 
         var mod = new Mod
         {
@@ -188,7 +192,7 @@ public class ModService : IModService
             Name = searchResult.Name,
             FileName = fileName,
             FilePath = destPath,
-            FileSizeBytes = fileSize > 0 ? fileSize : bytes.Length,
+            FileSizeBytes = fileSize > 0 ? fileSize : downloadedBytes,
             MinecraftVersion = profile.MinecraftVersion,
             ModVersion = modVersion,
             IconPath = searchResult.IconPath,
@@ -416,8 +420,8 @@ public class ModService : IModService
         }
 
         _logService.Info("ModService", "InstallDependency", $"Instalando dependencia '{title}' ({resolved.FileName})...");
-        var bytes = await _httpClient.GetByteArrayAsync(resolved.Url);
-        await File.WriteAllBytesAsync(destPath, bytes);
+        await _resumableDownloadService.DownloadAsync(resolved.Url, destPath);
+        var dependencyBytes = new FileInfo(destPath).Length;
 
         var mod = new Mod
         {
@@ -425,7 +429,7 @@ public class ModService : IModService
             Name = title,
             FileName = resolved.FileName,
             FilePath = destPath,
-            FileSizeBytes = resolved.Size > 0 ? resolved.Size : bytes.Length,
+            FileSizeBytes = resolved.Size > 0 ? resolved.Size : dependencyBytes,
             MinecraftVersion = profile.MinecraftVersion,
             ModVersion = resolved.Version,
             IconPath = icon,

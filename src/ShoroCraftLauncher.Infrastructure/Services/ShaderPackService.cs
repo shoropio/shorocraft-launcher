@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -14,6 +15,7 @@ public class ShaderPackService : IShaderPackService
     private readonly ILogger<ShaderPackService> _logger;
     private readonly ILogService _logService;
     private readonly HttpClient _httpClient;
+    private readonly IResumableDownloadService _resumableDownloadService;
 
     public ShaderPackService(
         IShaderPackRepository repository,
@@ -22,7 +24,8 @@ public class ShaderPackService : IShaderPackService
         IMinecraftService minecraftService,
         ILogger<ShaderPackService> logger,
         ILogService logService,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        IResumableDownloadService? resumableDownloadService = null)
     {
         _repository = repository;
         _profileRepository = profileRepository;
@@ -31,6 +34,7 @@ public class ShaderPackService : IShaderPackService
         _logger = logger;
         _logService = logService;
         _httpClient = httpClient;
+        _resumableDownloadService = resumableDownloadService ?? new ResumableDownloadService(httpClient);
     }
 
     public async Task<List<ShaderPack>> GetPacksAsync(int profileId) =>
@@ -208,9 +212,9 @@ public class ShaderPackService : IShaderPackService
 
         _logger.LogInformation("Downloading shader from {Url}", downloadUrl);
         _logService.Info("ShaderPackService", "DownloadShader", $"Descargando {fileName}...");
-        var bytes = await _httpClient.GetByteArrayAsync(downloadUrl);
-        await File.WriteAllBytesAsync(destPath, bytes);
-        _logService.Info("ShaderPackService", "DownloadShader", $"Descarga completada ({bytes.Length} bytes).");
+        await _resumableDownloadService.DownloadAsync(downloadUrl, destPath);
+        var downloadedBytes = new FileInfo(destPath).Length;
+        _logService.Info("ShaderPackService", "DownloadShader", $"Descarga completada ({downloadedBytes} bytes).");
 
         var pack = new ShaderPack
         {
@@ -218,7 +222,7 @@ public class ShaderPackService : IShaderPackService
             Name = searchResult.Name,
             FileName = fileName,
             FilePath = destPath,
-            FileSizeBytes = size > 0 ? size : bytes.Length,
+            FileSizeBytes = size > 0 ? size : downloadedBytes,
             Status = PackStatus.Active
         };
 

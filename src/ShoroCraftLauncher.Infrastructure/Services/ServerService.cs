@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -21,6 +22,7 @@ public class ServerService : IServerService
     private readonly ILogger<ServerService> _logger;
     private readonly ILogService? _logService;
     private readonly HttpClient _httpClient;
+    private readonly IResumableDownloadService _resumableDownloadService;
 
     private readonly List<MinecraftServer> _servers = new();
     private readonly Dictionary<int, Process> _processes = new();
@@ -33,7 +35,8 @@ public class ServerService : IServerService
         IJavaService javaService,
         HttpClient httpClient,
         ILogger<ServerService> logger,
-        ILogService? logService = null)
+        ILogService? logService = null,
+        IResumableDownloadService? resumableDownloadService = null)
     {
         _repository = repository;
         _minecraftService = minecraftService;
@@ -41,6 +44,7 @@ public class ServerService : IServerService
         _httpClient = httpClient;
         _logger = logger;
         _logService = logService;
+        _resumableDownloadService = resumableDownloadService ?? new ResumableDownloadService(httpClient);
     }
 
     public IReadOnlyList<MinecraftServer> Servers
@@ -392,38 +396,20 @@ public class ServerService : IServerService
         if (string.IsNullOrEmpty(url))
             throw new Exception($"No se encontró el jar para {server.Type} {server.MinecraftVersion}.");
 
-        var downloadPath = jarPath + ".tmp";
-        using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+        int lastLoggedTenth = -1;
+        var progress = new Progress<double>(pct =>
         {
-            response.EnsureSuccessStatusCode();
-            var totalBytes = response.Content.Headers.ContentLength ?? 0;
-            await using var contentStream = await response.Content.ReadAsStreamAsync();
-            await using var fileStream = File.Create(downloadPath);
-
-            var buffer = new byte[81920];
-            long readTotal = 0;
-            int read;
-            int lastLoggedTenth = -1;
-            while ((read = await contentStream.ReadAsync(buffer)) > 0)
+            var whole = (int)pct;
+            var msg = $"Descargando jar del servidor... {whole}%";
+            ProgressChanged?.Invoke(pct, msg);
+            if (whole / 10 != lastLoggedTenth || whole >= 100)
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read));
-                readTotal += read;
-                if (totalBytes > 0)
-                {
-                    var pct = (double)readTotal / totalBytes * 100;
-                    var whole = (int)pct;
-                    var msg = $"Descargando jar del servidor... {whole}%";
-                    ProgressChanged?.Invoke(pct, msg);
-                    if (whole / 10 != lastLoggedTenth || readTotal >= totalBytes)
-                    {
-                        lastLoggedTenth = whole / 10;
-                        LogServer(server.Id, $"[INFO] {msg}");
-                    }
-                }
+                lastLoggedTenth = whole / 10;
+                LogServer(server.Id, $"[INFO] {msg}");
             }
-        }
+        });
 
-        File.Move(downloadPath, jarPath, true);
+        await _resumableDownloadService.DownloadAsync(url, jarPath, progress);
         LogServer(server.Id, $"[INFO] Jar del servidor descargado.");
         return jarPath;
     }
