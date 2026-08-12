@@ -13,6 +13,9 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Reintentos automáticos (hasta 5 intentos) con espera progresiva y timeout de inactividad por lectura (60 s) que aborta descargas que se quedan sin datos y las retoma.
 - Verificación opcional de tamaño y hash SHA-1 al completar la descarga (usada en la importación de modpacks).
 
+### 📦 Empaquetado
+- Firma Authenticode del instalador y del ejecutable con un certificado self-signed (SHA-256 + timestamp DigiCert). El desinstalador también queda firmado (`SignedUninstaller`). En equipos sin el certificado en el almacén de confianza el editor aparecerá como "desconocido". Script de firma en `installer/sign.ps1` y configuración en `installer/setup.iss` (definición vía `ISCC /Ssigntool=...`).
+
 ## [1.3.1] - 2026-08-09
 
 ### 🔧 Correcciones

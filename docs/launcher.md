@@ -91,8 +91,9 @@ shorocraft-launcher/
 |   `-- ShoroCraftLauncher.Tests/           pruebas con xUnit
 |-- assets/
 |-- docs/
-|-- installer/                              script de Inno Setup (setup.iss)
-|-- dist/                                   instalador y zip generados
+|-- installer/                              script de Inno Setup (setup.iss) y firma (sign.ps1)
+|   `-- signing/ (git-ignored)              certificado PFX y contraseña
+|-- dist/                                   instalador y zip generados (git-ignored)
 `-- README.md
 ```
 
@@ -199,24 +200,40 @@ release:  Commit de publicación (vX.Y.Z)
    dotnet publish src/ShoroCraftLauncher.App/ShoroCraftLauncher.App.csproj -c Release -r win-x64 --self-contained false -o src/ShoroCraftLauncher.App/bin/Release/net8.0-windows/win-x64/publish
    ```
 
-6. Compila el instalador (Inno Setup) con `installer/setup.iss`:
+6. Firma el ejecutable de la app (antes de compilar el instalador para que lo embeba firmado):
 
    ```powershell
-   & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
+   & .\installer\sign.ps1 -Path src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\win-x64\publish\ShoroCraftLauncher.exe
    ```
 
-   Genera `dist\ShoroCraftLauncher_Setup.exe`.
-7. Crea el zip portable:
+   El script usa `signtool` con un certificado del almacén `CurrentUser\My` (CN "ShoroCraft Launcher"), hash SHA-256 y timestamp de DigiCert. Para generar el certificado self-signed y exportar el PFX (respaldos git-ignorados en `installer/signing/`):
+
+   ```powershell
+   $cert = New-SelfSignedCertificate -Subject "CN=ShoroCraft Launcher" -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy Exportable -KeySpec Signature -KeyUsage DigitalSignature -KeyUsageProperty Sign -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3") -NotAfter (Get-Date).AddYears(3)
+   ```
+
+   Con un certificado OV/EV de una CA real solo hay que cambiar la selección por `signtool /sha1 <thumb>`.
+
+7. Compila el instalador (Inno Setup). `installer/setup.iss` usa `SignTool=signtool` (definición vía `/S`), lo que firma el instalador y el desinstalador embebido (`SignedUninstaller=yes`):
+
+   ```powershell
+   & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss '/Ssigntool=C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe sign /n $qShoroCraft Launcher$q /s my /fd sha256 /tr http://timestamp.digicert.com /td sha256 $f'
+   ```
+
+   Genera `dist\ShoroCraftLauncher_Setup.exe` firmado.
+8. Crea el zip portable (contiene el ejecutable firmado):
 
    ```powershell
    Compress-Archive -Path src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\win-x64\publish\* -DestinationPath dist\ShoroCraftLauncher_Publish.zip
    ```
 
-8. Publica la release en GitHub:
+9. Publica la release en GitHub:
 
    ```bash
    gh release create vX.Y.Z --title "vX.Y.Z" --notes "..." dist/ShoroCraftLauncher_Setup.exe dist/ShoroCraftLauncher_Publish.zip
    ```
+
+   Para reemplazar assets de una release ya publicada: borra los antiguos (API `DELETE /releases/assets/{id}`) y sube los nuevos con `curl` a `https://uploads.github.com/repos/shoropio/shorocraft-launcher/releases/{id}/assets?name={nombre}` (la red de GitHub puede exigir reintentos y límite de velocidad de `curl`).
 
 ## Dependencias
 

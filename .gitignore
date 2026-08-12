@@ -48,3 +48,6 @@ $RECYCLE.BIN/
 
 # User data (runtime)
 src/**/AppData/
+
+# Code signing (private key - never commit)
+installer/signing/*.pfx*
