@@ -17,7 +17,7 @@ public class SettingsViewModelUpdateTests
         var updaterService = new Mock<IUpdaterService>(MockBehavior.Strict);
         updaterService
             .Setup(u => u.CheckForUpdatesAsync(It.IsAny<string>()))
-            .ReturnsAsync((false, (string?)null, (string?)null));
+            .ReturnsAsync((false, (string?)null, (string?)null, (string?)null));
 
         var vm = new SettingsViewModel(
             settingsRepo.Object,

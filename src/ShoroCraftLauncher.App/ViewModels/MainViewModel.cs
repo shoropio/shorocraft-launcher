@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -183,8 +185,8 @@ public class MainViewModel : BaseViewModel, IDisposable
         NavItems.Add(new NavItem { Name = "Nav_Settings", Icon = "⚙️" });
 
         NavigateCommand = new RelayCommand(p => SelectedNav = p?.ToString() ?? "Nav_Dashboard");
-        LaunchGameCommand = new RelayCommand(async _ => await LaunchGame(), _ => SelectedProfile != null && !IsGameRunning);
-        StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning);
+        LaunchGameCommand = new RelayCommand(async _ => await LaunchGame(), _ => SelectedProfile != null && !IsGameRunning && !IsBusy);
+        StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning && !IsBusy);
         LoginCommand = new RelayCommand(async _ => await LoginMicrosoft());
         LoginOfflineCommand = new RelayCommand(async _ => await LoginOffline());
         LogoutCommand = new RelayCommand(async _ => await Logout());
@@ -222,9 +224,19 @@ public class MainViewModel : BaseViewModel, IDisposable
 
     private async Task LoadInitialDataAsync()
     {
-        await _profileService.LoadProfilesAsync();
-        await TryRestoreSessionAsync();
-        SelectedNav = "Nav_Dashboard";
+        try
+        {
+            await _profileService.LoadProfilesAsync();
+            await TryRestoreSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError($"Failed to load initial data: {ex}");
+        }
+        finally
+        {
+            SelectedNav = "Nav_Dashboard";
+        }
     }
 
     private async Task TryRestoreSessionAsync()
@@ -288,25 +300,30 @@ public class MainViewModel : BaseViewModel, IDisposable
         }
 
         IsBusy = true;
-        StatusMessage = $"Iniciando {SelectedProfileName}...";
-        SelectedNav = "Nav_Console";
-
-        var result = await _launcherService.LaunchProfileAsync(SelectedProfile, _currentAuth);
-
-        if (result.Success)
+        try
         {
-            IsGameRunning = true;
-            StatusMessage = $"Juego iniciado (PID: {result.ProcessId})";
-            IsDownloading = false;
-            DownloadProgress = 0;
-            DownloadStatus = string.Empty;
-        }
-        else
-        {
-            StatusMessage = $"Error: {result.ErrorMessage}";
-        }
+            StatusMessage = $"Iniciando {SelectedProfileName}...";
+            SelectedNav = "Nav_Console";
 
-        IsBusy = false;
+            var result = await _launcherService.LaunchProfileAsync(SelectedProfile, _currentAuth);
+
+            if (result.Success)
+            {
+                IsGameRunning = true;
+                StatusMessage = $"Juego iniciado (PID: {result.ProcessId})";
+                IsDownloading = false;
+                DownloadProgress = 0;
+                DownloadStatus = string.Empty;
+            }
+            else
+            {
+                StatusMessage = $"Error: {result.ErrorMessage}";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task StopGame()
@@ -319,63 +336,79 @@ public class MainViewModel : BaseViewModel, IDisposable
     private async Task LoginMicrosoft()
     {
         IsBusy = true;
-        StatusMessage = "Abriendo autenticación Microsoft...";
+        try
+        {
+            StatusMessage = "Abriendo autenticación Microsoft...";
 
-        _currentAuth = await _authService.AuthenticateAsync();
-        if (_currentAuth.Success)
-        {
-            Username = _currentAuth.Username ?? Username;
-            IsAuthenticated = true;
-            AuthStatus = $"Microsoft: {_currentAuth.Username}";
-            SkinUrl = _currentAuth.SkinUrl;
-            StatusMessage = "Autenticación Microsoft exitosa.";
+            _currentAuth = await _authService.AuthenticateAsync();
+            if (_currentAuth.Success)
+            {
+                Username = _currentAuth.Username ?? Username;
+                IsAuthenticated = true;
+                AuthStatus = $"Microsoft: {_currentAuth.Username}";
+                SkinUrl = _currentAuth.SkinUrl;
+                StatusMessage = "Autenticación Microsoft exitosa.";
+            }
+            else
+            {
+                StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación Microsoft.";
+            }
         }
-        else
+        finally
         {
-            StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación Microsoft.";
+            IsBusy = false;
         }
-        IsBusy = false;
     }
 
     private async Task LoginOffline()
     {
         IsBusy = true;
-        StatusMessage = "Autenticando offline...";
-        await Task.Delay(300);
+        try
+        {
+            StatusMessage = "Autenticando offline...";
+            await Task.Delay(300);
 
-        _currentAuth = await _authService.AuthenticateOfflineAsync(Username);
-        if (_currentAuth.Success)
-        {
-            IsAuthenticated = true;
-            AuthStatus = $"Offline: {_currentAuth.Username}";
-            SkinUrl = _currentAuth.SkinUrl;
-            StatusMessage = "Autenticación offline exitosa.";
+            _currentAuth = await _authService.AuthenticateOfflineAsync(Username);
+            if (_currentAuth.Success)
+            {
+                IsAuthenticated = true;
+                AuthStatus = $"Offline: {_currentAuth.Username}";
+                SkinUrl = _currentAuth.SkinUrl;
+                StatusMessage = "Autenticación offline exitosa.";
+            }
+            else
+            {
+                StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación.";
+            }
         }
-        else
+        finally
         {
-            StatusMessage = _currentAuth.ErrorMessage ?? "Error de autenticación.";
+            IsBusy = false;
         }
-        IsBusy = false;
     }
 
     private async Task Logout()
     {
-        var result = System.Windows.MessageBox.Show(
+        var result = DialogHelper.Confirm(
             "¿Cerrar sesión? Se eliminarán las credenciales guardadas y volverás al modo offline.",
-            "Cerrar sesión",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Question);
+            "Cerrar sesión");
         if (result != System.Windows.MessageBoxResult.Yes) return;
 
         IsBusy = true;
-        await _authService.LogoutAsync();
-        _currentAuth = null;
-        IsAuthenticated = false;
-        AuthStatus = "User_NotAuthenticated";
-        Username = Environment.UserName;
-        SkinUrl = null;
-        StatusMessage = "Sesión cerrada.";
-        IsBusy = false;
+        try
+        {
+            await _authService.LogoutAsync();
+            _currentAuth = null;
+            IsAuthenticated = false;
+            AuthStatus = "User_NotAuthenticated";
+            Username = Environment.UserName;
+            SkinUrl = null;
+            StatusMessage = "Sesión cerrada.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public void Dispose()

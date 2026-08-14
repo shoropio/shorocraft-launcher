@@ -1,7 +1,13 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
-    
+
+    <!-- MainWindow -->
+    <system:String x:Key="Main_Title">ShoroCraft Launcher</system:String>
+    <system:String x:Key="Main_LauncherTag">Launcher v1.0</system:String>
+    <system:String x:Key="Main_NoSession">Sin sesión</system:String>
+    <system:String x:Key="Main_Logout">Cerrar sesión</system:String>
+
     <!-- Sidebar -->
     <system:String x:Key="Nav_Dashboard">Inicio</system:String>
     <system:String x:Key="Nav_Profiles">Perfiles</system:String>
@@ -13,16 +19,178 @@
     <system:String x:Key="Nav_Servers">Servidores</system:String>
     <system:String x:Key="Nav_Console">Consola</system:String>
     <system:String x:Key="Nav_Settings">Configuración</system:String>
-    
+
     <!-- User Panel -->
     <system:String x:Key="User_NotAuthenticated">No autenticado</system:String>
     <system:String x:Key="User_Offline">Desconectado</system:String>
     <system:String x:Key="User_LoginMicrosoft">Microsoft</system:String>
     <system:String x:Key="User_LoginOffline">Offline</system:String>
-    
-    <!-- Main Window Bar -->
+
+    <!-- Top / Bottom Bar -->
     <system:String x:Key="TopBar_NoProfile">Sin perfil seleccionado</system:String>
     <system:String x:Key="BottomBar_Play">JUGAR</system:String>
     <system:String x:Key="BottomBar_Stop">DETENER</system:String>
-    
+
+    <!-- Console -->
+    <system:String x:Key="Con_Clear">Limpiar</system:String>
+    <system:String x:Key="Con_Copy">Copiar</system:String>
+    <system:String x:Key="Con_CopyErrors">Copiar errores</system:String>
+    <system:String x:Key="Con_Search">Buscar en el log...</system:String>
+    <system:String x:Key="Con_Stopped">Detenido</system:String>
+    <system:String x:Key="Con_Running">En ejecución</system:String>
+
+    <!-- Dashboard -->
+    <system:String x:Key="Dash_ActiveProfile">Perfil activo:</system:String>
+    <system:String x:Key="Dash_Apply">Aplicar</system:String>
+    <system:String x:Key="Dash_UpdateAvailableMsg">Descarga e instala la nueva versión automáticamente.</system:String>
+    <system:String x:Key="Dash_InstallUpdate">Instalar actualización</system:String>
+    <system:String x:Key="Dash_McUpdateMsg">Tu perfil usa una versión anterior. Instala la nueva o ignórala por ahora.</system:String>
+    <system:String x:Key="Dash_Install">Instalar</system:String>
+    <system:String x:Key="Dash_Ignore">Ignorar</system:String>
+    <system:String x:Key="Dash_Version">VERSIÓN</system:String>
+    <system:String x:Key="Dash_Mods">MODS</system:String>
+    <system:String x:Key="Dash_Ram">RAM</system:String>
+    <system:String x:Key="Dash_Status">ESTADO</system:String>
+    <system:String x:Key="Dash_ChecklistTitle">Estado de preparación del perfil</system:String>
+    <system:String x:Key="Dash_RamTitle">Asignación de RAM</system:String>
+    <system:String x:Key="Dash_JavaTitle">Java recomendado</system:String>
+    <system:String x:Key="Dash_FilesTitle">Archivos del juego</system:String>
+    <system:String x:Key="Dash_LoaderTitle">Cargador de mods (Loader)</system:String>
+    <system:String x:Key="Dash_Repair">Reparar perfil</system:String>
+    <system:String x:Key="Dash_QuickStart">Inicio rápido</system:String>
+    <system:String x:Key="Dash_QuickStartSub">Instala loaders y versiones de Minecraft</system:String>
+    <system:String x:Key="Dash_InstallForge">Instalar Forge</system:String>
+    <system:String x:Key="Dash_InstallNeoForge">Instalar NeoForge</system:String>
+    <system:String x:Key="Dash_InstallFabric">Instalar Fabric</system:String>
+    <system:String x:Key="Dash_InstallQuilt">Instalar Quilt</system:String>
+    <system:String x:Key="Dash_OptiFineManual">OptiFine (Manual)</system:String>
+    <system:String x:Key="Dash_InstallVersion">Instalar versión</system:String>
+    <system:String x:Key="Dash_RefreshList">Actualizar lista</system:String>
+    <system:String x:Key="Dash_PerfTitle">Mejoras gráficas y rendimiento</system:String>
+    <system:String x:Key="Dash_PerfSub">Instala mods para mejorar la calidad visual y el rendimiento</system:String>
+    <system:String x:Key="Dash_IrisTooltip">Requiere un perfil Fabric. Si no está instalado, el botón se deshabilita.</system:String>
+    <system:String x:Key="Dash_OptiFineTooltip">OptiFine no se descarga automáticamente; se abrirá la página oficial.</system:String>
+    <system:String x:Key="Dash_PerfNote">Iris+Sodium está disponible solo para perfiles Fabric. OptiFine requiere descarga manual.</system:String>
+
+    <!-- Maps -->
+    <system:String x:Key="Maps_Profiles">Perfiles</system:String>
+    <system:String x:Key="Maps_Add">+ Agregar Mundo</system:String>
+    <system:String x:Key="Maps_Backup">Respaldo de mundos</system:String>
+    <system:String x:Key="Maps_OpenFolder">Abrir carpeta</system:String>
+    <system:String x:Key="Maps_Refresh">Actualizar</system:String>
+    <system:String x:Key="Maps_Delete">Eliminar</system:String>
+
+    <!-- Mods -->
+    <system:String x:Key="Mods_Profiles">Perfiles</system:String>
+    <system:String x:Key="Mods_Search">Buscar</system:String>
+    <system:String x:Key="Mods_SearchPlaceholder">Buscar mods...</system:String>
+    <system:String x:Key="Mods_Installed">Instalados</system:String>
+    <system:String x:Key="Mods_Recommended">Recomendados</system:String>
+    <system:String x:Key="Mods_AddLocal">+ Agregar Mod Local</system:String>
+    <system:String x:Key="Mods_ImportModpack">Importar Modpack (.mrpack)</system:String>
+    <system:String x:Key="Mods_OpenFolder">Abrir carpeta</system:String>
+    <system:String x:Key="Mods_Refresh">Actualizar</system:String>
+    <system:String x:Key="Mods_Delete">Eliminar</system:String>
+    <system:String x:Key="Mods_Install">Instalar</system:String>
+
+    <!-- Resource Packs -->
+    <system:String x:Key="RPacks_Profiles">Perfiles</system:String>
+    <system:String x:Key="RPacks_Add">+ Agregar Packs</system:String>
+    <system:String x:Key="RPacks_OpenFolder">Abrir carpeta</system:String>
+    <system:String x:Key="RPacks_Refresh">Actualizar</system:String>
+    <system:String x:Key="RPacks_Delete">Eliminar</system:String>
+
+    <!-- Scripts -->
+    <system:String x:Key="Scripts_Profiles">Perfiles</system:String>
+    <system:String x:Key="Scripts_Title">Scripts</system:String>
+    <system:String x:Key="Scripts_Import">+ Importar Script</system:String>
+    <system:String x:Key="Scripts_SelectPlaceholder">Selecciona un script</system:String>
+    <system:String x:Key="Scripts_SaveBackup">Guardar (con backup)</system:String>
+    <system:String x:Key="Scripts_Delete">Eliminar</system:String>
+
+    <!-- Servers -->
+    <system:String x:Key="Srv_Title">Servidores</system:String>
+    <system:String x:Key="Srv_Refresh">Actualizar</system:String>
+    <system:String x:Key="Srv_Start">Iniciar</system:String>
+    <system:String x:Key="Srv_Stop">Detener</system:String>
+    <system:String x:Key="Srv_Wake">Despertar</system:String>
+    <system:String x:Key="Srv_Delete">Eliminar</system:String>
+    <system:String x:Key="Srv_NewServer">Nuevo servidor</system:String>
+    <system:String x:Key="Srv_Create">Crear</system:String>
+    <system:String x:Key="Srv_CopyConsole">Copiar consola</system:String>
+    <system:String x:Key="Srv_ClearConsole">Limpiar</system:String>
+    <system:String x:Key="Srv_Send">Enviar</system:String>
+    <system:String x:Key="Srv_Name">Nombre</system:String>
+    <system:String x:Key="Srv_RamMB">RAM MB</system:String>
+
+    <!-- Settings -->
+    <system:String x:Key="Set_Title">Configuración</system:String>
+    <system:String x:Key="Set_General">General</system:String>
+    <system:String x:Key="Set_GameDir">Directorio de Minecraft</system:String>
+    <system:String x:Key="Set_Save">Guardar</system:String>
+    <system:String x:Key="Set_Language">Idioma</system:String>
+    <system:String x:Key="Set_CloseOnLaunch">Cerrar al iniciar</system:String>
+    <system:String x:Key="Set_KeepOpen">Mantener abierto</system:String>
+    <system:String x:Key="Set_CurseForgeTitle">API de CurseForge</system:String>
+    <system:String x:Key="Set_CurseForgeDesc">Configura la API key oficial de CurseForge para buscar e instalar mods desde ese proveedor.</system:String>
+    <system:String x:Key="Set_CurseForgeKey">CurseForge API key</system:String>
+    <system:String x:Key="Set_Maintenance">Mantenimiento</system:String>
+    <system:String x:Key="Set_CleanTemp">Limpiar temporales</system:String>
+    <system:String x:Key="Set_CheckUpdates">Buscar actualizaciones</system:String>
+    <system:String x:Key="Set_OpenLogs">Abrir logs</system:String>
+    <system:String x:Key="Set_ExportDiag">Exportar diagnóstico</system:String>
+    <system:String x:Key="Set_About">Acerca de</system:String>
+    <system:String x:Key="Set_Launcher">Launcher</system:String>
+    <system:String x:Key="Set_Version">Versión</system:String>
+    <system:String x:Key="Set_TotalSize">Tamaño total</system:String>
+    <system:String x:Key="Set_Copyright">© Copyright 2026. Shoropio Corporation Todos los derechos reservados.</system:String>
+
+    <!-- Shader Packs -->
+    <system:String x:Key="Sh_Profiles">Perfiles</system:String>
+    <system:String x:Key="Sh_Search">Buscar</system:String>
+    <system:String x:Key="Sh_SearchPlaceholder">Buscar shaders en Modrinth (ej: Complementary)...</system:String>
+    <system:String x:Key="Sh_Installed">Instalados</system:String>
+    <system:String x:Key="Sh_Popular">Populares</system:String>
+    <system:String x:Key="Sh_Recommended">Recomendados</system:String>
+    <system:String x:Key="Sh_Add">+ Agregar Shaders</system:String>
+    <system:String x:Key="Sh_OpenFolder">Abrir carpeta</system:String>
+    <system:String x:Key="Sh_Refresh">Actualizar</system:String>
+    <system:String x:Key="Sh_Delete">Eliminar</system:String>
+    <system:String x:Key="Sh_Install">Instalar</system:String>
+    <system:String x:Key="Sh_NoSupport">Este perfil no tiene soporte de shaders. Usa OptiFine o Iris.</system:String>
+
+    <!-- Profiles -->
+    <system:String x:Key="Prof_Profiles">Perfiles</system:String>
+    <system:String x:Key="Prof_New">+ Nuevo Perfil</system:String>
+    <system:String x:Key="Prof_Import">📥 Importar</system:String>
+    <system:String x:Key="Prof_ImportTip">Importar un perfil desde un archivo .zip (ShoroCraft Package).</system:String>
+    <system:String x:Key="Prof_Export">📤 Exportar</system:String>
+    <system:String x:Key="Prof_ExportTip">Exportar el perfil seleccionado a un archivo .zip (ShoroCraft Package).</system:String>
+    <system:String x:Key="Prof_EditTitle">Editar Perfil</system:String>
+    <system:String x:Key="Prof_Name">Nombre del perfil</system:String>
+    <system:String x:Key="Prof_McVersion">Versión de Minecraft</system:String>
+    <system:String x:Key="Prof_Type">Tipo</system:String>
+    <system:String x:Key="Prof_Ram">Asignación de RAM (MB)</system:String>
+    <system:String x:Key="Prof_Res">Resolución y Pantalla</system:String>
+    <system:String x:Key="Prof_Fullscreen">Pantalla completa</system:String>
+    <system:String x:Key="Prof_GameDir">Carpeta de juego (Opcional)</system:String>
+    <system:String x:Key="Prof_JavaPath">Java Path (Opcional)</system:String>
+    <system:String x:Key="Prof_LoaderVer">Versión del Loader (Opcional)</system:String>
+    <system:String x:Key="Prof_JvmArgs">Argumentos JVM adicionales (Opcional)</system:String>
+    <system:String x:Key="Prof_Save">Guardar</system:String>
+    <system:String x:Key="Prof_Duplicate">Duplicar</system:String>
+    <system:String x:Key="Prof_Delete">Eliminar</system:String>
+    <system:String x:Key="Prof_OpenFolder">Abrir carpeta</system:String>
+    <system:String x:Key="Prof_BackupsTitle">Copias de Seguridad</system:String>
+    <system:String x:Key="Prof_BackupsDesc">Crea, restaura y elimina copias de seguridad de los archivos del perfil (mundos, configuraciones o scripts).</system:String>
+    <system:String x:Key="Prof_BackupType">Tipo de copia</system:String>
+    <system:String x:Key="Prof_CreateBackup">Crear Copia</system:String>
+    <system:String x:Key="Prof_RefreshBackups">Actualizar Lista</system:String>
+    <system:String x:Key="Prof_SavedBackups">Copias guardadas:</system:String>
+    <system:String x:Key="Prof_RestoreBackup">Restaurar Copia Seleccionada</system:String>
+    <system:String x:Key="Prof_DeleteBackup">Eliminar Copia</system:String>
+    <system:String x:Key="Prof_512MB">512 MB</system:String>
+    <system:String x:Key="Prof_16GB">16 GB</system:String>
+    <system:String x:Key="Prof_WidthHeight">x</system:String>
+
 </ResourceDictionary>

@@ -107,7 +107,10 @@ public class ModpackService : IModpackService
 
                 var safePath = file.Path.Replace('\\', '/').TrimStart('/');
                 var targetPath = Path.Combine(gameDir, safePath);
-                if (!Path.GetFullPath(targetPath).StartsWith(Path.GetFullPath(gameDir), StringComparison.OrdinalIgnoreCase))
+                var fullGameDir = Path.GetFullPath(gameDir);
+                var fullTarget = Path.GetFullPath(targetPath);
+                var isInsideGameDir = !Path.GetRelativePath(fullGameDir, fullTarget).StartsWith("..", StringComparison.Ordinal);
+                if (!isInsideGameDir)
                 {
                     result.Warnings.Add($"Archivo ignorado por ruta no válida: {file.Path}");
                     continue;

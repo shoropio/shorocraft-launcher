@@ -9,13 +9,17 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
-            <StackPanel>
-                <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
-                <ListBox ItemsSource="{Binding Profiles}"
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="{DynamicResource Sh_Profiles}" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="440" />
-            </StackPanel>
+                         DisplayMemberPath="Name" />
+            </Grid>
         </Border>
 
         <Grid Grid.Column="1" Margin="0,0,18,0" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
@@ -36,30 +40,30 @@
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                             Tag="Buscar shaders en Modrinth (ej: Complementary)..."
+                             Tag="{DynamicResource Sh_SearchPlaceholder}"
                              Style="{StaticResource SearchTextBox}"
                              Margin="0,0,8,0">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Grid.Column="1" Content="Buscar" Command="{Binding SearchCommand}"
+                    <Button Grid.Column="1" Content="{DynamicResource Sh_Search}" Command="{Binding SearchCommand}"
                             Style="{StaticResource PrimaryButton}" Padding="16,8" />
                 </Grid>
             </Border>
 
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="Instalados" Command="{Binding ShowInstalledCommand}"
+                <Button Content="{DynamicResource Sh_Installed}" Command="{Binding ShowInstalledCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Populares" Command="{Binding ExplorePopularCommand}"
+                <Button Content="{DynamicResource Sh_Popular}" Command="{Binding ExplorePopularCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Recomendados" Command="{Binding ShowRecommendedCommand}"
+                <Button Content="{DynamicResource Sh_Recommended}" Command="{Binding ShowRecommendedCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="+ Agregar Shaders" Command="{Binding AddPackCommand}"
+                <Button Content="{DynamicResource Sh_Add}" Command="{Binding AddPackCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
-                <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
+                <Button Content="{DynamicResource Sh_OpenFolder}" Command="{Binding OpenFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Actualizar" Command="{Binding RefreshCommand}"
+                <Button Content="{DynamicResource Sh_Refresh}" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
@@ -70,7 +74,7 @@
                 <Border Grid.Row="3" Background="{StaticResource WarningBrush}" CornerRadius="0"
                     Padding="14,10" Margin="0,0,0,8"
                     Visibility="{Binding HasShaderSupport, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                <TextBlock Text="Este perfil no tiene soporte de shaders. Usa OptiFine o Iris."
+                <TextBlock Text="{DynamicResource Sh_NoSupport}"
                            Foreground="#1A1A2E" FontSize="12" FontWeight="SemiBold" />
             </Border>
 
@@ -97,7 +101,7 @@
                                                       Style="{StaticResource SwitchToggle}"
                                                       Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
                                                       CommandParameter="{Binding Id}" />
-                                        <Button Content="Eliminar" Style="{StaticResource DangerButton}"
+                                        <Button Content="{DynamicResource Sh_Delete}" Style="{StaticResource DangerButton}"
                                                 Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                                 Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"
                                                 CommandParameter="{Binding Id}" />
@@ -122,13 +126,13 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Image Grid.Column="0" Source="{Binding IconPath}" Width="40" Height="40"
+                                    <Image Grid.Column="0" Source="{Binding IconPath, Converter={StaticResource ImageSourceConverter}, ConverterParameter=40}" Width="40" Height="40"
                                            Margin="0,0,12,0" />
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
                                         <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="30" TextWrapping="Wrap" Margin="0,4,0,0" />
                                     </StackPanel>
-                                    <Button Grid.Column="2" Content="Instalar" Style="{StaticResource PrimaryButton}"
+                                    <Button Grid.Column="2" Content="{DynamicResource Sh_Install}" Style="{StaticResource PrimaryButton}"
                                             Padding="14,7" FontSize="12" VerticalAlignment="Center"
                                             Command="{Binding ElementName=root, Path=DataContext.InstallFromSearchCommand}"
                                             CommandParameter="{Binding}" />

@@ -7,4 +7,5 @@
     <c:FileSizeConverter x:Key="FileSizeConverter" />
     <c:StatusToBoolConverter x:Key="StatusToBoolConverter" />
     <c:TranslationConverter x:Key="TranslationConverter" />
+    <c:ImageSourceConverter x:Key="ImageSourceConverter" />
 </ResourceDictionary>

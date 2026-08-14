@@ -1,13 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class ScriptsViewModel : BaseViewModel
+public class ScriptsViewModel : BaseViewModel, IDisposable
 {
     private readonly IScriptService _scriptService;
     private readonly ILogger<ScriptsViewModel> _logger;
@@ -18,13 +20,13 @@ public class ScriptsViewModel : BaseViewModel
 
     private readonly IProfileService _profileService;
 
-    private Profile? _selectedProfile;
     public Profile? SelectedProfile
     {
-        get => _selectedProfile;
+        get => _profileService.SelectedProfile;
         set
         {
-            SetProperty(ref _selectedProfile, value);
+            _profileService.SelectedProfile = value;
+            OnPropertyChanged(nameof(SelectedProfile));
             if (value != null) _ = LoadScriptsAsync(value.Id);
         }
     }
@@ -62,6 +64,7 @@ public class ScriptsViewModel : BaseViewModel
         _dialogService = dialogService;
         _logger = logger;
 
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
         ImportScriptCommand = new RelayCommand(async _ => await ImportScript());
         SaveScriptCommand = new RelayCommand(async _ => await SaveScript(), _ => SelectedScript != null);
         DeleteScriptCommand = new RelayCommand(async _ => await DeleteScript(), _ => SelectedScript != null);
@@ -69,11 +72,26 @@ public class ScriptsViewModel : BaseViewModel
         SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
+    private void OnSelectedProfileChanged()
+    {
+        SelectedProfile = _profileService.SelectedProfile;
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
+    }
+
     private async Task LoadScriptsAsync(int profileId)
     {
         IsBusy = true;
         try
         {
+            var profile = _profileService.Profiles.FirstOrDefault(p => p.Id == profileId);
+            if (profile != null)
+                await _profileService.SyncProfileFilesAsync(profile);
+
             var scripts = await _scriptService.GetScriptsAsync(profileId);
             Scripts.Clear();
             foreach (var s in scripts) Scripts.Add(s);
@@ -84,7 +102,10 @@ public class ScriptsViewModel : BaseViewModel
             _logger.LogError(ex, "Failed to load scripts");
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task LoadScriptContentAsync(int scriptId)
@@ -142,6 +163,12 @@ public class ScriptsViewModel : BaseViewModel
     private async Task DeleteScript()
     {
         if (SelectedScript == null) return;
+
+        var confirm = DialogHelper.Confirm(
+            $"¿Eliminar el script '{SelectedScript.Name}'? Esta acción no se puede deshacer.",
+            "Eliminar script");
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
         IsBusy = true;
         try
         {
@@ -154,6 +181,9 @@ public class ScriptsViewModel : BaseViewModel
         {
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 }

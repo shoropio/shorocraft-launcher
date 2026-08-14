@@ -136,13 +136,6 @@ public partial class App : Application
         {
             base.OnStartup(e);
 
-            var culture = CultureInfo.CurrentUICulture;
-            var locale = culture.Name.StartsWith("es")
-                ? "Locales/es-ES.xaml"
-                : "Locales/en-US.xaml";
-            var localeDict = new ResourceDictionary { Source = new Uri(locale, UriKind.Relative) };
-            Resources.MergedDictionaries.Add(localeDict);
-
             await _host.StartAsync();
             _logService = _host.Services.GetRequiredService<ILogService>();
             _logService.Info("App", "Started", "ShoroCraft Launcher iniciado.");
@@ -155,7 +148,10 @@ public partial class App : Application
 
             TaskScheduler.UnobservedTaskException += (_, args) =>
             {
-                HandleCrash(args.Exception, "TaskScheduler");
+                // Las tareas en segundo plano no deben tumbar la aplicación: se registran y se marcan como observadas.
+                _logService?.Error("App", "UnobservedTaskException",
+                    "Excepción no controlada en una tarea en segundo plano.", args.Exception);
+                Log.Error(args.Exception, "Unobserved task exception");
                 args.SetObserved();
             };
 
@@ -163,6 +159,10 @@ public partial class App : Application
             {
                 var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
                 initializer.Initialize();
+
+                var settingsRepo = scope.ServiceProvider.GetRequiredService<ISettingsRepository>();
+                var savedLanguage = await settingsRepo.GetAsync("language");
+                AddLocaleDictionary(savedLanguage);
             }
 
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
@@ -176,6 +176,24 @@ public partial class App : Application
             System.Windows.MessageBox.Show($"Critical error during startup:\n{ex.Message}\n\nCheck logs for details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    private static void AddLocaleDictionary(string? savedLanguage)
+    {
+        var locale = ResolveLocale(savedLanguage);
+        var localeDict = new ResourceDictionary { Source = new Uri($"Locales/{locale}.xaml", UriKind.Relative) };
+        Application.Current.Resources.MergedDictionaries.Add(localeDict);
+    }
+
+    private static string ResolveLocale(string? savedLanguage)
+    {
+        if (savedLanguage is "es" or "en")
+            return savedLanguage == "es" ? "es-ES" : "en-US";
+
+        // Idiomas guardados sin recurso disponible (fr/de/pt) o sin idioma guardado:
+        // se usa la cultura del sistema con respaldo a inglés.
+        var culture = CultureInfo.CurrentUICulture;
+        return culture.Name.StartsWith("es") ? "es-ES" : "en-US";
     }
 
     protected override async void OnExit(ExitEventArgs e)

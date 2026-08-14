@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Linq;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Threading.Tasks;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -23,6 +24,7 @@ public class ProfileService : IProfileService
     private readonly IModService _modService;
     private readonly IMinecraftService _minecraftService;
     private readonly ILogService _logService;
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
     private Profile? _selectedProfile;
 
     public Profile? SelectedProfile
@@ -59,39 +61,47 @@ public class ProfileService : IProfileService
 
     public async Task LoadProfilesAsync()
     {
-        var selectedId = SelectedProfile?.Id;
-        var profiles = await _profileRepo.GetAllAsync();
-        Profiles.Clear();
-        foreach (var p in profiles)
+        await _loadLock.WaitAsync();
+        try
         {
-            Profiles.Add(p);
-        }
-
-        if (Profiles.Count == 0)
-        {
-            var defaultProfile = new Profile
+            var selectedId = SelectedProfile?.Id;
+            var profiles = await _profileRepo.GetAllAsync();
+            Profiles.Clear();
+            foreach (var p in profiles)
             {
-                Name = "Vanilla",
-                MinecraftVersion = "latest",
-                Type = ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla,
-                MinRamMB = 2048,
-                MaxRamMB = 4096,
-                WindowWidth = 854,
-                WindowHeight = 480
-            };
-            await _profileRepo.CreateAsync(defaultProfile);
-            Profiles.Add(defaultProfile);
-        }
+                Profiles.Add(p);
+            }
 
-        if (selectedId is null && Profiles.Count > 0)
-        {
-            SelectedProfile = Profiles[0];
+            if (Profiles.Count == 0)
+            {
+                var defaultProfile = new Profile
+                {
+                    Name = "Vanilla",
+                    MinecraftVersion = "latest",
+                    Type = ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla,
+                    MinRamMB = 2048,
+                    MaxRamMB = 4096,
+                    WindowWidth = 854,
+                    WindowHeight = 480
+                };
+                await _profileRepo.CreateAsync(defaultProfile);
+                Profiles.Add(defaultProfile);
+            }
+
+            if (selectedId is null && Profiles.Count > 0)
+            {
+                SelectedProfile = Profiles[0];
+            }
+            else if (selectedId is not null)
+            {
+                var existing = Profiles.FirstOrDefault(p => p.Id == selectedId.Value);
+                if (existing != null) SelectedProfile = existing;
+                else SelectedProfile = Profiles.FirstOrDefault();
+            }
         }
-        else if (selectedId is not null)
+        finally
         {
-            var existing = Profiles.FirstOrDefault(p => p.Id == selectedId.Value);
-            if (existing != null) SelectedProfile = existing;
-            else SelectedProfile = Profiles.FirstOrDefault();
+            _loadLock.Release();
         }
     }
 
@@ -138,7 +148,7 @@ public class ProfileService : IProfileService
         var shadersDir = Path.Combine(gameDir, "shaderpacks");
         var resourcepacksDir = Path.Combine(gameDir, "resourcepacks");
         var savesDir = _minecraftService.GetSavesDirectory(gameDir);
-        var scriptsDir = Path.Combine(gameDir, "scripts", profile.Name);
+        var scriptsDir = Path.Combine(gameDir, "scripts", _minecraftService.SanitizeProfileFolderName(profile.Name));
 
         Directory.CreateDirectory(modsDir);
         Directory.CreateDirectory(shadersDir);
@@ -149,36 +159,56 @@ public class ProfileService : IProfileService
         // 1. Sync mods
         try
         {
-            var jarFiles = Directory.GetFiles(modsDir, "*.jar");
-            var jarFileNames = jarFiles.Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var jarFiles = Directory.GetFiles(modsDir, "*.jar")
+                .Concat(Directory.GetFiles(modsDir, "*.jar.disabled"))
+                .ToArray();
             var dbMods = await _modRepo.GetByProfileIdAsync(profile.Id);
 
-            // Add missing to DB
+            var onDisk = new Dictionary<string, (string FilePath, ModStatus Status)>(StringComparer.OrdinalIgnoreCase);
             foreach (var jar in jarFiles)
             {
                 var fileName = Path.GetFileName(jar);
-                if (!dbMods.Any(m => string.Equals(m.FileName, fileName, StringComparison.OrdinalIgnoreCase)))
+                var logicalName = fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
+                    ? fileName[..^".disabled".Length]
+                    : fileName;
+                var disabled = !string.Equals(fileName, logicalName, StringComparison.OrdinalIgnoreCase);
+                onDisk[logicalName] = (jar, disabled ? ModStatus.Inactive : ModStatus.Active);
+            }
+
+            // Add missing to DB / align status and path with disk
+            foreach (var (logicalName, entry) in onDisk)
+            {
+                var existing = dbMods.FirstOrDefault(m =>
+                    string.Equals(m.FileName, logicalName, StringComparison.OrdinalIgnoreCase));
+                if (existing is null)
                 {
-                    var modInfo = await _modService.ExtractModInfoAsync(jar);
+                    var modInfo = await _modService.ExtractModInfoAsync(entry.FilePath);
                     var mod = new Mod
                     {
                         ProfileId = profile.Id,
-                        Name = modInfo.Name ?? Path.GetFileNameWithoutExtension(fileName),
-                        FileName = fileName,
-                        FilePath = jar,
-                        FileSizeBytes = new FileInfo(jar).Length,
+                        Name = modInfo.Name ?? Path.GetFileNameWithoutExtension(logicalName),
+                        FileName = logicalName,
+                        FilePath = entry.FilePath,
+                        FileSizeBytes = new FileInfo(entry.FilePath).Length,
                         MinecraftVersion = modInfo.MinecraftVersion ?? profile.MinecraftVersion,
                         ModVersion = modInfo.ModVersion ?? "unknown",
-                        Status = ModStatus.Active
+                        Status = entry.Status
                     };
                     await _modRepo.CreateAsync(mod);
                 }
+                else if (!string.Equals(existing.FilePath, entry.FilePath, StringComparison.OrdinalIgnoreCase)
+                         || existing.Status != entry.Status)
+                {
+                    existing.FilePath = entry.FilePath;
+                    existing.Status = entry.Status;
+                    await _modRepo.UpdateAsync(existing);
+                }
             }
 
-            // Remove from DB if deleted on disk
+            // Remove from DB only if the logical file is not on disk
             foreach (var mod in dbMods)
             {
-                if (!jarFileNames.Contains(mod.FileName))
+                if (!onDisk.ContainsKey(mod.FileName))
                 {
                     await _modRepo.DeleteAsync(mod.Id);
                 }

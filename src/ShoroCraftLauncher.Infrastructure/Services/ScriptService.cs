@@ -8,17 +8,20 @@ public class ScriptService : IScriptService
 {
     private readonly IScriptRepository _repository;
     private readonly IProfileRepository _profileRepository;
+    private readonly IMinecraftService _minecraftService;
     private readonly ILogger<ScriptService> _logger;
     private readonly ILogService _logService;
 
     public ScriptService(
         IScriptRepository repository,
         IProfileRepository profileRepository,
+        IMinecraftService minecraftService,
         ILogger<ScriptService> logger,
         ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
+        _minecraftService = minecraftService;
         _logger = logger;
         _logService = logService;
     }
@@ -41,11 +44,10 @@ public class ScriptService : IScriptService
             _logService.Warning("ScriptService", "ImportScript", $"ADVERTENCIA: '{Path.GetFileName(sourceFilePath)}' es un ejecutable/script del sistema.");
         }
 
-        var scriptsDir = Path.Combine(
-            string.IsNullOrEmpty(profile.GameDirectory)
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft")
-                : profile.GameDirectory,
-            "scripts", profile.Name);
+        var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
+            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            : profile.GameDirectory;
+        var scriptsDir = Path.Combine(gameDir, "scripts", _minecraftService.SanitizeProfileFolderName(profile.Name));
         Directory.CreateDirectory(scriptsDir);
 
         var fileName = Path.GetFileName(sourceFilePath);
@@ -131,7 +133,7 @@ public class ScriptService : IScriptService
 
         var backupDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "backups", profile.Name);
+            "ShoroCraftLauncher", "backups", _minecraftService.SanitizeProfileFolderName(profile.Name));
         Directory.CreateDirectory(backupDir);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");

@@ -9,13 +9,17 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
-            <StackPanel>
-                <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
-                <ListBox ItemsSource="{Binding Profiles}"
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="{DynamicResource Maps_Profiles}" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="440" />
-            </StackPanel>
+                         DisplayMemberPath="Name" />
+            </Grid>
         </Border>
 
         <Grid Grid.Column="1" Margin="0,0,18,0">
@@ -26,13 +30,13 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="+ Agregar Mundo" Command="{Binding AddMapCommand}"
+                <Button Content="{DynamicResource Maps_Add}" Command="{Binding AddMapCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
-                <Button Content="Respaldo de mundos" Command="{Binding BackupWorldsCommand}"
+                <Button Content="{DynamicResource Maps_Backup}" Command="{Binding BackupWorldsCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
+                <Button Content="{DynamicResource Maps_OpenFolder}" Command="{Binding OpenFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Actualizar" Command="{Binding RefreshCommand}"
+                <Button Content="{DynamicResource Maps_Refresh}" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
@@ -51,7 +55,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Image Grid.Column="0" Source="{Binding PreviewImagePath}"
+                                <Image Grid.Column="0" Source="{Binding PreviewImagePath, Converter={StaticResource ImageSourceConverter}, ConverterParameter=56}"
                                        Width="56" Height="56" Margin="0,0,14,0"
                                        Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality">
                                     <Image.Style>
@@ -71,7 +75,7 @@
                                                Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Content="Eliminar" Style="{StaticResource DangerButton}"
+                                    <Button Content="{DynamicResource Maps_Delete}" Style="{StaticResource DangerButton}"
                                             Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemoveMapCommand}"
                                             CommandParameter="{Binding}" />

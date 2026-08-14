@@ -9,13 +9,17 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,12,0" Padding="16">
-            <StackPanel>
-                <TextBlock Text="Perfiles" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
-                <ListBox ItemsSource="{Binding Profiles}"
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="{DynamicResource RPacks_Profiles}" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
-                         DisplayMemberPath="Name" Height="440" />
-            </StackPanel>
+                         DisplayMemberPath="Name" />
+            </Grid>
         </Border>
 
         <Grid Grid.Column="1" Margin="0,0,18,0">
@@ -26,11 +30,11 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="+ Agregar Packs" Command="{Binding AddPackCommand}"
+                <Button Content="{DynamicResource RPacks_Add}" Command="{Binding AddPackCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
-                <Button Content="Abrir carpeta" Command="{Binding OpenFolderCommand}"
+                <Button Content="{DynamicResource RPacks_OpenFolder}" Command="{Binding OpenFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                <Button Content="Actualizar" Command="{Binding RefreshCommand}"
+                <Button Content="{DynamicResource RPacks_Refresh}" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>
 
@@ -67,7 +71,7 @@
                                                   Style="{StaticResource SwitchToggle}"
                                                   Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
                                                   CommandParameter="{Binding Id}" />
-                                    <Button Content="Eliminar" Style="{StaticResource DangerButton}"
+                                    <Button Content="{DynamicResource RPacks_Delete}" Style="{StaticResource DangerButton}"
                                             Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"
                                             CommandParameter="{Binding Id}" />

@@ -1,13 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class MapsViewModel : BaseViewModel
+public class MapsViewModel : BaseViewModel, IDisposable
 {
     private readonly IGameMapService _mapService;
     private readonly ILogger<MapsViewModel> _logger;
@@ -19,13 +21,13 @@ public class MapsViewModel : BaseViewModel
 
     private readonly IProfileService _profileService;
 
-    private Profile? _selectedProfile;
     public Profile? SelectedProfile
     {
-        get => _selectedProfile;
+        get => _profileService.SelectedProfile;
         set
         {
-            SetProperty(ref _selectedProfile, value);
+            _profileService.SelectedProfile = value;
+            OnPropertyChanged(nameof(SelectedProfile));
             if (value != null) _ = LoadMapsAsync(value.Id);
         }
     }
@@ -49,6 +51,7 @@ public class MapsViewModel : BaseViewModel
         _logger = logger;
         _logService = logService;
 
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
         AddMapCommand = new RelayCommand(async _ => await AddMap());
         RemoveMapCommand = new RelayCommand(async p => await RemoveMap(p));
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder());
@@ -58,11 +61,26 @@ public class MapsViewModel : BaseViewModel
         SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
+    private void OnSelectedProfileChanged()
+    {
+        SelectedProfile = _profileService.SelectedProfile;
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
+    }
+
     private async Task LoadMapsAsync(int profileId)
     {
         IsBusy = true;
         try
         {
+            var profile = _profileService.Profiles.FirstOrDefault(p => p.Id == profileId);
+            if (profile != null)
+                await _profileService.SyncProfileFilesAsync(profile);
+
             var maps = await _mapService.GetMapsAsync(profileId);
             Maps.Clear();
             foreach (var m in maps) Maps.Add(m);
@@ -73,7 +91,10 @@ public class MapsViewModel : BaseViewModel
             _logger.LogError(ex, "Failed to load maps");
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task AddMap()
@@ -107,10 +128,28 @@ public class MapsViewModel : BaseViewModel
 
     private async Task RemoveMap(object? map)
     {
-        if (map is GameMap gameMap)
+        if (map is not GameMap gameMap) return;
+
+        var confirm = DialogHelper.Confirm(
+            $"¿Eliminar el mapa '{gameMap.Name}'? Esta acción no se puede deshacer.",
+            "Eliminar mapa");
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        try
         {
             await _mapService.RemoveMapAsync(gameMap);
             if (SelectedProfile != null) await LoadMapsAsync(SelectedProfile.Id);
+            StatusMessage = "Mapa eliminado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove map");
+            StatusMessage = $"Error al eliminar el mapa: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

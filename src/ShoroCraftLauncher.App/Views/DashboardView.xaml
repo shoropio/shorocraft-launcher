@@ -12,7 +12,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Perfil activo:" VerticalAlignment="Center"
+                    <TextBlock Grid.Column="0" Text="{DynamicResource Dash_ActiveProfile}" VerticalAlignment="Center"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,14,0" />
                     <ComboBox Grid.Column="1" ItemsSource="{Binding Profiles}"
                               SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
@@ -20,7 +20,7 @@
                               Style="{StaticResource DarkComboBox}"
                               ItemContainerStyle="{StaticResource DarkComboBoxItem}"
                               Margin="0,0,10,0" />
-                    <Button Grid.Column="2" Content="Aplicar" Command="{Binding ApplyProfileCommand}"
+                    <Button Grid.Column="2" Content="{DynamicResource Dash_Apply}" Command="{Binding ApplyProfileCommand}"
                             Style="{StaticResource PrimaryButton}" Padding="20,8" FontSize="13" />
                 </Grid>
             </Border>
@@ -47,9 +47,9 @@
                     <TextBlock Grid.Column="0" Text="⬆" FontSize="22" VerticalAlignment="Center" Margin="0,0,14,0" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding LauncherUpdateMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" />
-                        <TextBlock Text="Descarga e instala la nueva versión automáticamente." Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{DynamicResource Dash_UpdateAvailableMsg}" Style="{StaticResource CardSubtitle}" />
                     </StackPanel>
-                    <Button Grid.Column="2" Content="Instalar actualización" Command="{Binding DownloadLauncherUpdateCommand}"
+                    <Button Grid.Column="2" Content="{DynamicResource Dash_InstallUpdate}" Command="{Binding DownloadLauncherUpdateCommand}"
                             IsEnabled="{Binding IsInstallingUpdate, Converter={StaticResource InverseBoolConverter}}"
                             Style="{StaticResource PrimaryButton}" Padding="18,8" FontSize="13" />
                 </Grid>
@@ -77,12 +77,12 @@
                     <TextBlock Grid.Column="0" Text="🚀" FontSize="22" VerticalAlignment="Center" Margin="0,0,14,0" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding UpdateNotificationMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" />
-                        <TextBlock Text="Tu perfil usa una versión anterior. Instala la nueva o ignórala por ahora." Style="{StaticResource CardSubtitle}" />
+                        <TextBlock Text="{DynamicResource Dash_McUpdateMsg}" Style="{StaticResource CardSubtitle}" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <Button Content="Instalar" Command="{Binding InstallMinecraftUpdateCommand}"
+                        <Button Content="{DynamicResource Dash_Install}" Command="{Binding InstallMinecraftUpdateCommand}"
                                 Style="{StaticResource PrimaryButton}" Padding="18,8" FontSize="13" Margin="0,0,8,0" />
-                        <Button Content="Ignorar" Command="{Binding DismissMinecraftUpdateCommand}"
+                        <Button Content="{DynamicResource Dash_Ignore}" Command="{Binding DismissMinecraftUpdateCommand}"
                                 Style="{StaticResource SecondaryButton}" Padding="18,8" FontSize="13" />
                     </StackPanel>
                 </Grid>
@@ -108,7 +108,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="VERSIÓN" Style="{StaticResource StatLabel}" />
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Version}" Style="{StaticResource StatLabel}" />
                         <TextBlock Grid.Row="1" Text="{Binding InstalledVersion}" Style="{StaticResource StatValue}" FontSize="22" />
                         <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
                                    Fill="{StaticResource PrimaryGradient}" />
@@ -122,7 +122,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="MODS" Style="{StaticResource StatLabel}" />
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Mods}" Style="{StaticResource StatLabel}" />
                         <TextBlock Grid.Row="1" Text="{Binding ModsCount}" Style="{StaticResource StatValue}" FontSize="22" />
                         <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
                                    Fill="{StaticResource AccentBrush}" />
@@ -136,7 +136,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="RAM" Style="{StaticResource StatLabel}" />
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Ram}" Style="{StaticResource StatLabel}" />
                         <TextBlock Grid.Row="1" Text="{Binding AllocatedRam}" Style="{StaticResource StatValue}" FontSize="22" />
                         <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
                                    Fill="{StaticResource SuccessBrush}" />
@@ -150,7 +150,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="ESTADO" Style="{StaticResource StatLabel}" />
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Status}" Style="{StaticResource StatLabel}" />
                         <TextBlock Grid.Row="1" Text="{Binding ReadyStatus}" Style="{StaticResource StatValue}" FontSize="22"
                                    Foreground="{StaticResource SuccessBrush}" />
                         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Style="{StaticResource CardSubtitle}"
@@ -168,7 +168,7 @@
                     </Grid.ColumnDefinitions>
                     
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Estado de preparación del perfil" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+                        <TextBlock Text="{DynamicResource Dash_ChecklistTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
                         <TextBlock Text="{Binding ChecklistMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,14" />
                         
                         <WrapPanel>
@@ -188,7 +188,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="Asignación de RAM" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{DynamicResource Dash_RamTitle}" Foreground="{StaticResource TextSecondaryBrush}" />
                             </StackPanel>
 
                             <!-- Java checklist item -->
@@ -207,7 +207,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="Java recomendado" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{DynamicResource Dash_JavaTitle}" Foreground="{StaticResource TextSecondaryBrush}" />
                             </StackPanel>
 
                             <!-- Minecraft files checklist item -->
@@ -226,7 +226,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="Archivos del juego" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{DynamicResource Dash_FilesTitle}" Foreground="{StaticResource TextSecondaryBrush}" />
                             </StackPanel>
 
                             <!-- Mod loader checklist item -->
@@ -245,12 +245,12 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="Cargador de mods (Loader)" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{DynamicResource Dash_LoaderTitle}" Foreground="{StaticResource TextSecondaryBrush}" />
                             </StackPanel>
                         </WrapPanel>
                     </StackPanel>
 
-                    <Button Grid.Column="1" Content="Reparar perfil" Command="{Binding RepairProfileCommand}"
+                    <Button Grid.Column="1" Content="{DynamicResource Dash_Repair}" Command="{Binding RepairProfileCommand}"
                             Style="{StaticResource PrimaryButton}" VerticalAlignment="Center" Padding="16,10" FontSize="13" />
                 </Grid>
             </Border>
@@ -258,31 +258,31 @@
             <!-- Quick Actions -->
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20">
                 <StackPanel>
-                    <TextBlock Text="Inicio rápido" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                    <TextBlock Text="{DynamicResource Dash_QuickStart}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Instala loaders y versiones de Minecraft" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
+                            <TextBlock Text="{DynamicResource Dash_QuickStartSub}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
                                 <WrapPanel>
-                                <Button Content="Instalar Forge" Command="{Binding InstallLoaderCommand}"
+                                <Button Content="{DynamicResource Dash_InstallForge}" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="Forge:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="Instalar NeoForge" Command="{Binding InstallLoaderCommand}"
+                                <Button Content="{DynamicResource Dash_InstallNeoForge}" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="NeoForge:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="Instalar Fabric" Command="{Binding InstallLoaderCommand}"
+                                <Button Content="{DynamicResource Dash_InstallFabric}" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="Fabric:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="Instalar Quilt" Command="{Binding InstallLoaderCommand}"
+                                <Button Content="{DynamicResource Dash_InstallQuilt}" Command="{Binding InstallLoaderCommand}"
                                     CommandParameter="Quilt:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="{Binding IrisSodiumButtonText}"
                                     Command="{Binding InstallIrisCommand}"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="OptiFine (Manual)"
+                                <Button Content="{DynamicResource Dash_OptiFineManual}"
                                     Command="{Binding OptiFineInfoCommand}"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 </WrapPanel>
@@ -294,10 +294,10 @@
                                           Style="{StaticResource DarkComboBox}"
                                           ItemContainerStyle="{StaticResource DarkComboBoxItem}"
                                           Width="200" Margin="0,0,10,0" />
-                                <Button Content="Instalar versión" Command="{Binding InstallVersionCommand}"
+                                <Button Content="{DynamicResource Dash_InstallVersion}" Command="{Binding InstallVersionCommand}"
                                         CommandParameter="{Binding SelectedVersion}"
                                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
-                                <Button Content="Actualizar lista" Command="{Binding RefreshVersionsCommand}"
+                                <Button Content="{DynamicResource Dash_RefreshList}" Command="{Binding RefreshVersionsCommand}"
                                         Style="{StaticResource SecondaryButton}" />
                             </WrapPanel>
                         </StackPanel>
@@ -312,19 +312,19 @@
             <!-- Graphics & Performance Enhancements -->
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20">
                 <StackPanel>
-                    <TextBlock Text="Mejoras gráficas y rendimiento" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
-                    <TextBlock Text="Instala mods para mejorar la calidad visual y el rendimiento" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
+                    <TextBlock Text="{DynamicResource Dash_PerfTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                    <TextBlock Text="{DynamicResource Dash_PerfSub}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
                     <WrapPanel>
                         <Button Content="{Binding IrisSodiumButtonText}" 
                                 Command="{Binding InstallIrisCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10"
-                                ToolTip="Requiere un perfil Fabric. Si no está instalado, el botón se deshabilita." />
-                        <Button Content="OptiFine (Manual)" 
+                                ToolTip="{DynamicResource Dash_IrisTooltip}" />
+                        <Button Content="{DynamicResource Dash_OptiFineManual}" 
                                 Command="{Binding OptiFineInfoCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10"
-                                ToolTip="OptiFine no se descarga automáticamente; se abrirá la página oficial." />
+                                ToolTip="{DynamicResource Dash_OptiFineTooltip}" />
                     </WrapPanel>
-                    <TextBlock Text="Iris+Sodium está disponible solo para perfiles Fabric. OptiFine requiere descarga manual." 
+                    <TextBlock Text="{DynamicResource Dash_PerfNote}" 
                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>

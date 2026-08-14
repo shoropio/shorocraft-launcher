@@ -16,8 +16,8 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                    <TextBlock Text="Servidores" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
-                    <Button Content="Actualizar" Command="{Binding RefreshCommand}"
+                    <TextBlock Text="{DynamicResource Srv_Title}" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
+                    <Button Content="{DynamicResource Srv_Refresh}" Command="{Binding RefreshCommand}"
                             Style="{StaticResource SecondaryButton}" Padding="14,7" FontSize="12" />
                 </StackPanel>
 
@@ -52,16 +52,16 @@
                 </ListBox>
 
                 <StackPanel Grid.Row="2" Margin="0,12,0,0">
-                    <Button Content="Iniciar" Command="{Binding StartServerCommand}"
+                    <Button Content="{DynamicResource Srv_Start}" Command="{Binding StartServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Detener" Command="{Binding StopServerCommand}"
+                    <Button Content="{DynamicResource Srv_Stop}" Command="{Binding StopServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Despertar" Command="{Binding WakeServerCommand}"
+                    <Button Content="{DynamicResource Srv_Wake}" Command="{Binding WakeServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                    <Button Content="Eliminar" Command="{Binding DeleteServerCommand}"
+                    <Button Content="{DynamicResource Srv_Delete}" Command="{Binding DeleteServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource DangerButton}" />
                 </StackPanel>
@@ -82,10 +82,10 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Nuevo servidor" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+                        <TextBlock Text="{DynamicResource Srv_NewServer}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
                         <WrapPanel>
                             <TextBox Text="{Binding NewServerName, UpdateSourceTrigger=PropertyChanged}"
-                                     Width="180" Margin="0,0,8,8" Tag="Nombre" />
+                                     Width="180" Margin="0,0,8,8" Tag="{DynamicResource Srv_Name}" />
                             <ComboBox ItemsSource="{Binding ServerTypes}"
                                       SelectedItem="{Binding SelectedServerType}"
                                       Width="120" Margin="0,0,8,8"
@@ -96,8 +96,8 @@
                                       Width="130" Margin="0,0,8,8"
                                       Style="{StaticResource DarkComboBox}"
                                       ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
-                            <TextBox Text="{Binding MaxRamMB}" Width="90" Margin="0,0,8,8" Tag="RAM MB" />
-                            <Button Content="Crear" Command="{Binding CreateServerCommand}"
+                            <TextBox Text="{Binding MaxRamMB}" Width="90" Margin="0,0,8,8" Tag="{DynamicResource Srv_RamMB}" />
+                            <Button Content="{DynamicResource Srv_Create}" Command="{Binding CreateServerCommand}"
                                     Style="{StaticResource PrimaryButton}" Padding="20,10" Margin="0,0,0,8" />
                         </WrapPanel>
                         <TextBlock Text="{Binding StatusMessage}" FontSize="12"
@@ -121,9 +121,9 @@
                 <DockPanel>
                     <Grid DockPanel.Dock="Top" Background="#0D0D18">
                         <StackPanel Orientation="Horizontal" Margin="10,6">
-                            <Button Content="Copiar consola" Command="{Binding CopyConsoleCommand}"
+                            <Button Content="{DynamicResource Srv_CopyConsole}" Command="{Binding CopyConsoleCommand}"
                                     Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" Margin="0,0,8,0" />
-                            <Button Content="Limpiar" Command="{Binding ClearConsoleCommand}"
+                            <Button Content="{DynamicResource Srv_ClearConsole}" Command="{Binding ClearConsoleCommand}"
                                     Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" />
                         </StackPanel>
                     </Grid>
@@ -137,7 +137,7 @@
                                  BorderThickness="0,1,0,0" BorderBrush="#222233" Padding="12,10"
                                  KeyDown="CommandBox_KeyDown"
                                  VerticalScrollBarVisibility="Disabled" />
-                        <Button Grid.Column="1" Content="Enviar" Command="{Binding SendCommandCommand}"
+                        <Button Grid.Column="1" Content="{DynamicResource Srv_Send}" Command="{Binding SendCommandCommand}"
                                 Style="{StaticResource PrimaryButton}" Margin="10" Padding="16,8" FontSize="12" />
                     </Grid>
                     <ListBox x:Name="ServerConsole"

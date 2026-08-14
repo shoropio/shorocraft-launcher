@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -84,7 +86,11 @@ public class ServersViewModel : BaseViewModel, IDisposable
     public string CommandText
     {
         get => _commandText;
-        set => SetProperty(ref _commandText, value);
+        set
+        {
+            if (SetProperty(ref _commandText, value))
+                CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     private double _downloadProgress;
@@ -131,7 +137,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         WakeServerCommand = new RelayCommand(async _ => await WakeServer(), _ => IsSelected);
         CopyConsoleCommand = new RelayCommand(_ => CopyConsole(), _ => LogLines.Count > 0);
         ClearConsoleCommand = new RelayCommand(_ => ClearConsole(), _ => LogLines.Count > 0);
-        SendCommandCommand = new RelayCommand(async _ => await SendCommand());
+        SendCommandCommand = new RelayCommand(async _ => await SendCommand(), _ => IsSelected && !string.IsNullOrWhiteSpace(CommandText));
 
         _serversChangedHandler = () => Dispatcher(() => SyncServers());
         _logOutputHandler = line => Dispatcher(() => AddLogLine(line));
@@ -170,17 +176,28 @@ public class ServersViewModel : BaseViewModel, IDisposable
             _logger.LogError(ex, "Failed to load servers");
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task LoadVersionsAsync()
     {
-        var versions = SelectedServerType == ServerType.Paper
-            ? await _serverService.GetAvailablePaperVersionsAsync()
-            : await _serverService.GetAvailableVanillaVersionsAsync();
+        try
+        {
+            var versions = SelectedServerType == ServerType.Paper
+                ? await _serverService.GetAvailablePaperVersionsAsync()
+                : await _serverService.GetAvailableVanillaVersionsAsync();
 
-        AvailableVersions = new ObservableCollection<string>(versions);
-        SelectedVersion = versions.FirstOrDefault();
+            AvailableVersions = new ObservableCollection<string>(versions);
+            SelectedVersion = versions.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load server versions");
+            StatusMessage = "Error al obtener versiones del servidor.";
+        }
     }
 
     private void SyncServers()
@@ -220,6 +237,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         LogLines.Add(line);
         if (LogLines.Count > 2000)
             LogLines.RemoveAt(0);
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private async Task CreateServer()
@@ -260,11 +278,9 @@ public class ServersViewModel : BaseViewModel, IDisposable
     {
         if (param is not MinecraftServer server) return;
 
-        var result = System.Windows.MessageBox.Show(
+        var result = DialogHelper.Confirm(
             $"¿Eliminar el servidor '{server.Name}'? Se borrará su carpeta y todos sus datos.",
-            "Eliminar servidor",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
+            "Eliminar servidor");
         if (result != System.Windows.MessageBoxResult.Yes) return;
 
         IsBusy = true;
@@ -358,6 +374,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
     {
         LogLines.Clear();
         StatusMessage = "Consola limpiada.";
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private static void Dispatcher(Action action)

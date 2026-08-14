@@ -112,9 +112,9 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         _launcherService.ProgressCompleted += OnProgressCompleted;
         IsGameRunning = launcherService.IsGameRunning;
 
-        ClearLogCommand = new RelayCommand(_ => ClearLog());
-        CopyLogCommand = new RelayCommand(_ => CopyLog());
-        CopyRelevantLogCommand = new RelayCommand(_ => CopyRelevantLog());
+        ClearLogCommand = new RelayCommand(_ => ClearLog(), _ => LogLines.Count > 0);
+        CopyLogCommand = new RelayCommand(_ => CopyLog(), _ => LogLines.Count > 0);
+        CopyRelevantLogCommand = new RelayCommand(_ => CopyRelevantLog(), _ => _allEvents.Any(e => e.Level >= LauncherLogLevel.Warning));
     }
 
     private string CleanLogLine(string line)
@@ -186,6 +186,7 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
                 LogLines.RemoveAt(0);
 
             OnPropertyChanged(nameof(FullLogText));
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -201,6 +202,7 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         }
 
         OnPropertyChanged(nameof(FullLogText));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private bool PassesFilters(LogEvent logEvent)
@@ -246,6 +248,10 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         SearchText = string.Empty;
         SelectedLevel = "Todos";
         SelectedModule = "Todos";
+        _allEvents.Clear();
+        LogLines.Clear();
+        OnPropertyChanged(nameof(FullLogText));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void CopyLog()

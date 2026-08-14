@@ -164,6 +164,7 @@ public class ProfileServiceTests
             mockMinecraft.Setup(x => x.GetDefaultGameDirectory(profile.Name)).Returns(tempDir);
             mockMinecraft.Setup(x => x.GetModsDirectory(tempDir)).Returns(modsDir);
             mockMinecraft.Setup(x => x.GetSavesDirectory(tempDir)).Returns(savesDir);
+            mockMinecraft.Setup(x => x.SanitizeProfileFolderName(It.IsAny<string>())).Returns((string name) => name);
 
             var service = CreateProfileService(
                 mockProfileRepo,
@@ -230,6 +231,7 @@ public class ProfileServiceTests
 
             var mockMinecraft = new Mock<IMinecraftService>(MockBehavior.Strict);
             mockMinecraft.Setup(x => x.GetDefaultGameDirectory(profile.Name)).Returns(tempDir);
+            mockMinecraft.Setup(x => x.SanitizeProfileFolderName(It.IsAny<string>())).Returns((string name) => name);
 
             var service = CreateProfileService(profileRepository: mockProfileRepo, minecraftService: mockMinecraft);
             var exportPath = Path.Combine(Path.GetTempPath(), "shorocraft_export_test.zip");
@@ -330,6 +332,7 @@ public class ProfileServiceTests
             mockMinecraft.Setup(x => x.GetDefaultGameDirectory(It.IsAny<string>())).Returns((string name) => Path.Combine(tempDir, "profiles", name));
             mockMinecraft.Setup(x => x.GetModsDirectory(It.IsAny<string>())).Returns((string gameDir) => Path.Combine(gameDir, "mods"));
             mockMinecraft.Setup(x => x.GetSavesDirectory(It.IsAny<string>())).Returns((string gameDir) => Path.Combine(gameDir, "saves"));
+            mockMinecraft.Setup(x => x.SanitizeProfileFolderName(It.IsAny<string>())).Returns((string name) => name);
 
             var mockModRepo = new Mock<IModRepository>(MockBehavior.Strict);
             mockModRepo.Setup(x => x.GetByProfileIdAsync(It.IsAny<int>())).ReturnsAsync(new List<Mod>());
@@ -401,6 +404,7 @@ public class ProfileServiceTests
             mockMinecraft.Setup(x => x.GetDefaultGameDirectory(It.IsAny<string>())).Returns(tempDir);
             mockMinecraft.Setup(x => x.GetModsDirectory(It.IsAny<string>())).Returns((string gameDir) => Path.Combine(gameDir, "mods"));
             mockMinecraft.Setup(x => x.GetSavesDirectory(It.IsAny<string>())).Returns((string gameDir) => Path.Combine(gameDir, "saves"));
+            mockMinecraft.Setup(x => x.SanitizeProfileFolderName(It.IsAny<string>())).Returns((string name) => name);
 
             var mockModRepo = new Mock<IModRepository>(MockBehavior.Strict);
             mockModRepo.Setup(x => x.GetByProfileIdAsync(It.IsAny<int>())).ReturnsAsync(new List<Mod>());

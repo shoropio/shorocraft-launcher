@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -210,18 +212,18 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
         RefreshVersionsCommand = new RelayCommand(async _ => await LoadVersionsAsync());
-        InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"));
-        InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""));
-        ApplyProfileCommand = new RelayCommand(async _ => await ApplyProfile());
-        DownloadLauncherUpdateCommand = new RelayCommand(async _ => await InstallLauncherUpdateAsync());
+        InstallVersionCommand = new RelayCommand(async p => await InstallVersion(p?.ToString() ?? "latest"), _ => !IsDownloading && !IsBusy);
+        InstallLoaderCommand = new RelayCommand(async p => await InstallLoader(p?.ToString() ?? ""), _ => !IsDownloading && !IsBusy && SelectedProfile != null);
+        ApplyProfileCommand = new RelayCommand(async _ => await ApplyProfile(), _ => !IsBusy);
+        DownloadLauncherUpdateCommand = new RelayCommand(async _ => await InstallLauncherUpdateAsync(), _ => !IsBusy);
         
         InstallIrisCommand = new RelayCommand(async _ => await InstallIris(), _ => SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
         OptiFineInfoCommand = new RelayCommand(_ => 
         {
-            System.Windows.MessageBox.Show("OptiFine no permite descargas automáticas.\n\nSe abrirá la página oficial. Descarga la versión correspondiente a tu juego, ve a la pestaña de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            DialogHelper.Show("OptiFine no permite descargas automáticas.\n\nSe abrirá la página oficial. Descarga la versión correspondiente a tu juego, ve a la pestaña de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://optifine.net/downloads") { UseShellExecute = true });
         });
-        RepairProfileCommand = new RelayCommand(async _ => await RepairProfile());
+        RepairProfileCommand = new RelayCommand(async _ => await RepairProfile(), _ => SelectedProfile != null && !IsBusy && !IsDownloading);
         InstallMinecraftUpdateCommand = new RelayCommand(async _ => await InstallMinecraftUpdateAsync());
         DismissMinecraftUpdateCommand = new RelayCommand(async _ => await DismissMinecraftUpdateAsync());
     }
@@ -253,7 +255,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             await UpdateComponentInstallStatesAsync();
 
             var currentVersion = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
-            var (isUpdateAvailable, latestVersion, downloadUrl) = await _updaterService.CheckForUpdatesAsync(currentVersion);
+            var (isUpdateAvailable, latestVersion, downloadUrl, _) = await _updaterService.CheckForUpdatesAsync(currentVersion);
             if (isUpdateAvailable)
             {
                 HasLauncherUpdate = true;
@@ -270,14 +272,17 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             ReadyStatus = "Error";
             StatusMessage = "Error al cargar dashboard.";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task InstallLauncherUpdateAsync()
     {
         if (string.IsNullOrEmpty(_launcherUpdateUrl))
         {
-            System.Windows.MessageBox.Show("No se encontró una actualización disponible para descargar.",
+            DialogHelper.Show("No se encontró una actualización disponible para descargar.",
                 "Actualizar Launcher", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             return;
         }
@@ -288,12 +293,12 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             var installerPath = await _updaterService.DownloadUpdateAsync(_launcherUpdateUrl, _latestVersion ?? "latest");
             if (installerPath == null)
             {
-                System.Windows.MessageBox.Show("No se pudo descargar el instalador. Revisa tu conexión e inténtalo de nuevo.",
+                DialogHelper.Show("No se pudo descargar el instalador. Revisa tu conexión e inténtalo de nuevo.",
                     "Error al actualizar", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 return;
             }
 
-            var result = System.Windows.MessageBox.Show(
+            var result = DialogHelper.Show(
                 "Se descargó la nueva versión. El instalador se abrirá y el Launcher se cerrará. ¿Continuar?",
                 "Actualizar Launcher",
                 System.Windows.MessageBoxButton.YesNo,
@@ -307,7 +312,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Update install failed");
-            System.Windows.MessageBox.Show("Ocurrió un error al instalar la actualización.", "Error",
+            DialogHelper.Show("Ocurrió un error al instalar la actualización.", "Error",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally
@@ -341,7 +346,12 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                     var loaderPrefix = SelectedProfile.Type.ToString().ToLower();
                     var dirs = System.IO.Directory.Exists(mcPath.Versions) ? System.IO.Directory.GetDirectories(mcPath.Versions) : Array.Empty<string>();
                     var match = dirs.Select(System.IO.Path.GetFileName)
-                                    .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
+                        .FirstOrDefault(n => n != null
+                            && n.Contains(loaderPrefix, StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(
+                                n.Split('-', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(),
+                                targetVersion,
+                                StringComparison.OrdinalIgnoreCase));
                     if (match != null) targetVersion = match;
                 }
 
@@ -452,7 +462,10 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             StatusMessage = "Error al obtener versiones.";
             _launcherService.Log($"[ERROR] Error al obtener versiones: {ex.Message}");
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task CheckMinecraftUpdateNotificationAsync(string latest)
@@ -602,6 +615,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private async Task InstallVersion(string? versionId)
     {
         if (string.IsNullOrEmpty(versionId)) return;
+        if (IsDownloading || IsBusy) return;
         IsDownloading = true;
         DownloadProgress = 0;
         ReadyStatus = $"Instalando {versionId}...";
@@ -633,12 +647,16 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             StatusMessage = $"Error: {ex.Message}";
             _launcherService.Log($"[ERROR] Error instalando Minecraft {versionId}: {ex.Message}");
         }
-        IsDownloading = false;
+        finally
+        {
+            IsDownloading = false;
+        }
     }
 
     private async Task InstallLoader(string? loaderArg)
     {
         if (string.IsNullOrEmpty(loaderArg) || SelectedProfile == null) return;
+        if (IsDownloading || IsBusy) return;
         var parts = loaderArg.Split(':');
         if (parts.Length < 2) return;
 
@@ -715,7 +733,10 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             StatusMessage = $"Error: {ex.Message}";
             _launcherService.Log($"[ERROR] Error instalando {loaderType}: {ex.Message}");
         }
-        IsDownloading = false;
+        finally
+        {
+            IsDownloading = false;
+        }
     }
 
     private async Task InstallIris()
@@ -753,7 +774,10 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             _logger.LogError(ex, "Error installing Iris");
             _launcherService.Log($"[ERROR] Error instalando Iris: {ex.Message}");
         }
-        IsDownloading = false;
+        finally
+        {
+            IsDownloading = false;
+        }
     }
 
     private async Task ValidateProfileChecklistAsync()
@@ -808,7 +832,12 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                     ? System.IO.Directory.GetDirectories(mcPath.Versions) 
                     : Array.Empty<string>();
                 var match = dirs.Select(System.IO.Path.GetFileName)
-                                .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
+                                .FirstOrDefault(n => n != null
+                                    && n.Contains(loaderPrefix, StringComparison.OrdinalIgnoreCase)
+                                    && string.Equals(
+                                        n.Split('-', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(),
+                                        targetVersion,
+                                        StringComparison.OrdinalIgnoreCase));
                 IsLoaderReady = match != null;
             }
 
@@ -836,6 +865,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private async Task RepairProfile()
     {
         if (SelectedProfile == null) return;
+        if (IsBusy || IsDownloading) return;
         IsBusy = true;
         ReadyStatus = "Reparando perfil...";
         LogStatus("Validando y reparando archivos clave...");

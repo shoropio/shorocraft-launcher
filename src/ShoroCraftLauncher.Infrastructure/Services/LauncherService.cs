@@ -155,8 +155,9 @@ public class LauncherService : ILauncherService
                 GameExited?.Invoke();
             };
 
-            _logger.LogDebug("Starting process: {FileName} {Arguments}", process.StartInfo.FileName, process.StartInfo.Arguments);
-            _logService?.Info("Launch", "ProcessStarting", "Iniciando proceso de Minecraft.", new { process.StartInfo.FileName, process.StartInfo.Arguments });
+            var sanitizedArgs = LogService.Sanitize(process.StartInfo.Arguments);
+            _logger.LogDebug("Starting process: {FileName} {Arguments}", process.StartInfo.FileName, sanitizedArgs);
+            _logService?.Info("Launch", "ProcessStarting", "Iniciando proceso de Minecraft.", new { process.StartInfo.FileName, Arguments = sanitizedArgs });
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
@@ -231,7 +232,7 @@ public class LauncherService : ILauncherService
             _logger.LogInformation("Stopping game process");
             _logService?.Warning("Launch", "StopRequested", "Deteniendo Minecraft por solicitud del usuario.");
             _gameProcess.Kill(entireProcessTree: true);
-            _gameProcess.WaitForExit(5000);
+            try { await _gameProcess.WaitForExitAsync().ConfigureAwait(false); } catch { }
             _gameProcess = null;
             Log("Juego detenido por el usuario.");
         }

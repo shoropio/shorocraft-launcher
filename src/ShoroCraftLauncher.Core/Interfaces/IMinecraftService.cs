@@ -14,6 +14,7 @@ public interface IMinecraftService
     Task<string> ResolveVersionIdAsync(string versionId);
     Task<string?> GetServerJarUrlAsync(string versionId);
     string GetDefaultGameDirectory(string profileName);
+    string SanitizeProfileFolderName(string profileName);
     string GetModsDirectory(string gameDir);
     string GetResourcePacksDirectory(string gameDir);
     string GetShaderPacksDirectory(string gameDir);

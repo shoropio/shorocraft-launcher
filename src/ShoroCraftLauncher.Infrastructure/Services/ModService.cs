@@ -161,6 +161,7 @@ public class ModService : IModService
         string fileName;
         string modVersion;
         long fileSize;
+        string projectSlug = string.Empty;
         IReadOnlyList<ModrinthDependency>? dependencies = null;
 
         if (provider.Equals("CurseForge", StringComparison.OrdinalIgnoreCase))
@@ -173,18 +174,57 @@ public class ModService : IModService
             modVersion = resolved.Version;
             fileSize = resolved.Size;
             dependencies = resolved.Dependencies;
+            projectSlug = resolved.ProjectSlug;
         }
 
         var destPath = Path.Combine(modsDir, fileName);
+        var tempPath = destPath + ".tmp";
 
-        if (File.Exists(destPath) || File.Exists(destPath + ".disabled"))
-            throw new Exception($"El mod '{fileName}' ya existe en este perfil.");
+        // Localiza una instalación previa del mismo mod, pero NO la borra todavía:
+        // si la descarga falla, el mod original queda intacto.
+        var existingMods = await _modRepository.GetByProfileIdAsync(profileId);
+        var existing = string.IsNullOrWhiteSpace(projectSlug)
+            ? existingMods.FirstOrDefault(m => string.Equals(m.FileName, fileName, StringComparison.OrdinalIgnoreCase))
+            : existingMods.FirstOrDefault(m => StartsWithModSlug(m.FileName, projectSlug));
 
         _logger.LogInformation("Downloading mod from {Url}", downloadUrl);
         _logService.Info("ModService", "DownloadMod", $"Descargando {fileName} ({FormatFileSize(fileSize)})...");
-        await _resumableDownloadService.DownloadAsync(downloadUrl, destPath);
-        var downloadedBytes = new FileInfo(destPath).Length;
+        try
+        {
+            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath);
+        }
+        catch
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            throw;
+        }
+        var downloadedBytes = new FileInfo(tempPath).Length;
         _logService.Info("ModService", "DownloadMod", $"Descarga completada ({FormatFileSize(downloadedBytes)}).");
+
+        // Descarga OK: ahora sí reemplaza la instalación previa.
+        if (existing != null)
+        {
+            try
+            {
+                if (File.Exists(existing.FilePath)) File.Delete(existing.FilePath);
+                var disabledPath = existing.FilePath + ".disabled";
+                if (File.Exists(disabledPath)) File.Delete(disabledPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete previous file {Path}", existing.FilePath);
+            }
+            await _modRepository.DeleteAsync(existing.Id);
+            _logService.Info("ModService", "InstallFromSearch",
+                $"Reemplazando '{existing.FileName}' por '{fileName}'.");
+        }
+        else
+        {
+            if (File.Exists(destPath + ".disabled")) File.Delete(destPath + ".disabled");
+            if (File.Exists(destPath)) File.Delete(destPath);
+        }
+
+        File.Move(tempPath, destPath);
 
         var mod = new Mod
         {
@@ -232,12 +272,12 @@ public class ModService : IModService
         var loader = profile.Type.ToString().ToLowerInvariant();
         var mcVersion = profile.MinecraftVersion;
 
-        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true);
+        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectSlug);
         if (resolved == null)
         {
             _logService.Warning("ModService", "ResolveVersion",
                 $"No hay versión estable de '{searchResult.Name}' para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
-            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectSlug);
         }
 
         if (resolved == null)
@@ -251,8 +291,12 @@ public class ModService : IModService
         string mcVersion,
         string loader,
         string projectId,
-        bool preferRelease)
+        bool preferRelease,
+        string? projectSlug = null)
     {
+        ModrinthVersionInfo? best = null;
+        var bestDate = DateTimeOffset.MinValue;
+
         foreach (var version in doc.RootElement.EnumerateArray())
         {
             if (preferRelease)
@@ -267,6 +311,9 @@ public class ModService : IModService
             {
                 if (gv.GetString() == mcVersion) { matchesMc = true; break; }
             }
+            // El perfil por defecto se crea con "latest": aceptar cualquier versión del juego.
+            if (!matchesMc && mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                matchesMc = true;
             if (!matchesMc) continue;
 
             bool matchesLoader = false;
@@ -279,15 +326,44 @@ public class ModService : IModService
             var files = version.GetProperty("files");
             if (files.GetArrayLength() == 0) continue;
 
-            var file = files[0];
-            var fileUrl = file.GetProperty("url").GetString() ?? "";
-            var fName = file.GetProperty("filename").GetString() ?? $"{projectId}.jar";
-            var fSize = file.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
+            var file = PickBestFile(files, projectSlug);
+            if (file is null) continue;
+            var pickedFile = file.Value;
+
+            var date = DateTimeOffset.MinValue;
+            if (version.TryGetProperty("date_published", out var dp)
+                && DateTimeOffset.TryParse(dp.GetString(), out var parsed))
+                date = parsed;
+
+            if (date < bestDate) continue;
+
+            var fileUrl = pickedFile.GetProperty("url").GetString() ?? "";
+            var fName = pickedFile.GetProperty("filename").GetString() ?? $"{projectId}.jar";
+            var fSize = pickedFile.TryGetProperty("size", out var s) ? s.GetInt64() : 0L;
             var vStr = version.GetProperty("version_number").GetString() ?? "unknown";
-            return new ModrinthVersionInfo(fileUrl, fName, vStr, fSize, string.Empty, ParseDependencies(version));
+            best = new ModrinthVersionInfo(fileUrl, fName, vStr, fSize, string.Empty, ParseDependencies(version));
+            bestDate = date;
         }
 
-        return null;
+        return best;
+    }
+
+    private static System.Text.Json.JsonElement? PickBestFile(System.Text.Json.JsonElement files, string? projectSlug)
+    {
+        System.Text.Json.JsonElement? fallback = null;
+        foreach (var file in files.EnumerateArray())
+        {
+            fallback ??= file;
+            if (!string.IsNullOrWhiteSpace(projectSlug))
+            {
+                var fName = file.TryGetProperty("filename", out var fn) ? fn.GetString() ?? string.Empty : string.Empty;
+                if (StartsWithModSlug(fName, projectSlug)
+                    || fName.Contains(projectSlug + "-", StringComparison.OrdinalIgnoreCase)
+                    || fName.Contains(projectSlug + "_", StringComparison.OrdinalIgnoreCase))
+                    return file;
+            }
+        }
+        return fallback;
     }
 
     private static ModrinthVersionInfo? FindVersionById(System.Text.Json.JsonDocument doc, string versionId)
@@ -457,16 +533,16 @@ public class ModService : IModService
         if (!string.IsNullOrEmpty(versionId))
         {
             return FindVersionById(doc, versionId)
-                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true)
-                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectId)
+                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectId);
         }
 
-        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true);
+        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectId);
         if (resolved == null)
         {
             _logService.Warning("ModService", "ResolveVersion",
                 $"No hay versión estable de la dependencia para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
-            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false);
+            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectId);
         }
 
         return resolved;
@@ -475,8 +551,10 @@ public class ModService : IModService
     private static bool StartsWithModSlug(string fileName, string slug)
     {
         if (string.IsNullOrWhiteSpace(slug)) return false;
-        return fileName.StartsWith(slug + "-", StringComparison.OrdinalIgnoreCase)
-            || fileName.StartsWith(slug + "_", StringComparison.OrdinalIgnoreCase);
+        return fileName.Equals(slug, StringComparison.OrdinalIgnoreCase)
+            || fileName.StartsWith(slug + "-", StringComparison.OrdinalIgnoreCase)
+            || fileName.StartsWith(slug + "_", StringComparison.OrdinalIgnoreCase)
+            || fileName.StartsWith(slug + ".", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<(string url, string fileName, string version, long size)> ResolveCurseForgeDownloadAsync(Mod searchResult, Profile profile)
@@ -515,6 +593,8 @@ public class ModService : IModService
             {
                 if (gv.GetString() == profile.MinecraftVersion) { matchesMc = true; break; }
             }
+            if (!matchesMc && profile.MinecraftVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                matchesMc = true;
             if (!matchesMc) continue;
 
             if (loaderTypeId != 0)

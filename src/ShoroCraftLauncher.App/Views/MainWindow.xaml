@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:ShoroCraftLauncher.App.ViewModels"
-        Title="ShoroCraft Launcher"
+        Title="{DynamicResource Main_Title}"
         Icon="/Assets/icon.png"
         Width="1100" Height="700"
         MinWidth="900" MinHeight="550"
@@ -46,7 +46,7 @@
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="ShoroCraft" FontSize="17" FontWeight="Bold"
                                            Foreground="{StaticResource PrimaryBrush}" />
-                                <TextBlock Text="Launcher v1.0" FontSize="10"
+                                <TextBlock Text="{DynamicResource Main_LauncherTag}" FontSize="10"
                                            Foreground="{StaticResource TextMutedBrush}" />
                             </StackPanel>
                         </StackPanel>
@@ -115,13 +115,20 @@
                                         Background="{StaticResource CardBrush}"
                                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                         ClipToBounds="True">
-                                    <Image Source="{Binding SkinUrl}" Stretch="UniformToFill"
+                                    <Image Source="{Binding SkinUrl, Converter={StaticResource ImageSourceConverter}, ConverterParameter=40}" Stretch="UniformToFill"
                                            Margin="2" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Username, TargetNullValue='Sin sesión'}"
-                                               FontSize="13" FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Text>
+                                            <Binding Path="Username">
+                                                <Binding.TargetNullValue>
+                                                    <StaticResource ResourceKey="Main_NoSession" />
+                                                </Binding.TargetNullValue>
+                                            </Binding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                     <TextBlock Text="{Binding AuthStatus, Converter={StaticResource TranslationConverter}}"
                                                FontSize="10"
                                                Foreground="{StaticResource TextMutedBrush}" />
@@ -135,7 +142,7 @@
                             <Button Content="{DynamicResource User_LoginOffline}" Command="{Binding LoginOfflineCommand}"
                                     Style="{StaticResource SecondaryButton}"
                                     FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6" />
-                            <Button Content="Cerrar sesión" Command="{Binding LogoutCommand}"
+                            <Button Content="{DynamicResource Main_Logout}" Command="{Binding LogoutCommand}"
                                     Style="{StaticResource DangerButton}"
                                     FontSize="12" Padding="14,7" Height="32" />
                         </StackPanel>

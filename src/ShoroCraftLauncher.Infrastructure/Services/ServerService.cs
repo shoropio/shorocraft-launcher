@@ -255,17 +255,26 @@ public class ServerService : IServerService
                 SetStatus(server, ServerStatus.Stopped);
             };
 
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            await WritePidFileAsync(server.DirectoryPath, process.Id);
-
+            // Registrar el proceso antes de Start para que el evento Exited (o llamadas
+            // concurrentes) siempre encuentren el proceso registrado.
             lock (_lock)
             {
                 _processes[server.Id] = process;
                 if (!_logHistory.ContainsKey(server.Id))
                     _logHistory[server.Id] = new List<string>();
+            }
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            try
+            {
+                await WritePidFileAsync(server.DirectoryPath, process.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write PID file for server {ServerName}", server.Name);
             }
 
             SetStatus(server, ServerStatus.Running);
@@ -301,16 +310,20 @@ public class ServerService : IServerService
             {
                 process.StandardInput.WriteLine("stop");
                 process.StandardInput.Flush();
-                if (!process.WaitForExit(15000))
-                {
-                    process.Kill(entireProcessTree: true);
-                    process.WaitForExit(5000);
-                }
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Server {ServerName} did not stop gracefully; killing process", server.Name);
+                try { process.Kill(entireProcessTree: true); } catch { }
+                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch { }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to stop server gracefully, killing process");
                 try { process.Kill(entireProcessTree: true); } catch { }
+                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch { }
             }
 
             CleanupProcess(server);
@@ -586,7 +599,13 @@ public class ServerService : IServerService
 
         var content = await File.ReadAllTextAsync(propsPath);
         if (content.Contains("pause-when-empty-seconds", StringComparison.OrdinalIgnoreCase))
+        {
+            var updated = System.Text.RegularExpressions.Regex.Replace(
+                content, @"(?im)^\s*pause-when-empty-seconds\s*=.*$", "pause-when-empty-seconds=0");
+            if (!string.Equals(updated, content, StringComparison.Ordinal))
+                await File.WriteAllTextAsync(propsPath, updated);
             return;
+        }
 
         await File.AppendAllTextAsync(propsPath, "pause-when-empty-seconds=0\n");
     }
@@ -599,7 +618,7 @@ public class ServerService : IServerService
             + "server-port=25565\n"
             + $"level-name={levelName}\n"
             + "motd=A ShoroCraft server\n"
-            + "online-mode=false\n"
+            + "online-mode=true\n"
             + "max-players=20\n"
             + "view-distance=10\n"
             + "pause-when-empty-seconds=0\n");

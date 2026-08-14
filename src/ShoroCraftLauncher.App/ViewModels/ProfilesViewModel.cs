@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -281,11 +283,9 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         if (SelectedProfile == null) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = DialogHelper.Confirm(
             $"¿Estás seguro de que deseas eliminar el perfil '{SelectedProfile.Name}'? Esta acción no se puede deshacer.",
-            "Eliminar perfil",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
+            "Eliminar perfil");
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
@@ -502,11 +502,9 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     private async Task RestoreBackup()
     {
         if (SelectedProfile == null || SelectedBackup == null) return;
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = DialogHelper.Confirm(
             "¿Estás seguro de que deseas restaurar esta copia de seguridad? Esto reemplazará los archivos actuales (mundos, configs o scripts) del perfil.",
-            "Restaurar copia de seguridad",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
+            "Restaurar copia de seguridad");
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
@@ -529,11 +527,9 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         if (SelectedProfile == null || SelectedBackup == null) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = DialogHelper.Confirm(
             $"¿Estás seguro de que deseas eliminar la copia de seguridad '{SelectedBackup.DisplayName}'? Esta acción no se puede deshacer.",
-            "Eliminar copia de seguridad",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
+            "Eliminar copia de seguridad");
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 

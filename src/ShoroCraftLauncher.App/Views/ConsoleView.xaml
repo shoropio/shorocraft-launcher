@@ -12,11 +12,11 @@
         <!-- Status indicator -->
         <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="12" Margin="0,0,0,12">
             <WrapPanel>
-                <Button Content="Limpiar" Command="{Binding ClearLogCommand}"
+                <Button Content="{DynamicResource Con_Clear}" Command="{Binding ClearLogCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
-                <Button Content="Copiar" Command="{Binding CopyLogCommand}"
+                <Button Content="{DynamicResource Con_Copy}" Command="{Binding CopyLogCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
-                <Button Content="Copiar errores" Command="{Binding CopyRelevantLogCommand}"
+                <Button Content="{DynamicResource Con_CopyErrors}" Command="{Binding CopyRelevantLogCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
                 <ComboBox ItemsSource="{Binding LevelFilters}"
                           SelectedItem="{Binding SelectedLevel}"
@@ -29,7 +29,7 @@
                           Style="{StaticResource DarkComboBox}"
                           ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
                 <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         Width="180" Margin="0,0,8,0" Tag="Filtrar texto..." />
+                         Width="180" Margin="0,0,8,0" Tag="{DynamicResource Con_Search}" />
                 <Border Background="{StaticResource CardBrush}" CornerRadius="0"
                         Padding="12,7" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                     <StackPanel Orientation="Horizontal">
@@ -42,10 +42,10 @@
                         <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Detenido" />
+                                    <Setter Property="Text" Value="{StaticResource Con_Stopped}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsGameRunning}" Value="True">
-                                            <Setter Property="Text" Value="En ejecución" />
+                                            <Setter Property="Text" Value="{StaticResource Con_Running}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>

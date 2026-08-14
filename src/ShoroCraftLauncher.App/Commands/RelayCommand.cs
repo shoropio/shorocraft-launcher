@@ -56,7 +56,7 @@ public class RelayCommand : ICommand
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
+            ShoroCraftLauncher.App.Services.DialogHelper.Show(
                 $"Ocurrio un error al ejecutar la accion:\n{ex.Message}",
                 "ShoroCraft Launcher",
                 System.Windows.MessageBoxButton.OK,

@@ -4,11 +4,11 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,0,18,0">
-            <TextBlock Text="Configuración" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource Set_Title}" Style="{StaticResource SectionTitle}" />
 
             <Border Style="{StaticResource CardBorder}" Padding="22" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="General" Style="{StaticResource CardTitle}" Margin="0,0,0,18" />
+                    <TextBlock Text="{DynamicResource Set_General}" Style="{StaticResource CardTitle}" Margin="0,0,0,18" />
 
                     <Grid Margin="0,0,0,18">
                         <Grid.ColumnDefinitions>
@@ -21,11 +21,11 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="Directorio de Minecraft" Style="{StaticResource FormLabel}" />
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="{DynamicResource Set_GameDir}" Style="{StaticResource FormLabel}" />
                         <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding GameDir}" IsReadOnly="True" MinHeight="40" />
                         <Button Grid.Row="1" Grid.Column="1" Content="..." Command="{Binding BrowseGameDirCommand}"
                                 Style="{StaticResource SecondaryButton}" Width="48" Margin="10,0,0,0" Padding="0" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="Guardar" Command="{Binding SaveGameDirCommand}"
+                        <Button Grid.Row="1" Grid.Column="2" Content="{DynamicResource Set_Save}" Command="{Binding SaveGameDirCommand}"
                                 Style="{StaticResource PrimaryButton}" Width="96" Margin="10,0,0,0" Padding="0" />
                     </Grid>
 
@@ -37,7 +37,7 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,18,0">
-                            <TextBlock Text="Idioma" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_Language}" Style="{StaticResource FormLabel}" />
                             <ComboBox ItemsSource="{Binding Languages}"
                                       SelectedItem="{Binding Language}"
                                       Style="{StaticResource DarkComboBox}"
@@ -46,14 +46,14 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Margin="0,0,18,0">
-                            <TextBlock Text="Cerrar al iniciar" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_CloseOnLaunch}" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding CloseOnLaunch}"
                                           Style="{StaticResource SwitchToggle}"
                                           HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Mantener abierto" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_KeepOpen}" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding KeepOpen}"
                                           Style="{StaticResource SwitchToggle}"
                                           HorizontalAlignment="Left" />
@@ -64,26 +64,27 @@
 
             <Border Style="{StaticResource CardBorder}" Padding="22" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="API de CurseForge" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
-                    <TextBlock Text="Configura la API key oficial de CurseForge para buscar e instalar mods desde ese proveedor."
+                    <TextBlock Text="{DynamicResource Set_CurseForgeTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                    <TextBlock Text="{DynamicResource Set_CurseForgeDesc}"
                                Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
-                    <TextBlock Text="CurseForge API key" Style="{StaticResource FormLabel}" />
-                    <TextBox Text="{Binding CurseForgeApiKey, UpdateSourceTrigger=PropertyChanged}"
-                             MinHeight="40" />
+                    <TextBlock Text="{DynamicResource Set_CurseForgeKey}" Style="{StaticResource FormLabel}" />
+                    <PasswordBox x:Name="CurseForgeKeyBox" MinHeight="40" PasswordChar="●"
+                                 AutomationProperties.Name="CurseForge API key"
+                                 PasswordChanged="CurseForgeKeyBox_PasswordChanged" />
                 </StackPanel>
             </Border>
 
             <Border Style="{StaticResource CardBorder}" Padding="22" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Mantenimiento" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
+                    <TextBlock Text="{DynamicResource Set_Maintenance}" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
                     <WrapPanel>
-                        <Button Content="Limpiar temporales" Command="{Binding CleanTempCommand}"
+                        <Button Content="{DynamicResource Set_CleanTemp}" Command="{Binding CleanTempCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                        <Button Content="Buscar actualizaciones" Command="{Binding CheckUpdatesCommand}"
+                        <Button Content="{DynamicResource Set_CheckUpdates}" Command="{Binding CheckUpdatesCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                        <Button Content="Abrir logs" Command="{Binding OpenLogsFolderCommand}"
+                        <Button Content="{DynamicResource Set_OpenLogs}" Command="{Binding OpenLogsFolderCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                        <Button Content="Exportar diagnóstico" Command="{Binding ExportDiagnosticsCommand}"
+                        <Button Content="{DynamicResource Set_ExportDiag}" Command="{Binding ExportDiagnosticsCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                     </WrapPanel>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}"
@@ -93,22 +94,22 @@
 
             <Border Style="{StaticResource CardBorder}" Padding="22">
                 <StackPanel>
-                    <TextBlock Text="Acerca de" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
+                    <TextBlock Text="{DynamicResource Set_About}" Style="{StaticResource CardTitle}" Margin="0,0,0,16" />
                     <UniformGrid Columns="3">
                         <StackPanel Margin="0,0,18,0">
-                            <TextBlock Text="Launcher" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_Launcher}" Style="{StaticResource FormLabel}" />
                             <TextBlock Text="ShoroCraft Launcher" FontWeight="SemiBold" />
                         </StackPanel>
                         <StackPanel Margin="0,0,18,0">
-                            <TextBlock Text="Versión" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_Version}" Style="{StaticResource FormLabel}" />
                             <TextBlock Text="{Binding LauncherVersion}" FontWeight="SemiBold" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="Tamaño total" Style="{StaticResource FormLabel}" />
+                            <TextBlock Text="{DynamicResource Set_TotalSize}" Style="{StaticResource FormLabel}" />
                             <TextBlock Text="{Binding TotalSizeFormatted}" FontWeight="SemiBold" />
                         </StackPanel>
                     </UniformGrid>
-                    <TextBlock Text="© Copyright 2026. Shoropio Corporation Todos los derechos reservados."
+                    <TextBlock Text="{DynamicResource Set_Copyright}"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,18,0,0" />
                 </StackPanel>

@@ -45,6 +45,7 @@ public class MinecraftService : IMinecraftService
     }
 
     public string GetModsDirectory(string gameDir) => Path.Combine(gameDir, "mods");
+    public string SanitizeProfileFolderName(string profileName) => SanitizeFolderName(profileName ?? "Default");
     public string GetResourcePacksDirectory(string gameDir) => Path.Combine(gameDir, "resourcepacks");
     public string GetShaderPacksDirectory(string gameDir) => Path.Combine(gameDir, "shaderpacks");
     public string GetSavesDirectory(string gameDir) => Path.Combine(gameDir, "saves");
@@ -258,20 +259,21 @@ public class MinecraftService : IMinecraftService
 
         var outputLines = new List<string>();
         var errorLines = new List<string>();
+        var lineLock = new object();
 
         using var process = new Process { StartInfo = psi };
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         process.OutputDataReceived += (_, e) =>
         {
             if (e.Data == null) return;
-            AddBoundedLine(outputLines, e.Data);
+            lock (lineLock) AddBoundedLine(outputLines, e.Data);
             if (ShouldEchoLoaderInstallerLine(e.Data))
                 onLog?.Invoke($"[{loaderType}] {e.Data}");
         };
         process.ErrorDataReceived += (_, e) =>
         {
             if (e.Data == null) return;
-            AddBoundedLine(errorLines, e.Data);
+            lock (lineLock) AddBoundedLine(errorLines, e.Data);
             onLog?.Invoke($"[ERROR] [{loaderType}] {e.Data}");
         };
 
@@ -279,11 +281,30 @@ public class MinecraftService : IMinecraftService
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
-        await process.WaitForExitAsync(cts.Token);
+        try
+        {
+            await process.WaitForExitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            try { await process.WaitForExitAsync(); } catch { }
+            throw new Exception($"El instalador de {loaderType} tardó más de 5 minutos y fue cancelado.");
+        }
+
+        // Esperar a que terminen los eventos de salida asíncronos antes de leer el buffer
+        try { process.WaitForExit(); } catch { }
 
         if (process.ExitCode != 0)
         {
-            var allOutput = string.Join(Environment.NewLine, outputLines.Concat(errorLines));
+            List<string> outputSnapshot;
+            List<string> errorSnapshot;
+            lock (lineLock)
+            {
+                outputSnapshot = new List<string>(outputLines);
+                errorSnapshot = new List<string>(errorLines);
+            }
+            var allOutput = string.Join(Environment.NewLine, outputSnapshot.Concat(errorSnapshot));
             var detail = !string.IsNullOrEmpty(allOutput) ? $": {allOutput}" : "";
             _logger.LogError("Installer failed. Exit code: {ExitCode}. Full output: {Output}", process.ExitCode, allOutput);
             _logService?.Error("LoaderInstall", "InstallerFailed", "El instalador del loader falló.", data: new { loaderType, process.ExitCode, output = allOutput });
@@ -332,9 +353,15 @@ public class MinecraftService : IMinecraftService
     public async Task<bool> VerifyInstallationAsync(string gameDir)
     {
         gameDir = ResolveGameDirectory(gameDir);
-        return Directory.Exists(Path.Combine(gameDir, "versions"))
-            && Directory.Exists(Path.Combine(gameDir, "libraries"))
-            && Directory.Exists(Path.Combine(gameDir, "assets"));
+        var versionsDir = Path.Combine(gameDir, "versions");
+        if (!Directory.Exists(versionsDir) || !Directory.Exists(Path.Combine(gameDir, "libraries")))
+            return false;
+
+        return Directory.GetDirectories(versionsDir)
+            .Select(Path.GetFileName)
+            .Any(v => File.Exists(Path.Combine(versionsDir, v, $"{v}.jar"))
+                   && File.Exists(Path.Combine(versionsDir, v, $"{v}.json"))
+                   && File.Exists(Path.Combine(versionsDir, v, ".shorocraft-installed.json")));
     }
 
     public async Task RepairInstallationAsync(string gameDir, IProgress<double>? progress = null)
@@ -343,7 +370,48 @@ public class MinecraftService : IMinecraftService
         _logger.LogInformation("Repairing installation at {GameDir}", gameDir);
         foreach (var dir in new[] { "versions", "assets", "libraries", "mods", "resourcepacks", "shaderpacks", "saves", "cache", "logs", "natives" })
             Directory.CreateDirectory(Path.Combine(gameDir, dir));
-        await Task.CompletedTask;
+
+        var versionsDir = Path.Combine(gameDir, "versions");
+        if (!Directory.Exists(versionsDir)) return;
+
+        foreach (var versionDir in Directory.GetDirectories(versionsDir))
+        {
+            var versionId = Path.GetFileName(versionDir);
+            var markerPath = Path.Combine(versionDir, ".shorocraft-installed.json");
+            if (!File.Exists(markerPath)) continue;
+
+            try
+            {
+                var versionData = await FetchVersionDataAsync(versionId);
+                if (versionData == null)
+                {
+                    _logService?.Warning("MinecraftRepair", "VersionDataMissing",
+                        "No se pudo obtener datos de la versión para reparar.", new { versionId });
+                    continue;
+                }
+
+                var jarPath = Path.Combine(versionDir, $"{versionId}.jar");
+                if (!File.Exists(jarPath))
+                {
+                    var clientUrl = versionData.GetClientUrl();
+                    if (clientUrl != null)
+                        await DownloadFileAsync(clientUrl, jarPath, progress);
+                }
+
+                var jsonPath = Path.Combine(versionDir, $"{versionId}.json");
+                if (!File.Exists(jsonPath))
+                    await File.WriteAllTextAsync(jsonPath, await _httpClient.GetStringAsync(versionData.Url));
+
+                await DownloadLibrariesAsync(versionData, Path.Combine(gameDir, "libraries"), progress);
+                _logService?.Info("MinecraftRepair", "VersionRepaired", "Versión reparada correctamente.", new { versionId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to repair version {Version}", versionId);
+                _logService?.Error("MinecraftRepair", "RepairFailed",
+                    "No se pudo reparar la versión.", ex, new { versionId });
+            }
+        }
     }
 
     public async Task<Process> LaunchGameAsync(Profile profile, string gameDir, string javaPath, string accessToken, string uuid, string username, Action<double, string>? onProgress = null)
@@ -365,9 +433,16 @@ public class MinecraftService : IMinecraftService
             var versionsDir = Path.Combine(globalDir, "versions");
             if (Directory.Exists(versionsDir))
             {
+                // Coincide solo con la carpeta del loader cuya versión de Minecraft sea exacta
+                // (p.ej. fabric-loader-0.16.0-1.21 para 1.21, no 1.21.1).
                 var match = Directory.GetDirectories(versionsDir)
                     .Select(Path.GetFileName)
-                    .FirstOrDefault(n => n != null && n.Contains(loaderPrefix) && n.Contains(targetVersion));
+                    .FirstOrDefault(n => n != null
+                        && n.Contains(loaderPrefix, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(
+                            n.Split('-', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(),
+                            targetVersion,
+                            StringComparison.OrdinalIgnoreCase));
                 if (match != null)
                 {
                     targetVersion = match;
@@ -634,6 +709,7 @@ public class MinecraftService : IMinecraftService
     {
         int count = 0;
         var libs = versionData.GetLibraries();
+        var failed = new List<string>();
         for (int i = 0; i < libs.Count; i++)
         {
             var lib = libs[i];
@@ -652,8 +728,17 @@ public class MinecraftService : IMinecraftService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to download library {Lib}", lib.Path);
+                failed.Add(lib.Path);
             }
         }
+
+        if (failed.Count > 0)
+        {
+            var detail = string.Join(Environment.NewLine, failed.Take(10));
+            if (failed.Count > 10) detail += Environment.NewLine + "... y " + (failed.Count - 10) + " más";
+            throw new Exception($"No se pudieron descargar {failed.Count} librerías de Minecraft (verifica tu conexión):{Environment.NewLine}{detail}");
+        }
+
         return count;
     }
 

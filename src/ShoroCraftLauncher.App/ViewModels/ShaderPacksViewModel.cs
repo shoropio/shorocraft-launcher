@@ -1,13 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
-public class ShaderPacksViewModel : BaseViewModel
+public class ShaderPacksViewModel : BaseViewModel, IDisposable
 {
     private readonly IShaderPackService _packService;
     private readonly ILogger<ShaderPacksViewModel> _logger;
@@ -19,13 +21,13 @@ public class ShaderPacksViewModel : BaseViewModel
 
     private readonly IProfileService _profileService;
 
-    private Profile? _selectedProfile;
     public Profile? SelectedProfile
     {
-        get => _selectedProfile;
+        get => _profileService.SelectedProfile;
         set
         {
-            SetProperty(ref _selectedProfile, value);
+            _profileService.SelectedProfile = value;
+            OnPropertyChanged(nameof(SelectedProfile));
             if (value != null) _ = LoadPacksAsync(value.Id, loadPopular: true);
         }
     }
@@ -79,6 +81,7 @@ public class ShaderPacksViewModel : BaseViewModel
         _dialogService = dialogService;
         _logger = logger;
 
+        _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
         AddPackCommand = new RelayCommand(async _ => await AddPack());
         TogglePackCommand = new RelayCommand(async p => await TogglePack(p));
         RemovePackCommand = new RelayCommand(async p => await RemovePack(p));
@@ -93,11 +96,26 @@ public class ShaderPacksViewModel : BaseViewModel
         SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
 
+    private void OnSelectedProfileChanged()
+    {
+        SelectedProfile = _profileService.SelectedProfile;
+    }
+
+    public void Dispose()
+    {
+        _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        GC.SuppressFinalize(this);
+    }
+
     private async Task LoadPacksAsync(int profileId, bool loadPopular = false)
     {
         IsBusy = true;
         try
         {
+            var profile = _profileService.Profiles.FirstOrDefault(p => p.Id == profileId);
+            if (profile != null)
+                await _profileService.SyncProfileFilesAsync(profile);
+
             var packs = await _packService.GetPacksAsync(profileId);
             Packs.Clear();
             foreach (var p in packs) Packs.Add(p);
@@ -116,7 +134,10 @@ public class ShaderPacksViewModel : BaseViewModel
             _logger.LogError(ex, "Failed to load shaders");
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task SearchShaders()
@@ -232,10 +253,28 @@ public class ShaderPacksViewModel : BaseViewModel
 
     private async Task RemovePack(object? packId)
     {
-        if (packId is int id)
+        if (packId is not int id) return;
+
+        var confirm = DialogHelper.Confirm(
+            "¿Eliminar este shader pack? Esta acción no se puede deshacer.",
+            "Eliminar shader pack");
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        try
         {
             await _packService.RemovePackAsync(id);
             if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id);
+            StatusMessage = "Shader pack eliminado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove shader pack");
+            StatusMessage = $"Error al eliminar el shader pack: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

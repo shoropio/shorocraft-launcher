@@ -159,7 +159,7 @@ public sealed class LogService : ILogService, IDisposable
         var merged = Merge(data, exception is null ? null : new Dictionary<string, object?>
         {
             ["exceptionType"] = exception.GetType().FullName,
-            ["exceptionMessage"] = exception.Message
+            ["exceptionMessage"] = Sanitize(exception.Message)
         });
 
         var logEvent = new LogEvent(
@@ -211,7 +211,7 @@ public sealed class LogService : ILogService, IDisposable
             ? ""
             : " " + string.Join(" ", e.Data.Select(kv => $"{kv.Key}={Sanitize(Convert.ToString(kv.Value) ?? "")}"));
         var line = $"{e.Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{e.Level.ToString().ToUpperInvariant()}] [session={e.SessionId}] [op={e.OperationId ?? "-"}] [module={e.Module}] {e.EventName}: {e.Message}{data}";
-        return exception is null ? line : line + Environment.NewLine + exception;
+        return exception is null ? line : line + Environment.NewLine + Sanitize(exception.ToString());
     }
 
     private static Dictionary<string, object?> Merge(object? data, Dictionary<string, object?>? extra)
@@ -253,12 +253,18 @@ public sealed class LogService : ILogService, IDisposable
         return result;
     }
 
-    private static string Sanitize(string value)
+    internal static string Sanitize(string value)
     {
         if (string.IsNullOrEmpty(value)) return value;
         var redactedKeys = new[] { "access_token", "accessToken", "clientToken", "uuid", "session" };
         foreach (var key in redactedKeys)
             value = System.Text.RegularExpressions.Regex.Replace(value, $"({key}\\s*[=:]\\s*)\\S+", "$1[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Flags de línea de comandos de Minecraft: --accessToken <jwt>, --accessToken=<jwt>, --clientId <uuid>, etc.
+        var redactedFlags = new[] { "accessToken", "access_token", "clientToken", "clientId", "xuid", "uuid" };
+        foreach (var flag in redactedFlags)
+            value = System.Text.RegularExpressions.Regex.Replace(value, $"--{flag}\\s*[= ]\\s*[^\\s\"]+", $"--{flag}=[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
         return value;
     }
 

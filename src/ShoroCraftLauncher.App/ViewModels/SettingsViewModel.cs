@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -51,17 +53,37 @@ public class SettingsViewModel : BaseViewModel
         get => _language;
         set
         {
-            SetProperty(ref _language, value);
-            _ = _settingsRepo.SetAsync("language", value);
+            if (SetProperty(ref _language, value))
+            {
+                _ = _settingsRepo.SetAsync("language", value);
+                ApplyLanguage(value);
+            }
         }
     }
 
+    private static void ApplyLanguage(string language)
+    {
+        var dicts = System.Windows.Application.Current.Resources.MergedDictionaries;
+        var existing = dicts.FirstOrDefault(d => d.Source != null && d.Source.OriginalString.StartsWith("Locales/"));
+        if (existing != null)
+            dicts.Remove(existing);
+        var locale = language == "es" ? "es-ES" : "en-US";
+        dicts.Add(new ResourceDictionary { Source = new Uri($"Locales/{locale}.xaml", UriKind.Relative) });
+    }
+
     private string _curseForgeApiKey = string.Empty;
+    public event EventHandler<string>? CurseForgeApiKeyChanged;
     public string CurseForgeApiKey
     {
         get => _curseForgeApiKey;
-        set => SetProperty(ref _curseForgeApiKey, value);
+        set
+        {
+            if (SetProperty(ref _curseForgeApiKey, value))
+                CurseForgeApiKeyChanged?.Invoke(this, value);
+        }
     }
+
+    public void SetCurseForgeApiKeyFromUi(string key) => _curseForgeApiKey = key;
 
     private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
     public string LauncherVersion
@@ -92,7 +114,7 @@ public class SettingsViewModel : BaseViewModel
     public ICommand OpenLogsFolderCommand { get; }
     public ICommand ExportDiagnosticsCommand { get; }
 
-    public List<string> Languages { get; } = new() { "es", "en", "fr", "de", "pt" };
+    public List<string> Languages { get; } = new() { "es", "en" };
 
     public SettingsViewModel(
         ISettingsRepository settingsRepo,
@@ -126,7 +148,7 @@ public class SettingsViewModel : BaseViewModel
             KeepOpen = settings.GetValueOrDefault("keep_launcher_open") != "false";
             GameDir = settings.GetValueOrDefault("game_directory") ?? string.Empty;
             Language = settings.GetValueOrDefault("language") ?? "es";
-            CurseForgeApiKey = settings.GetValueOrDefault("curseforge_api_key") ?? string.Empty;
+            CurseForgeApiKey = SecretProtector.Decrypt(settings.GetValueOrDefault("curseforge_api_key") ?? string.Empty);
             LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
             _totalSizeBytes = await CalculateTotalSizeAsync();
@@ -154,7 +176,7 @@ public class SettingsViewModel : BaseViewModel
         if (!string.IsNullOrEmpty(GameDir))
         {
             await _settingsRepo.SetAsync("game_directory", GameDir);
-            await _settingsRepo.SetAsync("curseforge_api_key", CurseForgeApiKey);
+            await _settingsRepo.SetAsync("curseforge_api_key", SecretProtector.Encrypt(CurseForgeApiKey));
             _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
             StatusMessage = "Configuracion guardada.";
         }
@@ -197,11 +219,11 @@ public class SettingsViewModel : BaseViewModel
         try
         {
             var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
-            var (isUpdateAvailable, latestVersion, downloadUrl) = await _updaterService.CheckForUpdatesAsync(currentVersion);
+            var (isUpdateAvailable, latestVersion, downloadUrl, _) = await _updaterService.CheckForUpdatesAsync(currentVersion);
 
             if (isUpdateAvailable && !string.IsNullOrEmpty(downloadUrl))
             {
-                var result = System.Windows.MessageBox.Show(
+                var result = DialogHelper.Show(
                     $"Hay una nueva versión disponible: {latestVersion}\n\n¿Quieres descargarla e instalarla?",
                     "Actualización disponible",
                     System.Windows.MessageBoxButton.YesNo,
@@ -238,7 +260,7 @@ public class SettingsViewModel : BaseViewModel
                 return;
             }
 
-            var confirm = System.Windows.MessageBox.Show(
+            var confirm = DialogHelper.Show(
                 "Actualización descargada. El instalador se abrirá y el Launcher se cerrará. ¿Continuar?",
                 "Actualizar Launcher",
                 System.Windows.MessageBoxButton.YesNo,
@@ -298,7 +320,7 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
-    private async Task<long> CalculateTotalSizeAsync()
+    private Task<long> CalculateTotalSizeAsync() => Task.Run(() =>
     {
         long total = 0;
         var baseDir = new[]
@@ -321,5 +343,5 @@ public class SettingsViewModel : BaseViewModel
         }
 
         return total;
-    }
+    });
 }

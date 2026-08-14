@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -216,20 +218,20 @@ public class ModsViewModel : BaseViewModel, IDisposable
                 extra.Add($"Requiere {result.RequiredLoader}");
             var detail = string.Join("\n", extra.Concat(result.Warnings.Take(5)));
 
-            System.Windows.MessageBox.Show(
+            DialogHelper.Show(
                 $"Modpack '{result.ModpackName}' importado correctamente.\n" +
                 $"{result.ModsInstalled} mods y {result.FilesInstalled} archivos instalados." +
                 (string.IsNullOrEmpty(detail) ? "" : $"\n\n{detail}"),
                 "Modpack importado",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information);
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to import modpack");
             StatusMessage = $"Error al importar modpack: {ex.Message}";
-            System.Windows.MessageBox.Show(ex.Message, "Error al importar modpack",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            DialogHelper.Show(ex.Message, "Error al importar modpack",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -284,6 +286,10 @@ public class ModsViewModel : BaseViewModel, IDisposable
         StatusMessage = "Cargando mods...";
         try
         {
+            var profile = _profileService.Profiles.FirstOrDefault(p => p.Id == profileId);
+            if (profile != null)
+                await _profileService.SyncProfileFilesAsync(profile);
+
             var mods = await _modService.GetModsAsync(profileId);
             Mods.Clear();
             foreach (var m in mods)
@@ -375,11 +381,9 @@ public class ModsViewModel : BaseViewModel, IDisposable
     {
         if (modId is not int id) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = DialogHelper.Confirm(
             "¿Estás seguro de que deseas eliminar este mod?",
-            "Eliminar mod",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
+            "Eliminar mod");
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
         IsBusy = true;

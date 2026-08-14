@@ -207,14 +207,50 @@ public class ShaderPackService : IShaderPackService
             await ResolveShaderVersionAsync(searchResult.ProjectId, profile.MinecraftVersion);
 
         var destPath = Path.Combine(packsDir, fileName);
-        if (File.Exists(destPath))
-            throw new Exception($"El shader pack '{fileName}' ya existe en este perfil.");
+        var tempPath = destPath + ".tmp";
+
+        // Localiza una instalación previa del mismo pack, pero NO la borra todavía:
+        // si la descarga falla, el pack original queda intacto.
+        var existingPacks = await _repository.GetByProfileIdAsync(profileId);
+        var existing = existingPacks.FirstOrDefault(p =>
+            string.Equals(p.FileName, fileName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(p.Name, searchResult.Name, StringComparison.OrdinalIgnoreCase));
 
         _logger.LogInformation("Downloading shader from {Url}", downloadUrl);
         _logService.Info("ShaderPackService", "DownloadShader", $"Descargando {fileName}...");
-        await _resumableDownloadService.DownloadAsync(downloadUrl, destPath);
-        var downloadedBytes = new FileInfo(destPath).Length;
+        try
+        {
+            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath);
+        }
+        catch
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            throw;
+        }
+        var downloadedBytes = new FileInfo(tempPath).Length;
         _logService.Info("ShaderPackService", "DownloadShader", $"Descarga completada ({downloadedBytes} bytes).");
+
+        // Descarga OK: ahora sí reemplaza la instalación previa.
+        if (existing != null)
+        {
+            try
+            {
+                if (File.Exists(existing.FilePath)) File.Delete(existing.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete previous file {Path}", existing.FilePath);
+            }
+            await _repository.DeleteAsync(existing.Id);
+            _logService.Info("ShaderPackService", "InstallFromSearch",
+                $"Reemplazando '{existing.FileName}' por '{fileName}'.");
+        }
+        else
+        {
+            if (File.Exists(destPath)) File.Delete(destPath);
+        }
+
+        File.Move(tempPath, destPath);
 
         var pack = new ShaderPack
         {
@@ -249,6 +285,9 @@ public class ShaderPackService : IShaderPackService
             {
                 if (gv.GetString() == mcVersion) { matchesMc = true; break; }
             }
+            // El perfil por defecto se crea con "latest": aceptar cualquier versión del juego.
+            if (!matchesMc && mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                matchesMc = true;
             if (!matchesMc) continue;
 
             if (version.GetProperty("files").GetArrayLength() == 0) continue;
@@ -258,17 +297,29 @@ public class ShaderPackService : IShaderPackService
         }
 
         System.Text.Json.JsonElement selected = default;
+        var selectedDate = DateTimeOffset.MinValue;
         foreach (var candidate in candidates)
         {
             var type = candidate.TryGetProperty("version_type", out var vt) ? vt.GetString() : null;
-            if (string.Equals(type, "release", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(type, "release", StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (TryGetDate(candidate, out var date) && date >= selectedDate)
             {
                 selected = candidate;
-                break;
+                selectedDate = date;
             }
         }
         if (selected.ValueKind == System.Text.Json.JsonValueKind.Undefined && candidates.Count > 0)
-            selected = candidates[0];
+        {
+            foreach (var candidate in candidates)
+            {
+                if (TryGetDate(candidate, out var date) && date >= selectedDate)
+                {
+                    selected = candidate;
+                    selectedDate = date;
+                }
+            }
+        }
 
         if (selected.ValueKind == System.Text.Json.JsonValueKind.Undefined)
             throw new Exception($"No se encontró una versión del shader pack compatible con Minecraft {mcVersion}.");
@@ -299,6 +350,13 @@ public class ShaderPackService : IShaderPackService
             if (fName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return true;
         }
         return false;
+    }
+
+    private static bool TryGetDate(System.Text.Json.JsonElement version, out DateTimeOffset date)
+    {
+        date = DateTimeOffset.MinValue;
+        return version.TryGetProperty("date_published", out var dp)
+            && DateTimeOffset.TryParse(dp.GetString(), out date);
     }
 
     private static readonly string[] RecommendedShaderProjectIds =
