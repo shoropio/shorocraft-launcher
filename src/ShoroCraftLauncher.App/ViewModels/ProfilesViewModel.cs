@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Models;
 using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -74,6 +75,15 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     public bool IsFullscreen { get => _isFullscreen; set => SetProperty(ref _isFullscreen, value); }
 
     public List<ProfileType> ProfileTypes { get; } = Enum.GetValues<ProfileType>().ToList();
+
+    public IReadOnlyList<ProfileTemplate> ProfileTemplates { get; } = ProfileTemplate.Defaults;
+
+    private ProfileTemplate _selectedProfileTemplate = ProfileTemplate.Defaults[0];
+    public ProfileTemplate SelectedProfileTemplate
+    {
+        get => _selectedProfileTemplate;
+        set => SetProperty(ref _selectedProfileTemplate, value);
+    }
 
     private ObservableCollection<BackupItem> _backups = new();
     public ObservableCollection<BackupItem> Backups => _backups;
@@ -212,29 +222,43 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         IsBusy = true;
         try
         {
+            var template = SelectedProfileTemplate ?? ProfileTemplate.Defaults[0];
+
+            var baseName = template.Name;
+            var name = baseName;
+            var counter = 2;
+            while (Profiles.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                name = $"{baseName} ({counter++})";
+            }
+
             var profile = new Profile
             {
-                Name = "Nuevo Perfil",
+                Name = name,
                 MinecraftVersion = "latest",
-                Type = ProfileType.Vanilla,
-                MinRamMB = 1024,
-                MaxRamMB = 4096,
-                WindowWidth = 854,
-                WindowHeight = 480
+                Type = template.Type,
+                MinRamMB = template.MinRamMB,
+                MaxRamMB = template.MaxRamMB,
+                WindowWidth = template.WindowWidth,
+                WindowHeight = template.WindowHeight,
+                LoaderVersion = template.LoaderVersion
             };
 
             await _profileRepo.CreateAsync(profile);
             await LoadProfilesAsync();
-            
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Name == "Nuevo Perfil") ?? Profiles.LastOrDefault();
-            StatusMessage = "Nuevo perfil creado. Edita los detalles y haz clic en Guardar.";
+
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Id == profile.Id) ?? profile;
+            StatusMessage = $"Perfil '{name}' creado. Edita los detalles y haz clic en Guardar.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create profile");
             StatusMessage = $"Error: {ex.Message}";
         }
-        IsBusy = false;
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task SaveProfile()
@@ -395,23 +419,25 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         return null;
     }
 
-    private async Task BrowseGameDirectory()
+    private Task BrowseGameDirectory()
     {
         var result = _dialogService.ShowFolderBrowserDialog("Selecciona la carpeta de Minecraft");
         if (result != null)
             GameDir = result;
+        return Task.CompletedTask;
     }
 
-    private async Task BrowseJavaPath()
+    private Task BrowseJavaPath()
     {
         var result = _dialogService.ShowOpenFileDialog("Java executable (javaw.exe)|javaw.exe|Java executable (java.exe)|java.exe", "Selecciona Java");
         if (result != null && result.Length > 0)
             JavaPath = result[0];
+        return Task.CompletedTask;
     }
 
-    private async Task OpenFolder()
+    private Task OpenFolder()
     {
-        if (SelectedProfile == null) return;
+        if (SelectedProfile == null) return Task.CompletedTask;
         var dir = string.IsNullOrEmpty(SelectedProfile.GameDirectory)
             ? _minecraftService.GetDefaultGameDirectory(SelectedProfile.Name)
             : SelectedProfile.GameDirectory;
@@ -428,6 +454,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             _logger.LogError(ex, "Failed to open folder {Directory}", dir);
             StatusMessage = $"Error al abrir la carpeta: {ex.Message}";
         }
+        return Task.CompletedTask;
     }
 
     private async Task ExportProfile()

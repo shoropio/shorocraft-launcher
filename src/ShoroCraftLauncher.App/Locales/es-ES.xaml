@@ -161,6 +161,7 @@
 
     <!-- Profiles -->
     <system:String x:Key="Prof_Profiles">Perfiles</system:String>
+    <system:String x:Key="Prof_Template">Plantilla</system:String>
     <system:String x:Key="Prof_New">+ Nuevo Perfil</system:String>
     <system:String x:Key="Prof_Import">📥 Importar</system:String>
     <system:String x:Key="Prof_ImportTip">Importar un perfil desde un archivo .zip (ShoroCraft Package).</system:String>

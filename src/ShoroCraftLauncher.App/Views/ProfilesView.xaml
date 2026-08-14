@@ -15,15 +15,26 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 
                 <TextBlock Grid.Row="0" Text="{DynamicResource Prof_Profiles}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                    <TextBlock Text="{DynamicResource Prof_Template}" Style="{StaticResource FormLabel}" />
+                    <ComboBox ItemsSource="{Binding ProfileTemplates}"
+                              SelectedItem="{Binding SelectedProfileTemplate, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              IsSynchronizedWithCurrentItem="True"
+                              Style="{StaticResource DarkComboBox}"
+                              ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
+                </StackPanel>
                 
-                <Button Grid.Row="1" Content="{DynamicResource Prof_New}" Command="{Binding CreateProfileCommand}"
+                <Button Grid.Row="2" Content="{DynamicResource Prof_New}" Command="{Binding CreateProfileCommand}"
                         Style="{StaticResource PrimaryButton}" Margin="0,0,0,10" Padding="14,8" />
                 
-                <Grid Grid.Row="2" Margin="0,0,0,16">
+                <Grid Grid.Row="3" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -36,7 +47,7 @@
                             ToolTip="{DynamicResource Prof_ExportTip}" />
                 </Grid>
                 
-                <ListBox Grid.Row="3" ItemsSource="{Binding Profiles}"
+                <ListBox Grid.Row="4" ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile}"
                          Background="Transparent" BorderThickness="0"
                          DisplayMemberPath="Name" />
