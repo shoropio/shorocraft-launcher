@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -14,11 +15,11 @@ public class ResourcePacksViewModel : BaseViewModel, IDisposable
     private readonly IResourcePackService _packService;
     private readonly ILogger<ResourcePacksViewModel> _logger;
     private readonly IDialogService _dialogService;
+    private readonly IProfileService _profileService;
+    private readonly Dictionary<int, IDisposable> _packSubscriptions = new();
 
     public ObservableCollection<ResourcePack> Packs { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
-
-    private readonly IProfileService _profileService;
 
     public Profile? SelectedProfile
     {
@@ -66,6 +67,9 @@ public class ResourcePacksViewModel : BaseViewModel, IDisposable
     public void Dispose()
     {
         _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        foreach (var sub in _packSubscriptions.Values)
+            sub.Dispose();
+        _packSubscriptions.Clear();
         GC.SuppressFinalize(this);
     }
 
@@ -79,8 +83,21 @@ public class ResourcePacksViewModel : BaseViewModel, IDisposable
                 await _profileService.SyncProfileFilesAsync(profile);
 
             var packs = await _packService.GetPacksAsync(profileId);
+
+            foreach (var sub in _packSubscriptions.Values)
+                sub.Dispose();
+            _packSubscriptions.Clear();
+
             Packs.Clear();
-            foreach (var p in packs) Packs.Add(p);
+            foreach (var p in packs)
+            {
+                _packSubscriptions[p.Id] = p.SubscribeToStatusChange(async () =>
+                {
+                    await _packService.TogglePackAsync(p.Id);
+                    StatusMessage = $"{p.Name} {(p.Status == ShoroCraftLauncher.Core.Enums.PackStatus.Active ? "activado" : "desactivado")}.";
+                });
+                Packs.Add(p);
+            }
             StatusMessage = $"{Packs.Count} resource packs.";
         }
         catch (Exception ex)

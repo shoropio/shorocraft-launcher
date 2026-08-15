@@ -15,7 +15,7 @@
                     <TextBlock Grid.Column="0" Text="{DynamicResource Dash_ActiveProfile}" VerticalAlignment="Center"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,14,0" />
                     <ComboBox Grid.Column="1" ItemsSource="{Binding Profiles}"
-                              SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
+                              SelectedItem="{Binding SelectedProfile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                               DisplayMemberPath="Name"
                               Style="{StaticResource DarkComboBox}"
                               ItemContainerStyle="{StaticResource DarkComboBoxItem}"
@@ -89,75 +89,30 @@
             </Border>
 
             <!-- Stats Cards -->
-            <Grid Margin="0,0,0,16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,8,0" Padding="16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Version}" Style="{StaticResource StatLabel}" />
-                        <TextBlock Grid.Row="1" Text="{Binding InstalledVersion}" Style="{StaticResource StatValue}" FontSize="22" />
-                        <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
-                                   Fill="{StaticResource PrimaryGradient}" />
-                    </Grid>
-                </Border>
-
-                <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardBorder}" Margin="8,0,8,0" Padding="16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Mods}" Style="{StaticResource StatLabel}" />
-                        <TextBlock Grid.Row="1" Text="{Binding ModsCount}" Style="{StaticResource StatValue}" FontSize="22" />
-                        <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
-                                   Fill="{StaticResource AccentBrush}" />
-                    </Grid>
-                </Border>
-
-                <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource CardBorder}" Margin="8,0,8,0" Padding="16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Ram}" Style="{StaticResource StatLabel}" />
-                        <TextBlock Grid.Row="1" Text="{Binding AllocatedRam}" Style="{StaticResource StatValue}" FontSize="22" />
-                        <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
-                                   Fill="{StaticResource SuccessBrush}" />
-                    </Grid>
-                </Border>
-
-                <Border Grid.Row="0" Grid.Column="3" Style="{StaticResource CardBorder}" Margin="8,0,0,0" Padding="16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="{DynamicResource Dash_Status}" Style="{StaticResource StatLabel}" />
-                        <TextBlock Grid.Row="1" Text="{Binding ReadyStatus}" Style="{StaticResource StatValue}" FontSize="22"
-                                   Foreground="{StaticResource SuccessBrush}" />
-                        <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Style="{StaticResource CardSubtitle}"
-                                   TextWrapping="Wrap" MaxHeight="36" Margin="0,6,0,0" />
-                    </Grid>
-                </Border>
-            </Grid>
+            <ItemsControl ItemsSource="{Binding StatCards}" Margin="0,0,0,16">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" ItemWidth="220" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,12,12" Padding="16" MinWidth="200">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{Binding Label}" Style="{StaticResource StatLabel}" />
+                                <TextBlock Grid.Row="1" Text="{Binding Value}" Style="{StaticResource StatValue}" FontSize="22" />
+                                <Rectangle Grid.Row="2" Height="3" Margin="0,10,0,0" RadiusX="0" RadiusY="0"
+                                           Fill="{Binding BarBrush}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- Checklist Card & Repair -->
             <Border Style="{StaticResource CardBorder}" Padding="20" Margin="0,0,0,16">
@@ -277,14 +232,8 @@
                                     CommandParameter="Fabric:latest"
                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="{DynamicResource Dash_InstallQuilt}" Command="{Binding InstallLoaderCommand}"
-                                    CommandParameter="Quilt:latest"
-                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="{Binding IrisSodiumButtonText}"
-                                    Command="{Binding InstallIrisCommand}"
-                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
-                                <Button Content="{DynamicResource Dash_OptiFineManual}"
-                                    Command="{Binding OptiFineInfoCommand}"
-                                    Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                                     CommandParameter="Quilt:latest"
+                                     Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
                                 <ComboBox ItemsSource="{Binding AvailableVersions}"
@@ -293,12 +242,12 @@
                                           SelectedValuePath="VersionId"
                                           Style="{StaticResource DarkComboBox}"
                                           ItemContainerStyle="{StaticResource DarkComboBoxItem}"
-                                          Width="200" Margin="0,0,10,0" />
+                                          MinWidth="200" Margin="0,0,10,10" />
                                 <Button Content="{DynamicResource Dash_InstallVersion}" Command="{Binding InstallVersionCommand}"
                                         CommandParameter="{Binding SelectedVersion}"
-                                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                                 <Button Content="{DynamicResource Dash_RefreshList}" Command="{Binding RefreshVersionsCommand}"
-                                        Style="{StaticResource SecondaryButton}" />
+                                        Style="{StaticResource SecondaryButton}" Margin="0,0,0,10" />
                             </WrapPanel>
                         </StackPanel>
                     </Grid>

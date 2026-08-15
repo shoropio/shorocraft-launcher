@@ -14,7 +14,18 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="240">
+                <ColumnDefinition.Style>
+                    <Style TargetType="ColumnDefinition">
+                        <Setter Property="Width" Value="240" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+                                <Setter Property="Width" Value="56" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ColumnDefinition.Style>
+            </ColumnDefinition>
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -43,7 +54,8 @@
                                       Stroke="White" StrokeThickness="1.5" StrokeLineJoin="Round" 
                                       Stretch="Uniform" Width="22" Height="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                             </Border>
-                            <StackPanel VerticalAlignment="Center">
+                            <StackPanel VerticalAlignment="Center"
+                                        Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                 <TextBlock Text="ShoroCraft" FontSize="17" FontWeight="Bold"
                                            Foreground="{StaticResource PrimaryBrush}" />
                                 <TextBlock Text="{DynamicResource Main_LauncherTag}" FontSize="10"
@@ -65,7 +77,8 @@
                                         <TextBlock Text="{Binding Icon}" FontSize="16" Width="28"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding Name, Converter={StaticResource TranslationConverter}}" FontSize="13" FontWeight="Medium"
-                                                   VerticalAlignment="Center" />
+                                                   VerticalAlignment="Center"
+                                                   Visibility="{Binding IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -118,7 +131,8 @@
                                     <Image Source="{Binding SkinUrl, Converter={StaticResource ImageSourceConverter}, ConverterParameter=40}" Stretch="UniformToFill"
                                            Margin="2" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                     <TextBlock FontSize="13" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis">
                                         <TextBlock.Text>
@@ -135,16 +149,20 @@
                                 </StackPanel>
                             </Grid>
                             <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                                     FontSize="12" Padding="8,6" Margin="0,0,0,8" />
+                                     FontSize="12" Padding="8,6" Margin="0,0,0,8"
+                                     Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             <Button Content="{DynamicResource User_LoginMicrosoft}" Command="{Binding LoginCommand}"
                                     Style="{StaticResource PrimaryButton}"
-                                    FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6" />
+                                    FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6"
+                                    Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             <Button Content="{DynamicResource User_LoginOffline}" Command="{Binding LoginOfflineCommand}"
                                     Style="{StaticResource SecondaryButton}"
-                                    FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6" />
+                                    FontSize="12" Padding="14,7" Height="32" Margin="0,0,0,6"
+                                    Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             <Button Content="{DynamicResource Main_Logout}" Command="{Binding LogoutCommand}"
                                     Style="{StaticResource DangerButton}"
-                                    FontSize="12" Padding="14,7" Height="32" />
+                                    FontSize="12" Padding="14,7" Height="32"
+                                    Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -170,6 +188,10 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <Button Content="☰" Command="{Binding ToggleSidebarCommand}"
+                                        Style="{StaticResource SecondaryButton}" Width="36" Height="36"
+                                        Padding="0" Margin="0,0,16,0" VerticalAlignment="Center"
+                                        FontSize="14" />
                                 <TextBlock Text="{Binding SelectedNav, Converter={StaticResource TranslationConverter}}" FontSize="20" FontWeight="Bold"
                                            VerticalAlignment="Center" />
                                 <TextBlock Text="|" Margin="14,0" Foreground="{StaticResource TextMutedBrush}"

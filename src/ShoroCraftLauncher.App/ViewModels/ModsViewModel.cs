@@ -280,6 +280,8 @@ public class ModsViewModel : BaseViewModel, IDisposable
         }
     }
 
+    private readonly Dictionary<int, IDisposable> _modSubscriptions = new();
+
     public async Task LoadModsAsync(int profileId)
     {
         IsBusy = true;
@@ -291,9 +293,21 @@ public class ModsViewModel : BaseViewModel, IDisposable
                 await _profileService.SyncProfileFilesAsync(profile);
 
             var mods = await _modService.GetModsAsync(profileId);
+
+            // Unsubscribe from previous mods
+            foreach (var sub in _modSubscriptions.Values)
+                sub.Dispose();
+            _modSubscriptions.Clear();
+
             Mods.Clear();
             foreach (var m in mods)
+            {
                 Mods.Add(m);
+                // Subscribe to Status changes
+                var subscription = m.SubscribeToStatusChange(async () => await OnModStatusChanged(m));
+                _modSubscriptions[m.Id] = subscription;
+            }
+
             StatusMessage = Mods.Count > 0
                 ? $"{Mods.Count} mods cargados en el perfil."
                 : "No hay mods instalados en este perfil.";
@@ -302,6 +316,27 @@ public class ModsViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to load mods");
             StatusMessage = $"Error al cargar mods: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task OnModStatusChanged(Mod mod)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            await _modService.ToggleModAsync(mod.Id);
+            if (SelectedProfile != null)
+                await LoadModsAsync(SelectedProfile.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle mod {ModId}", mod.Id);
+            StatusMessage = $"Error al cambiar estado del mod: {ex.Message}";
         }
         finally
         {

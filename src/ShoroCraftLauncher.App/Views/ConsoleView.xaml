@@ -9,29 +9,32 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Status indicator -->
+<!-- Status indicator -->
         <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="12" Margin="0,0,0,12">
-            <WrapPanel>
+            <WrapPanel Orientation="Horizontal" ItemWidth="180">
                 <Button Content="{DynamicResource Con_Clear}" Command="{Binding ClearLogCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Padding="14,7" FontSize="12" />
                 <Button Content="{DynamicResource Con_Copy}" Command="{Binding CopyLogCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Padding="14,7" FontSize="12" />
                 <Button Content="{DynamicResource Con_CopyErrors}" Command="{Binding CopyRelevantLogCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Padding="14,7" FontSize="12" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Padding="14,7" FontSize="12" />
                 <ComboBox ItemsSource="{Binding LevelFilters}"
                           SelectedItem="{Binding SelectedLevel}"
-                          Width="110" Margin="0,0,8,0"
                           Style="{StaticResource DarkComboBox}"
-                          ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
+                          ItemContainerStyle="{StaticResource DarkComboBoxItem}"
+                          Margin="0,0,8,8" MinWidth="110" />
                 <ComboBox ItemsSource="{Binding ModuleFilters}"
                           SelectedItem="{Binding SelectedModule}"
-                          Width="140" Margin="0,0,8,0"
                           Style="{StaticResource DarkComboBox}"
-                          ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
+                          ItemContainerStyle="{StaticResource DarkComboBoxItem}"
+                          Margin="0,0,8,8" MinWidth="140" />
                 <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         Width="180" Margin="0,0,8,0" Tag="{DynamicResource Con_Search}" />
+                         Style="{StaticResource SearchTextBox}"
+                         Margin="0,0,8,8" MinWidth="180"
+                         Tag="{DynamicResource Con_Search}" />
                 <Border Background="{StaticResource CardBrush}" CornerRadius="0"
-                        Padding="12,7" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        Padding="12,7" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Margin="0,0,0,8">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}"
                                  Margin="0,0,8,0" VerticalAlignment="Center"

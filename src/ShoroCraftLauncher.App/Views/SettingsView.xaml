@@ -10,33 +10,27 @@
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Set_General}" Style="{StaticResource CardTitle}" Margin="0,0,0,18" />
 
-                    <Grid Margin="0,0,0,18">
+                    <!-- Game Directory with validation -->
+                    <TextBlock Text="{DynamicResource Set_GameDir}" Style="{StaticResource FormLabel}" Margin="0,0,0,6" />
+                    <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="{DynamicResource Set_GameDir}" Style="{StaticResource FormLabel}" />
-                        <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding GameDir}" IsReadOnly="True" MinHeight="40" />
-                        <Button Grid.Row="1" Grid.Column="1" Content="..." Command="{Binding BrowseGameDirCommand}"
-                                Style="{StaticResource SecondaryButton}" Width="48" Margin="10,0,0,0" Padding="0" />
-                        <Button Grid.Row="1" Grid.Column="2" Content="{DynamicResource Set_Save}" Command="{Binding SaveGameDirCommand}"
-                                Style="{StaticResource PrimaryButton}" Width="96" Margin="10,0,0,0" Padding="0" />
+                        <TextBox Grid.Column="0" Text="{Binding GameDir}" IsReadOnly="True" MinHeight="40"
+                                 ToolTip="{Binding GameDir}" />
+                        <Button Grid.Column="1" Content="..." Command="{Binding BrowseGameDirCommand}"
+                                Style="{StaticResource SecondaryButton}" Width="48" Margin="8,0,0,0" Padding="0" />
+                        <Button Grid.Column="2" Content="{DynamicResource Set_Save}" Command="{Binding SaveGameDirCommand}"
+                                Style="{StaticResource PrimaryButton}" Width="96" Margin="8,0,0,0" Padding="0" />
                     </Grid>
+                    <TextBlock x:Name="GameDirValidationText" Text="" Foreground="{StaticResource ErrorBrush}" FontSize="11" Margin="0,4,0,0"
+                               Visibility="{Binding GameDirValidationVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                    <!-- Language + Toggles responsive -->
+                    <WrapPanel Orientation="Horizontal" ItemWidth="250" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,12">
                             <TextBlock Text="{DynamicResource Set_Language}" Style="{StaticResource FormLabel}" />
                             <ComboBox ItemsSource="{Binding Languages}"
                                       SelectedItem="{Binding Language}"
@@ -44,21 +38,19 @@
                                       ItemContainerStyle="{StaticResource DarkComboBoxItem}"
                                       MinWidth="180" HorizontalAlignment="Left" />
                         </StackPanel>
-
-                        <StackPanel Grid.Column="1" Margin="0,0,18,0">
+                        <StackPanel Margin="0,0,12,12">
                             <TextBlock Text="{DynamicResource Set_CloseOnLaunch}" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding CloseOnLaunch}"
                                           Style="{StaticResource SwitchToggle}"
                                           HorizontalAlignment="Left" />
                         </StackPanel>
-
-                        <StackPanel Grid.Column="2">
+                        <StackPanel Margin="0,0,12,12">
                             <TextBlock Text="{DynamicResource Set_KeepOpen}" Style="{StaticResource FormLabel}" />
                             <ToggleButton IsChecked="{Binding KeepOpen}"
                                           Style="{StaticResource SwitchToggle}"
                                           HorizontalAlignment="Left" />
                         </StackPanel>
-                    </Grid>
+                    </WrapPanel>
                 </StackPanel>
             </Border>
 
@@ -68,9 +60,21 @@
                     <TextBlock Text="{DynamicResource Set_CurseForgeDesc}"
                                Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
                     <TextBlock Text="{DynamicResource Set_CurseForgeKey}" Style="{StaticResource FormLabel}" />
-                    <PasswordBox x:Name="CurseForgeKeyBox" MinHeight="40" PasswordChar="●"
-                                 AutomationProperties.Name="CurseForge API key"
-                                 PasswordChanged="CurseForgeKeyBox_PasswordChanged" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <PasswordBox x:Name="CurseForgeKeyBox" Grid.Column="0" MinHeight="40" PasswordChar="●"
+                                     AutomationProperties.Name="CurseForge API key"
+                                     PasswordChanged="CurseForgeKeyBox_PasswordChanged" />
+                        <ToggleButton x:Name="RevealKeyButton" Grid.Column="1" Margin="8,0,0,0"
+                                      VerticalAlignment="Stretch" MinWidth="40"
+                                      AutomationProperties.Name="Show/hide API key"
+                                      Checked="RevealKeyButton_Checked" Unchecked="RevealKeyButton_Checked">
+                            <TextBlock Text="👁" FontSize="14" />
+                        </ToggleButton>
+                    </Grid>
                 </StackPanel>
             </Border>
 

@@ -245,10 +245,16 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             };
 
             await _profileRepo.CreateAsync(profile);
+
+            // Set new profile FIRST to load form with correct data
+            SelectedProfile = profile;
+            StatusMessage = $"Perfil '{name}' creado. Edita los detalles y haz clic en Guardar.";
+
+            // Then refresh list
             await LoadProfilesAsync();
 
+            // Re-select by Id to ensure service has the persisted entity
             SelectedProfile = Profiles.FirstOrDefault(p => p.Id == profile.Id) ?? profile;
-            StatusMessage = $"Perfil '{name}' creado. Edita los detalles y haz clic en Guardar.";
         }
         catch (Exception ex)
         {

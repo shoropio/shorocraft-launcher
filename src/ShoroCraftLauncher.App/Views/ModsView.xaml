@@ -51,47 +51,41 @@
 
             <!-- Search bar -->
             <Border Grid.Row="0" Style="{StaticResource CardBorder}" Margin="0,0,0,12" Padding="12">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="170" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0"
-                              ItemsSource="{Binding SearchProviders}"
+                <WrapPanel Orientation="Horizontal" ItemWidth="200">
+                    <ComboBox ItemsSource="{Binding SearchProviders}"
                               SelectedItem="{Binding SelectedProvider}"
                               Style="{StaticResource DarkComboBox}"
                               ItemContainerStyle="{StaticResource DarkComboBoxItem}"
-                              Margin="0,0,8,0" />
-                    <TextBox Grid.Column="1"
-                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                             Tag="{DynamicResource Mods_SearchPlaceholder}"
+                              Margin="0,0,8,8" MinWidth="150" />
+                    <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource SearchTextBox}"
-                             Margin="0,0,8,0">
+                             Margin="0,0,8,8"
+                             Tag="{DynamicResource Mods_SearchPlaceholder}"
+                             MinWidth="200">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Grid.Column="2" Content="{DynamicResource Mods_Search}" Command="{Binding SearchCommand}"
-                            Style="{StaticResource PrimaryButton}" Padding="16,8" />
-                </Grid>
+                    <Button Content="{DynamicResource Mods_Search}" Command="{Binding SearchCommand}"
+                            Style="{StaticResource PrimaryButton}" Padding="16,8" Margin="0,0,0,8" />
+                </WrapPanel>
             </Border>
 
             <!-- Action bar -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <WrapPanel Grid.Row="1" Margin="0,0,0,12">
                 <Button Content="{DynamicResource Mods_Installed}" Command="{Binding ShowInstalledCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_Recommended}" Command="{Binding ShowRecommendedCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_AddLocal}" Command="{Binding AddModCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_ImportModpack}" Command="{Binding ImportModpackCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_OpenFolder}" Command="{Binding OpenModsFolderCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_Refresh}" Command="{Binding RefreshCommand}"
-                        Style="{StaticResource SecondaryButton}" />
-            </StackPanel>
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,0,10" />
+            </WrapPanel>
             <ProgressBar Grid.Row="2" Height="4" Margin="0,0,0,12" IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
                          Style="{StaticResource AccentProgressBar}" />
@@ -123,9 +117,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
-                                                      Style="{StaticResource SwitchToggle}"
-                                                      Command="{Binding ElementName=root, Path=DataContext.ToggleModCommand}"
-                                                      CommandParameter="{Binding Id}" />
+                                                      Style="{StaticResource SwitchToggle}" />
                                         <Button Content="{DynamicResource Mods_Delete}" Style="{StaticResource DangerButton}"
                                                 Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                                 Command="{Binding ElementName=root, Path=DataContext.RemoveModCommand}"

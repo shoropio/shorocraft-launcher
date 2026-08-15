@@ -42,4 +42,9 @@ public partial class SettingsView : UserControl
         if (_suppressUiUpdate) return;
         _viewModel?.SetCurseForgeApiKeyFromUi(CurseForgeKeyBox.Password);
     }
+
+    private void RevealKeyButton_Checked(object sender, System.Windows.RoutedEventArgs e)
+    {
+        CurseForgeKeyBox.PasswordChar = RevealKeyButton.IsChecked == true ? '\0' : '●';
+    }
 }

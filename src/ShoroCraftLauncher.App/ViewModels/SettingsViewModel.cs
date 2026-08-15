@@ -44,7 +44,25 @@ public class SettingsViewModel : BaseViewModel
     public string GameDir
     {
         get => _gameDir;
-        set => SetProperty(ref _gameDir, value);
+        set
+        {
+            if (SetProperty(ref _gameDir, value))
+                GameDirValidationVisible = false;
+        }
+    }
+
+    private bool _gameDirValidationVisible;
+    public bool GameDirValidationVisible
+    {
+        get => _gameDirValidationVisible;
+        set => SetProperty(ref _gameDirValidationVisible, value);
+    }
+
+    private string _gameDirValidationText = string.Empty;
+    public string GameDirValidationText
+    {
+        get => _gameDirValidationText;
+        set => SetProperty(ref _gameDirValidationText, value);
     }
 
     private string _language = "es";
@@ -83,7 +101,11 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
-    public void SetCurseForgeApiKeyFromUi(string key) => _curseForgeApiKey = key;
+    public void SetCurseForgeApiKeyFromUi(string key)
+    {
+        if (SetProperty(ref _curseForgeApiKey, key))
+            CurseForgeApiKeyChanged?.Invoke(this, key);
+    }
 
     private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
     public string LauncherVersion
@@ -173,13 +195,38 @@ public class SettingsViewModel : BaseViewModel
 
     private async Task SaveGameDir()
     {
-        if (!string.IsNullOrEmpty(GameDir))
+        if (string.IsNullOrWhiteSpace(GameDir))
         {
-            await _settingsRepo.SetAsync("game_directory", GameDir);
-            await _settingsRepo.SetAsync("curseforge_api_key", SecretProtector.Encrypt(CurseForgeApiKey));
-            _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
-            StatusMessage = "Configuracion guardada.";
+            GameDirValidationText = "Selecciona una carpeta válida.";
+            GameDirValidationVisible = true;
+            return;
         }
+
+        if (!Directory.Exists(GameDir))
+        {
+            GameDirValidationText = "La carpeta seleccionada no existe.";
+            GameDirValidationVisible = true;
+            return;
+        }
+
+        // Verify it's a valid Minecraft directory (has versions folder or can create one)
+        var versionsPath = Path.Combine(GameDir, "versions");
+        if (!Directory.Exists(versionsPath))
+        {
+            try { Directory.CreateDirectory(versionsPath); }
+            catch
+            {
+                GameDirValidationText = "No se puede crear la carpeta versions en la ruta seleccionada.";
+                GameDirValidationVisible = true;
+                return;
+            }
+        }
+
+        GameDirValidationVisible = false;
+        await _settingsRepo.SetAsync("game_directory", GameDir);
+        await _settingsRepo.SetAsync("curseforge_api_key", SecretProtector.Encrypt(CurseForgeApiKey));
+        _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
+        StatusMessage = "Configuración guardada.";
     }
 
     private async Task CleanTemp()

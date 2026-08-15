@@ -29,16 +29,16 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <WrapPanel Grid.Row="0" Margin="0,0,0,12">
                 <Button Content="{DynamicResource Maps_Add}" Command="{Binding AddMapCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Maps_Backup}" Command="{Binding BackupWorldsCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Maps_OpenFolder}" Command="{Binding OpenFolderCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Maps_Refresh}" Command="{Binding RefreshCommand}"
-                        Style="{StaticResource SecondaryButton}" />
-            </StackPanel>
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,0,10" />
+            </WrapPanel>
 
             <TextBlock Grid.Row="1" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />

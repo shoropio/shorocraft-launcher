@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -26,6 +27,9 @@ public class MinecraftService : IMinecraftService
     private const string QuiltGameVersionsUrl = "https://meta.quiltmc.org/v3/versions/game";
     private const string QuiltInstallerVersionsUrl = "https://meta.quiltmc.org/v3/versions/installer";
     private const string NeoForgeMetadataUrl = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
+    private const int MaxInstallAttempts = 3;
+    private static readonly TimeSpan InstallAttemptTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan CmlHttpTimeout = TimeSpan.FromMinutes(5);
 
     public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null,
         IResumableDownloadService? resumableDownloadService = null)
@@ -452,25 +456,6 @@ public class MinecraftService : IMinecraftService
 
         onProgress?.Invoke(-1, $"Preparando lanzamiento de {targetVersion}...");
 
-        var mcPath = new CmlLib.Core.MinecraftPath(globalDir);
-        var launcher = new CmlLib.Core.MinecraftLauncher(mcPath);
-
-        int lastReportedPercent = -1;
-        launcher.FileProgressChanged += (s, e) =>
-        {
-            var percentage = e.TotalTasks > 0 ? (double)e.ProgressedTasks / e.TotalTasks * 100 : 0;
-            var percent = (int)Math.Floor(percentage);
-            var shouldReport = lastReportedPercent < 0
-                || percent >= 100
-                || percent - lastReportedPercent >= 5;
-
-            if (shouldReport)
-            {
-                lastReportedPercent = percent;
-                onProgress?.Invoke(percentage, $"Verificando archivos de Minecraft... {percent}% ({e.ProgressedTasks}/{e.TotalTasks})");
-            }
-        };
-
         var session = accessToken.Equals("offline", StringComparison.OrdinalIgnoreCase)
             ? CmlLib.Core.Auth.MSession.CreateOfflineSession(username)
             : new CmlLib.Core.Auth.MSession(username, accessToken, uuid)
@@ -492,7 +477,7 @@ public class MinecraftService : IMinecraftService
             FullScreen = profile.IsFullscreen
         };
 
-        var process = await launcher.CreateProcessAsync(targetVersion, launchOption);
+        var process = await InstallAndBuildWithRetryAsync(globalDir, targetVersion, launchOption, onProgress);
         
         process.StartInfo.WorkingDirectory = gameDir;
         process.StartInfo.RedirectStandardOutput = true;
@@ -502,6 +487,81 @@ public class MinecraftService : IMinecraftService
 
         return process;
     }
+
+    private async Task<Process> InstallAndBuildWithRetryAsync(
+        string globalDir,
+        string targetVersion,
+        CmlLib.Core.ProcessBuilder.MLaunchOption launchOption,
+        Action<double, string>? onProgress)
+    {
+        var mcPath = new CmlLib.Core.MinecraftPath(globalDir);
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= MaxInstallAttempts; attempt++)
+        {
+            using var cts = new CancellationTokenSource(InstallAttemptTimeout);
+            using var cmlClient = CreateCmlHttpClient();
+
+            var parameters = CmlLib.Core.MinecraftLauncherParameters.CreateDefault(mcPath, cmlClient);
+            var launcher = new CmlLib.Core.MinecraftLauncher(parameters);
+
+            int lastReportedPercent = -1;
+            launcher.FileProgressChanged += (s, e) =>
+            {
+                var percentage = e.TotalTasks > 0 ? (double)e.ProgressedTasks / e.TotalTasks * 100 : 0;
+                var percent = (int)Math.Floor(percentage);
+                var shouldReport = lastReportedPercent < 0
+                    || percent >= 100
+                    || percent - lastReportedPercent >= 5;
+
+                if (shouldReport)
+                {
+                    lastReportedPercent = percent;
+                    onProgress?.Invoke(percentage, $"Verificando archivos de Minecraft... {percent}% ({e.ProgressedTasks}/{e.TotalTasks})");
+                }
+            };
+
+            try
+            {
+                return await launcher
+                    .InstallAndBuildProcessAsync(targetVersion, launchOption, cancellationToken: cts.Token)
+                    .AsTask();
+            }
+            catch (Exception ex) when (attempt < MaxInstallAttempts && IsRetryableInstallError(ex))
+            {
+                lastError = ex;
+                _logger.LogWarning(ex, "Instalación de Minecraft falló en el intento {Attempt} ({Type}); reintentando.", attempt, ex.GetType().Name);
+                _logService?.Warning("Launch", "InstallRetry", "Error de red al descargar Minecraft. Reintentando.", new { attempt, maxAttempts = MaxInstallAttempts });
+                onProgress?.Invoke(-1, $"Error de red al descargar Minecraft. Reintentando (intento {attempt}/{MaxInstallAttempts})...");
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("No se pudo instalar Minecraft.");
+    }
+
+    private static HttpClient CreateCmlHttpClient()
+    {
+        var handler = new RetryDelegatingHandler
+        {
+            InnerHandler = new HttpClientHandler
+            {
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            }
+        };
+
+        return new HttpClient(handler)
+        {
+            Timeout = CmlHttpTimeout
+        };
+    }
+
+    private static bool IsRetryableInstallError(Exception ex)
+        => ex is OperationCanceledException
+           || ex is HttpRequestException
+           || ex is IOException
+           || ex is SocketException
+           || ex is TimeoutException;
 
     private static string EnsureNativeAccessModules(string arguments)
     {

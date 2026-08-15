@@ -29,14 +29,14 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <WrapPanel Grid.Row="0" Margin="0,0,0,12">
                 <Button Content="{DynamicResource RPacks_Add}" Command="{Binding AddPackCommand}"
-                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource RPacks_OpenFolder}" Command="{Binding OpenFolderCommand}"
-                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource RPacks_Refresh}" Command="{Binding RefreshCommand}"
-                        Style="{StaticResource SecondaryButton}" />
-            </StackPanel>
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,0,10" />
+            </WrapPanel>
 
             <TextBlock Grid.Row="1" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
@@ -68,9 +68,7 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
-                                                  Style="{StaticResource SwitchToggle}"
-                                                  Command="{Binding ElementName=root, Path=DataContext.TogglePackCommand}"
-                                                  CommandParameter="{Binding Id}" />
+                                                  Style="{StaticResource SwitchToggle}" />
                                     <Button Content="{DynamicResource RPacks_Delete}" Style="{StaticResource DangerButton}"
                                             Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemovePackCommand}"

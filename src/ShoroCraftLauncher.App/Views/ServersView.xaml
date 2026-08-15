@@ -85,18 +85,18 @@
                         <TextBlock Text="{DynamicResource Srv_NewServer}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
                         <WrapPanel>
                             <TextBox Text="{Binding NewServerName, UpdateSourceTrigger=PropertyChanged}"
-                                     Width="180" Margin="0,0,8,8" Tag="{DynamicResource Srv_Name}" />
+                                     MinWidth="180" Margin="0,0,8,8" Tag="{DynamicResource Srv_Name}" />
                             <ComboBox ItemsSource="{Binding ServerTypes}"
                                       SelectedItem="{Binding SelectedServerType}"
-                                      Width="120" Margin="0,0,8,8"
+                                      MinWidth="120" Margin="0,0,8,8"
                                       Style="{StaticResource DarkComboBox}"
                                       ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
                             <ComboBox ItemsSource="{Binding AvailableVersions}"
                                       SelectedItem="{Binding SelectedVersion}"
-                                      Width="130" Margin="0,0,8,8"
+                                      MinWidth="130" Margin="0,0,8,8"
                                       Style="{StaticResource DarkComboBox}"
                                       ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
-                            <TextBox Text="{Binding MaxRamMB}" Width="90" Margin="0,0,8,8" Tag="{DynamicResource Srv_RamMB}" />
+                            <TextBox Text="{Binding MaxRamMB}" MinWidth="90" Margin="0,0,8,8" Tag="{DynamicResource Srv_RamMB}" />
                             <Button Content="{DynamicResource Srv_Create}" Command="{Binding CreateServerCommand}"
                                     Style="{StaticResource PrimaryButton}" Padding="20,10" Margin="0,0,0,8" />
                         </WrapPanel>

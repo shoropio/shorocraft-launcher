@@ -1,3 +1,5 @@
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -14,12 +16,12 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
     private readonly IShaderPackService _packService;
     private readonly ILogger<ShaderPacksViewModel> _logger;
     private readonly IDialogService _dialogService;
+    private readonly IProfileService _profileService;
+    private readonly Dictionary<int, IDisposable> _packSubscriptions = new();
 
     public ObservableCollection<ShaderPack> Packs { get; } = new();
     public ObservableCollection<ShaderPackSearchResult> SearchResults { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
-
-    private readonly IProfileService _profileService;
 
     public Profile? SelectedProfile
     {
@@ -29,6 +31,16 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
             _profileService.SelectedProfile = value;
             OnPropertyChanged(nameof(SelectedProfile));
             if (value != null) _ = LoadPacksAsync(value.Id, loadPopular: true);
+        }
+    }
+
+    private ShaderPack? _selectedPack;
+    public ShaderPack? SelectedPack
+    {
+        get => _selectedPack;
+        set
+        {
+            SetProperty(ref _selectedPack, value);
         }
     }
 
@@ -104,6 +116,9 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
     public void Dispose()
     {
         _profileService.SelectedProfileChanged -= OnSelectedProfileChanged;
+        foreach (var sub in _packSubscriptions.Values)
+            sub.Dispose();
+        _packSubscriptions.Clear();
         GC.SuppressFinalize(this);
     }
 
@@ -117,8 +132,18 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
                 await _profileService.SyncProfileFilesAsync(profile);
 
             var packs = await _packService.GetPacksAsync(profileId);
+
+            foreach (var sub in _packSubscriptions.Values)
+                sub.Dispose();
+            _packSubscriptions.Clear();
+
             Packs.Clear();
-            foreach (var p in packs) Packs.Add(p);
+            foreach (var p in packs)
+            {
+                Packs.Add(p);
+                var subscription = p.SubscribeToStatusChange(async () => await OnPackStatusChanged(p));
+                _packSubscriptions[p.Id] = subscription;
+            }
 
             HasShaderSupport = await _packService.HasShaderSupportAsync(profileId);
             if (!HasShaderSupport)
@@ -133,6 +158,26 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to load shaders");
             StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task OnPackStatusChanged(ShaderPack pack)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            await _packService.TogglePackAsync(pack.Id);
+            if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle shader pack {PackId}", pack.Id);
+            StatusMessage = $"Error al cambiar estado del shader: {ex.Message}";
         }
         finally
         {
@@ -165,6 +210,7 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         finally
         {
             IsBusy = false;
+            ShowSearchResults = false;
         }
     }
 

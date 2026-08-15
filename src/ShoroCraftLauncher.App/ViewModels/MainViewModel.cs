@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -19,6 +20,7 @@ public class MainViewModel : BaseViewModel, IDisposable
     private readonly Action _selectedProfileChangedHandler;
     private readonly Action _gameExitedHandler;
     private readonly Action<double, string> _progressChangedHandler;
+    private readonly Dictionary<string, BaseViewModel> _viewCache = new();
 
     public ObservableCollection<NavItem> NavItems { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
@@ -64,6 +66,13 @@ public class MainViewModel : BaseViewModel, IDisposable
             if (SetProperty(ref _isGameRunning, value))
                 CommandManager.InvalidateRequerySuggested();
         }
+    }
+
+    private bool _isSidebarCollapsed;
+    public bool IsSidebarCollapsed
+    {
+        get => _isSidebarCollapsed;
+        set => SetProperty(ref _isSidebarCollapsed, value);
     }
 
     private bool _isDownloading;
@@ -137,6 +146,7 @@ public class MainViewModel : BaseViewModel, IDisposable
 
     private AuthResult? _currentAuth;
     public ICommand NavigateCommand { get; }
+    public ICommand ToggleSidebarCommand { get; }
     public ICommand LaunchGameCommand { get; }
     public ICommand StopGameCommand { get; }
     public ICommand LoginCommand { get; }
@@ -185,6 +195,7 @@ public class MainViewModel : BaseViewModel, IDisposable
         NavItems.Add(new NavItem { Name = "Nav_Settings", Icon = "⚙️" });
 
         NavigateCommand = new RelayCommand(p => SelectedNav = p?.ToString() ?? "Nav_Dashboard");
+        ToggleSidebarCommand = new RelayCommand(_ => IsSidebarCollapsed = !IsSidebarCollapsed);
         LaunchGameCommand = new RelayCommand(async _ => await LaunchGame(), _ => SelectedProfile != null && !IsGameRunning && !IsBusy);
         StopGameCommand = new RelayCommand(async _ => await StopGame(), _ => IsGameRunning && !IsBusy);
         LoginCommand = new RelayCommand(async _ => await LoginMicrosoft());
@@ -259,20 +270,26 @@ public class MainViewModel : BaseViewModel, IDisposable
 
     private void NavigateTo(string navName)
     {
-        BaseViewModel? vm = navName switch
+        if (!_viewCache.TryGetValue(navName, out BaseViewModel? vm))
         {
-            "Nav_Dashboard" => _serviceProvider.GetRequiredService<DashboardViewModel>(),
-            "Nav_Profiles" => _serviceProvider.GetRequiredService<ProfilesViewModel>(),
-            "Nav_Mods" => _serviceProvider.GetRequiredService<ModsViewModel>(),
-            "Nav_ResourcePacks" => _serviceProvider.GetRequiredService<ResourcePacksViewModel>(),
-            "Nav_ShaderPacks" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
-            "Nav_Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
-            "Nav_Maps" => _serviceProvider.GetRequiredService<MapsViewModel>(),
-            "Nav_Servers" => _serviceProvider.GetRequiredService<ServersViewModel>(),
-            "Nav_Console" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
-            "Nav_Settings" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
-            _ => null
-        };
+            vm = navName switch
+            {
+                "Nav_Dashboard" => _serviceProvider.GetRequiredService<DashboardViewModel>(),
+                "Nav_Profiles" => _serviceProvider.GetRequiredService<ProfilesViewModel>(),
+                "Nav_Mods" => _serviceProvider.GetRequiredService<ModsViewModel>(),
+                "Nav_ResourcePacks" => _serviceProvider.GetRequiredService<ResourcePacksViewModel>(),
+                "Nav_ShaderPacks" => _serviceProvider.GetRequiredService<ShaderPacksViewModel>(),
+                "Nav_Scripts" => _serviceProvider.GetRequiredService<ScriptsViewModel>(),
+                "Nav_Maps" => _serviceProvider.GetRequiredService<MapsViewModel>(),
+                "Nav_Servers" => _serviceProvider.GetRequiredService<ServersViewModel>(),
+                "Nav_Console" => _serviceProvider.GetRequiredService<ConsoleViewModel>(),
+                "Nav_Settings" => _serviceProvider.GetRequiredService<SettingsViewModel>(),
+                _ => null
+            };
+
+            if (vm != null)
+                _viewCache[navName] = vm;
+        }
 
         if (!ReferenceEquals(CurrentView, vm) && CurrentView is IDisposable disposable)
             disposable.Dispose();
@@ -417,8 +434,12 @@ public class MainViewModel : BaseViewModel, IDisposable
         _launcherService.GameExited -= _gameExitedHandler;
         _launcherService.ProgressChanged -= _progressChangedHandler;
 
-        if (CurrentView is IDisposable disposable)
-            disposable.Dispose();
+        foreach (var view in _viewCache.Values)
+        {
+            if (view is IDisposable disposable)
+                disposable.Dispose();
+        }
+        _viewCache.Clear();
 
         GC.SuppressFinalize(this);
     }
