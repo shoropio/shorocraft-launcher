@@ -18,6 +18,6 @@ public interface ILauncherService
     event Action<string>? LogOutput;
     event Action<double, string>? ProgressChanged;
     event Action? ProgressCompleted;
-    event Action? GameExited;
+    event Action<int>? GameExited;
     void Log(string message);
 }

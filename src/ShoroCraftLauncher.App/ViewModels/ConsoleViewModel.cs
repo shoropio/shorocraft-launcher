@@ -11,7 +11,7 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
     private readonly ILogService _logService;
     private readonly ILauncherService _launcherService;
     private readonly List<LogEvent> _allEvents = new();
-    private readonly Action _onGameExited;
+    private readonly Action<int> _onGameExited;
 
     public ObservableCollection<string> LogLines { get; } = new();
     public ObservableCollection<string> LevelFilters { get; } = new() { "Todos", "Trace", "Debug", "Info", "Warning", "Error", "Critical" };
@@ -106,7 +106,7 @@ public class ConsoleViewModel : BaseViewModel, IDisposable
         ApplyFilters();
 
         _logService.LogReceived += OnLogReceived;
-        _onGameExited = () => IsGameRunning = false;
+        _onGameExited = _ => IsGameRunning = false;
         _launcherService.GameExited += _onGameExited;
         _launcherService.ProgressChanged += OnProgressChanged;
         _launcherService.ProgressCompleted += OnProgressCompleted;

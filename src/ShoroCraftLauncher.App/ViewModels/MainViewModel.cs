@@ -18,7 +18,7 @@ public class MainViewModel : BaseViewModel, IDisposable
     private readonly IProfileService _profileService;
     private readonly IMinecraftService _minecraftService;
     private readonly Action _selectedProfileChangedHandler;
-    private readonly Action _gameExitedHandler;
+    private readonly Action<int> _gameExitedHandler;
     private readonly Action<double, string> _progressChangedHandler;
     private readonly Dictionary<string, BaseViewModel> _viewCache = new();
 
@@ -202,15 +202,30 @@ public class MainViewModel : BaseViewModel, IDisposable
         LoginOfflineCommand = new RelayCommand(async _ => await LoginOffline());
         LogoutCommand = new RelayCommand(async _ => await Logout());
 
-        _gameExitedHandler = () =>
+        _gameExitedHandler = (exitCode) =>
         {
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 IsGameRunning = false;
-                StatusMessage = "Juego cerrado.";
                 IsDownloading = false;
                 DownloadProgress = 0;
                 DownloadStatus = string.Empty;
+
+                if (exitCode == 0)
+                {
+                    StatusMessage = "Juego cerrado.";
+                }
+                else
+                {
+                    var recentLogs = _launcherService.LogHistory
+                        .Where(l => l.Contains("[ERROR]") || l.Contains("crashed", StringComparison.OrdinalIgnoreCase) || l.Contains("Mixin", StringComparison.OrdinalIgnoreCase))
+                        .TakeLast(5)
+                        .ToList();
+                    var hint = recentLogs.Count > 0
+                        ? "\nRevisa la consola para más detalles."
+                        : "";
+                    StatusMessage = $"Juego terminó con error (código {exitCode}).{hint}";
+                }
             });
         };
         _launcherService.GameExited += _gameExitedHandler;

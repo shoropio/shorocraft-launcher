@@ -19,7 +19,7 @@ public class LauncherService : ILauncherService
     public event Action<string>? LogOutput;
     public event Action<double, string>? ProgressChanged;
     public event Action? ProgressCompleted;
-    public event Action? GameExited;
+    public event Action<int>? GameExited;
     public bool IsGameRunning => _gameProcess is { HasExited: false };
     public IReadOnlyList<string> LogHistory
     {
@@ -152,7 +152,7 @@ public class LauncherService : ILauncherService
                 _logService?.Info("Launch", "ProcessExited", "Proceso de Minecraft terminado.", new { p.ExitCode });
                 Log($"Proceso terminado con código {p.ExitCode}");
                 _gameProcess = null;
-                GameExited?.Invoke();
+                GameExited?.Invoke(p.ExitCode);
             };
 
             var sanitizedArgs = LogService.Sanitize(process.StartInfo.Arguments);
