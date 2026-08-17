@@ -6,6 +6,28 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.4.1] - 2026-08-17
+
+### ✨ Nuevo
+- Botón "Fabric + Iris + Sodium" en el dashboard: crea un perfil Fabric con Iris (shaders) y Sodium (rendimiento) preinstalados con un solo clic. El botón se deshabilita y muestra "Iris + Sodium instalado" cuando los mods ya están presentes en el perfil activo.
+- Reporte de código de salida al cerrar el juego: si Minecraft termina con error (código ≠ 0), el status bar muestra un mensaje con el código y sugiere revisar la consola.
+
+### 🔧 Correcciones
+- Sidebar colapsable ahora funciona correctamente: el ancho de la columna cambia entre 64 px (colapsado) y 240 px (expandido) vía code-behind, reemplazando el DataTrigger roto en `ColumnDefinition` (que no tiene `DataContext` por heredar de `DefinitionBase`).
+- Fondo blanco intermitente al buscar shaders: los Grids raíz y de contenido en `ShaderPacksView` ahora tienen `BackgroundBrush` explícito para evitar destellos durante la carga.
+- Fondo blanco en Mods, Resource Packs y Maps: mismas correcciones de `BackgroundBrush` en las vistas afectadas.
+- Navegación por pestañas (Instalados/Popular/Recomendado) ahora resalta visualmente la pestaña activa con color primario.
+- Padding del sidebar ajustado para evitar desbordamiento al colapsar: header, nav items y panel de usuario ahora caben en 64 px.
+- Se deshabilita el botón "Fabric + Iris + Sodium" cuando los mods ya están instalados en el perfil seleccionado.
+
+### 🏗️ Refactorización
+- `LauncherPaths`: clase estática para centralizar rutas de `%LocalAppData%\ShoroCraftLauncher` (reemplaza concatenaciones repetidas en `ProfileService` y `ServerService`).
+- `TestPaths`: helper para aislamiento de tests con directorios temporales deterministas y scopes de data root.
+- `GameExited` ahora propagsa el código de salida del proceso (de `Action` a `Action<int>`).
+- `Inno Setup`: ruta de fuente del instalador corregida a `publish/` y versión fija a `1.4.0`.
+
+---
+
 ## [1.4.0] - 2026-08-11
 
 ### ✨ Nuevo

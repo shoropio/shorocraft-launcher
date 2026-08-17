@@ -83,7 +83,7 @@ shorocraft-launcher/
 
 ## Lanzamiento
 
-La versión más reciente está disponible en GitHub Releases. La release `v1.3.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
+La versión más reciente está disponible en GitHub Releases. La release `v1.4.1` incluye el instalador Windows (`ShoroCraftLauncher_Setup.exe`) y el paquete publicado (`ShoroCraftLauncher_Publish.zip`).
 
 ## Dependencias
 
@@ -179,6 +179,9 @@ test:     Pruebas
 - [x] Soporte para CurseForge API
 - [x] Empaquetado como instalador (Inno Setup / .exe)
 - [x] Servidores Vanilla y Paper con consola interactiva
+- [x] Sidebar colapsable con animación
+- [x] Instalación rápida de Fabric + Iris + Sodium
+- [x] Diagnóstico de crashes con código de salida
 
 ## Licencia
 

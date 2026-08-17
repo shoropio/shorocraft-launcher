@@ -4,7 +4,7 @@ Documentación del launcher de Minecraft para Windows.
 
 - **Stack**: .NET 8, WPF, MVVM, EF Core + SQLite, CmlLib, Serilog
 - **Plataforma**: Windows 10 / 11 x64
-- **Última release**: `v1.4.0`
+- **Última release**: `v1.4.1`
 
 ---
 
