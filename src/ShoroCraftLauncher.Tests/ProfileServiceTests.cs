@@ -39,7 +39,7 @@ public class ProfileServiceTests
     [Fact]
     public async Task SyncProfileFilesAsync_AddsMissingAssetsAndRemovesDeletedEntries()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ShoroCraftProfileSync", Guid.NewGuid().ToString("N"));
+        var tempDir = TestPaths.CreateTempDir("ShoroCraftProfileSync");
         try
         {
             var profile = new Profile
@@ -194,9 +194,10 @@ public class ProfileServiceTests
     [Fact]
     public async Task ExportProfileAsync_CreatesPackageWithoutCustomPaths()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ShoroCraftProfileExport", Guid.NewGuid().ToString("N"));
+        var tempDir = TestPaths.CreateTempDir("ShoroCraftProfileExport");
         try
         {
+            using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftProfileExportData", out _);
             var profile = new Profile
             {
                 Id = 10,
@@ -234,7 +235,7 @@ public class ProfileServiceTests
             mockMinecraft.Setup(x => x.SanitizeProfileFolderName(It.IsAny<string>())).Returns((string name) => name);
 
             var service = CreateProfileService(profileRepository: mockProfileRepo, minecraftService: mockMinecraft);
-            var exportPath = Path.Combine(Path.GetTempPath(), "shorocraft_export_test.zip");
+            var exportPath = TestPaths.GetTempFile("ShoroCraftProfileExportZip", "shorocraft_export_test.zip");
             if (File.Exists(exportPath)) File.Delete(exportPath);
 
             await service.ExportProfileAsync(profile.Id, exportPath);
@@ -262,9 +263,10 @@ public class ProfileServiceTests
     [Fact]
     public async Task ImportProfileAsync_ResolvesNameCollisionAndSyncsFiles()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ShoroCraftProfileImport", Guid.NewGuid().ToString("N"));
+        var tempDir = TestPaths.CreateTempDir("ShoroCraftProfileImport");
         try
         {
+            using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftProfileImportData", out _);
             Directory.CreateDirectory(tempDir);
             var existingProfile = new Profile
             {
@@ -376,7 +378,7 @@ public class ProfileServiceTests
     [Fact]
     public async Task BackupMethods_CreateRestoreAndListBackups()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ShoroCraftProfileBackup", Guid.NewGuid().ToString("N"));
+        var tempDir = TestPaths.CreateTempDir("ShoroCraftProfileBackup");
         try
         {
             var profile = new Profile
@@ -431,9 +433,8 @@ public class ProfileServiceTests
             mockScriptRepo.Setup(x => x.CreateAsync(It.IsAny<Script>())).ReturnsAsync((Script script) => { script.Id = 1; return script.Id; });
             mockScriptRepo.Setup(x => x.DeleteAsync(It.IsAny<int>())).Returns(Task.CompletedTask);
 
-            var backupsRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ShoroCraftLauncher", "backups", profile.Name);
+            using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftProfileBackupData", out var dataRoot);
+            var backupsRoot = Path.Combine(dataRoot, "backups", profile.Name);
             if (Directory.Exists(backupsRoot))
                 Directory.Delete(backupsRoot, true);
 

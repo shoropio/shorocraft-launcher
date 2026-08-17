@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 using ShoroCraftLauncher.Core.Enums;
+using ShoroCraftLauncher.Infrastructure;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -457,9 +458,7 @@ public class ProfileService : IProfileService
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
-        var tempRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "temp_export_" + Guid.NewGuid().ToString("N"));
+        var tempRoot = LauncherPaths.GetPath("temp_export_" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(tempRoot);
 
@@ -533,9 +532,7 @@ public class ProfileService : IProfileService
         if (!File.Exists(importZipPath))
             throw new FileNotFoundException("El archivo de paquete no existe.", importZipPath);
 
-        var tempRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "temp_import_" + Guid.NewGuid().ToString("N"));
+        var tempRoot = LauncherPaths.GetPath("temp_import_" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(tempRoot);
 
@@ -632,18 +629,14 @@ public class ProfileService : IProfileService
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
-        var backupsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "backups", profile.Name);
+        var backupsDir = LauncherPaths.GetPath("backups", profile.Name);
 
         Directory.CreateDirectory(backupsDir);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         var zipPath = Path.Combine(backupsDir, $"{backupType}_{timestamp}.zip");
 
-        var tempDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "temp_backup_" + Guid.NewGuid().ToString("N"));
+        var tempDir = LauncherPaths.GetPath("temp_backup_" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(tempDir);
 
@@ -722,9 +715,7 @@ public class ProfileService : IProfileService
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
-        var tempDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "temp_restore_" + Guid.NewGuid().ToString("N"));
+        var tempDir = LauncherPaths.GetPath("temp_restore_" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(tempDir);
 
@@ -804,9 +795,7 @@ public class ProfileService : IProfileService
         var profile = await _profileRepo.GetByIdAsync(profileId);
         if (profile == null) return new List<BackupItem>();
 
-        var backupsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "backups", profile.Name);
+        var backupsDir = LauncherPaths.GetPath("backups", profile.Name);
 
         if (!Directory.Exists(backupsDir))
             return new List<BackupItem>();

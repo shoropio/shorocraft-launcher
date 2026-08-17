@@ -31,10 +31,8 @@ public class ServerServiceTests
     [Fact]
     public async Task CreateServerAsync_CreatesDirectoryEulaAndServerProperties()
     {
-        var tempRoot = Path.Combine(Path.GetTempPath(), "ShoroCraftServerCreate", Guid.NewGuid().ToString("N"));
-        var expectedDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "servers", "MyServer");
+        using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftServerCreate", out var dataRoot);
+        var expectedDir = Path.Combine(dataRoot, "servers", "MyServer");
 
         var mockRepo = new Mock<IServerRepository>(MockBehavior.Strict);
         mockRepo.Setup(x => x.CreateAsync(It.IsAny<MinecraftServer>())).ReturnsAsync((MinecraftServer s) => { s.Id = 1; return s.Id; });
@@ -74,8 +72,7 @@ public class ServerServiceTests
     [Fact]
     public async Task DeleteServerAsync_DeletesDirectoryAndRepositoryEntry()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ShoroCraftServerDelete", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(tempDir);
+        var tempDir = TestPaths.CreateTempDir("ShoroCraftServerDelete");
 
         var server = new MinecraftServer
         {

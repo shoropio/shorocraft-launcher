@@ -3,8 +3,8 @@
 
 [Setup]
 AppName=ShoroCraft Launcher
-AppVersion={#GetVersionNumbersString('..\src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\win-x64\publish\ShoroCraftLauncher.exe')}
-AppPublisher=ShoroCraft
+AppVersion=1.4.0
+AppPublisher=Shoropio Corporation
 DefaultDirName={localappdata}\ShoroCraftLauncher
 DefaultGroupName=ShoroCraft Launcher
 DisableProgramGroupPage=yes
@@ -25,7 +25,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\src\ShoroCraftLauncher.App\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\ShoroCraft Launcher"; Filename: "{app}\ShoroCraftLauncher.exe"

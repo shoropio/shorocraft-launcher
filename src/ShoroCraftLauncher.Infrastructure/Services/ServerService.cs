@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure;
 using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
@@ -103,9 +104,7 @@ public class ServerService : IServerService
         _logService?.Info("ServerService", "Create", $"Creando servidor '{name}' ({type} {minecraftVersion})...");
 
         var safeName = SanitizeFolderName(name);
-        var directoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "servers", safeName);
+        var directoryPath = LauncherPaths.GetPath("servers", safeName);
 
         Directory.CreateDirectory(directoryPath);
         WriteEula(directoryPath);

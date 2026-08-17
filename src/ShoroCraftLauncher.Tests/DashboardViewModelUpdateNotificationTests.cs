@@ -53,6 +53,7 @@ public class DashboardViewModelUpdateNotificationTests
             Mock.Of<IUpdaterService>(),
             Mock.Of<IModService>(),
             settingsRepo,
+            Mock.Of<IProfileRepository>(),
             Mock.Of<ILogger<DashboardViewModel>>());
     }
 

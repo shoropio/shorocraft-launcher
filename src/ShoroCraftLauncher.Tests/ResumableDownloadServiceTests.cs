@@ -17,9 +17,7 @@ public class ResumableDownloadServiceTests
 
     private static string TempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "ShoroResumableTests", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
+        return TestPaths.CreateTempDir("ShoroResumableTests");
     }
 
     private static ResumableDownloadService CreateService(ScriptedHttpMessageHandler handler)
