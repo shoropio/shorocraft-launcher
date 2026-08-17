@@ -422,7 +422,7 @@ public class MinecraftService : IMinecraftService
     {
         _logger.LogInformation("Launching: profile={Profile}, version={Version}", profile.Name, profile.MinecraftVersion);
 
-        gameDir = ResolveGameDirectory(gameDir);
+        var launchStartTime = DateTime.UtcNow;
         var globalDir = gameDir;
         var targetVersion = profile.MinecraftVersion;
 
@@ -485,6 +485,7 @@ public class MinecraftService : IMinecraftService
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Arguments = EnsureNativeAccessModules(process.StartInfo.Arguments);
 
+        _logger.LogInformation("Launch duration: {Duration}s", (DateTime.UtcNow - launchStartTime).TotalSeconds);
         return process;
     }
 
