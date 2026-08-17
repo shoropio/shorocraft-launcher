@@ -264,6 +264,21 @@
                     <TextBlock Text="{DynamicResource Dash_PerfTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
                     <TextBlock Text="{DynamicResource Dash_PerfSub}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" />
                     <WrapPanel>
+                        <Button Command="{Binding InstallFabricIrisSodiumCommand}"
+                                IsEnabled="{Binding IsIrisSodiumInstalled, Converter={StaticResource InverseBoolConverter}}"
+                                Margin="0,0,10,10" Padding="16,10"
+                                ToolTip="{DynamicResource Dash_FabricIrisSodiumTooltip}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                    <Setter Property="Content" Value="{DynamicResource Dash_FabricIrisSodium}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsIrisSodiumInstalled}" Value="True">
+                                            <Setter Property="Content" Value="{DynamicResource Dash_FabricIrisSodiumInstalled}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <Button Content="{Binding IrisSodiumButtonText}" 
                                 Command="{Binding InstallIrisCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="0,0,10,10"

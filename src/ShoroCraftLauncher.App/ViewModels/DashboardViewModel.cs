@@ -26,6 +26,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly IUpdaterService _updaterService;
     private readonly IModService _modService;
     private readonly ISettingsRepository _settingsRepo;
+    private readonly IProfileRepository _profileRepo;
     private readonly ILogger<DashboardViewModel> _logger;
 
     private const string LastNotifiedVersionKey = "last_notified_minecraft_version";
@@ -193,6 +194,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public ICommand RepairProfileCommand { get; }
     public ICommand InstallMinecraftUpdateCommand { get; }
     public ICommand DismissMinecraftUpdateCommand { get; }
+    public ICommand InstallFabricIrisSodiumCommand { get; }
 
     private string? _latestAvailableVersion;
 
@@ -205,6 +207,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IUpdaterService updaterService,
         IModService modService,
         ISettingsRepository settingsRepo,
+        IProfileRepository profileRepo,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -215,6 +218,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _updaterService = updaterService;
         _modService = modService;
         _settingsRepo = settingsRepo;
+        _profileRepo = profileRepo;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -234,6 +238,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         RepairProfileCommand = new RelayCommand(async _ => await RepairProfile(), _ => SelectedProfile != null && !IsBusy && !IsDownloading);
         InstallMinecraftUpdateCommand = new RelayCommand(async _ => await InstallMinecraftUpdateAsync());
         DismissMinecraftUpdateCommand = new RelayCommand(async _ => await DismissMinecraftUpdateAsync());
+        InstallFabricIrisSodiumCommand = new RelayCommand(async _ => await InstallFabricIrisSodium(), _ => !IsDownloading && !IsBusy && !IsIrisSodiumInstalled);
 
         InitializeStatCards();
     }
@@ -852,6 +857,147 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             IsDownloading = false;
         }
+    }
+
+    private async Task InstallFabricIrisSodium()
+    {
+        IsDownloading = true;
+        try
+        {
+            // 1. Ensure we have a Fabric profile
+            Profile? fabricProfile = SelectedProfile;
+            if (fabricProfile == null || fabricProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Fabric)
+            {
+                fabricProfile = Profiles.FirstOrDefault(p => p.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
+                if (fabricProfile == null)
+                {
+                    ReadyStatus = "Creando perfil Fabric...";
+                    StatusMessage = "No hay perfil Fabric. Creando uno nuevo...";
+                    fabricProfile = new Profile
+                    {
+                        Name = "Fabric",
+                        MinecraftVersion = "latest",
+                        Type = ShoroCraftLauncher.Core.Enums.ProfileType.Fabric,
+                        LoaderVersion = "latest",
+                        MinRamMB = 1024,
+                        MaxRamMB = 4096,
+                        WindowWidth = 854,
+                        WindowHeight = 480
+                    };
+                    await _profileRepo.CreateAsync(fabricProfile);
+                    await _profileService.LoadProfilesAsync();
+                    fabricProfile = Profiles.FirstOrDefault(p => p.Id == fabricProfile.Id) ?? fabricProfile;
+                }
+                SelectedProfile = fabricProfile;
+            }
+
+            var mcVersion = fabricProfile.MinecraftVersion;
+            if (mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                ReadyStatus = "Resolviendo versi\u00f3n de Minecraft...";
+                StatusMessage = "Obteniendo \u00faltima versi\u00f3n estable...";
+                mcVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            }
+
+            // 2. Install Minecraft version if needed
+            ReadyStatus = "Verificando Minecraft...";
+            StatusMessage = $"Verificando Minecraft {mcVersion}...";
+            var versionsDir = Path.Combine(GetSelectedProfileGameDirectory(), "versions", mcVersion);
+            if (!Directory.Exists(versionsDir) || !File.Exists(Path.Combine(versionsDir, $"{mcVersion}.jar")))
+            {
+                ReadyStatus = $"Instalando Minecraft {mcVersion}...";
+                StatusMessage = $"Descargando Minecraft {mcVersion}...";
+                var progress = new Progress<double>(p => DownloadProgress = p);
+                await _minecraftService.InstallVersionAsync(mcVersion, progress, GetSelectedProfileGameDirectory());
+            }
+
+            // 3. Install Fabric loader if needed
+            var loaderReady = await IsLoaderInstalledAsync(fabricProfile, mcVersion);
+            if (!loaderReady)
+            {
+                ReadyStatus = "Instalando Fabric...";
+                StatusMessage = "Descargando e instalando Fabric loader...";
+                var loaderVersion = await _minecraftService.ResolveLatestLoaderVersionAsync("Fabric", mcVersion);
+                if (loaderVersion.Equals("latest"))
+                    throw new Exception("No se pudo determinar la \u00faltima versi\u00f3n de Fabric.");
+
+                var javaPath = fabricProfile.JavaPath;
+                if (string.IsNullOrEmpty(javaPath))
+                {
+                    javaPath = await _javaService.GetRecommendedJavaPathAsync(mcVersion);
+                    if (string.IsNullOrEmpty(javaPath))
+                        throw new Exception("No se encontr\u00f3 Java instalado.");
+                }
+
+                var loaderProgress = new Progress<double>(p => DownloadProgress = p);
+                await _minecraftService.InstallLoaderAsync(
+                    mcVersion, "Fabric", loaderVersion, javaPath,
+                    msg => App.Current.Dispatcher.Invoke(() => LogStatus(msg)),
+                    loaderProgress,
+                    onLog: _launcherService.Log,
+                    gameDir: GetSelectedProfileGameDirectory());
+
+                fabricProfile.Type = ShoroCraftLauncher.Core.Enums.ProfileType.Fabric;
+                fabricProfile.LoaderVersion = loaderVersion;
+                fabricProfile.MinecraftVersion = mcVersion;
+                await _profileService.UpdateProfileAsync(fabricProfile);
+            }
+
+            // 4. Install Iris + Sodium
+            if (!IsIrisSodiumInstalled)
+            {
+                ReadyStatus = "Instalando Iris + Sodium...";
+                StatusMessage = "Descargando Iris (Shaders) y Sodium (Rendimiento)...";
+
+                var irisMods = await _modService.SearchModsAsync("modrinth", "iris", mcVersion, "fabric");
+                if (irisMods.Any())
+                    await _modService.InstallFromSearchAsync(fabricProfile.Id, irisMods.First(), "modrinth");
+
+                var sodiumMods = await _modService.SearchModsAsync("modrinth", "sodium", mcVersion, "fabric");
+                if (sodiumMods.Any())
+                    await _modService.InstallFromSearchAsync(fabricProfile.Id, sodiumMods.First(), "modrinth");
+            }
+
+            ReadyStatus = "Listo";
+            StatusMessage = "Fabric + Iris + Sodium instalados correctamente.";
+            _launcherService.Log("[INFO] Fabric + Iris + Sodium instalados correctamente.");
+            await UpdateComponentInstallStatesAsync();
+            await UpdateProfileDetailsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            ReadyStatus = "Error";
+            StatusMessage = "La instalaci\u00f3n tard\u00f3 demasiado y fue cancelada.";
+            _launcherService.Log("[ERROR] Instalaci\u00f3n de Fabric+Iris+Sodium cancelada por timeout.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install Fabric + Iris + Sodium");
+            ReadyStatus = "Error";
+            StatusMessage = $"Error: {ex.Message}";
+            _launcherService.Log($"[ERROR] Error instalando Fabric+Iris+Sodium: {ex.Message}");
+        }
+        finally
+        {
+            IsDownloading = false;
+        }
+    }
+
+    private async Task<bool> IsLoaderInstalledAsync(Profile profile, string targetVersion)
+    {
+        var mcPath = new CmlLib.Core.MinecraftPath(GetSelectedProfileGameDirectory());
+        var loaderPrefix = profile.Type.ToString().ToLower();
+        var dirs = Directory.Exists(mcPath.Versions)
+            ? Directory.GetDirectories(mcPath.Versions)
+            : Array.Empty<string>();
+        var match = dirs.Select(Path.GetFileName)
+                        .FirstOrDefault(n => n != null
+                            && n.Contains(loaderPrefix, StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(
+                                n.Split('-', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(),
+                                targetVersion,
+                                StringComparison.OrdinalIgnoreCase));
+        return match != null;
     }
 
     private async Task ValidateProfileChecklistAsync()

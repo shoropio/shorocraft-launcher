@@ -69,6 +69,9 @@
     <system:String x:Key="Dash_PerfTitle">Mejoras gráficas y rendimiento</system:String>
     <system:String x:Key="Dash_PerfSub">Instala mods para mejorar la calidad visual y el rendimiento</system:String>
     <system:String x:Key="Dash_IrisTooltip">Requiere un perfil Fabric. Si no está instalado, el botón se deshabilita.</system:String>
+    <system:String x:Key="Dash_FabricIrisSodium">Fabric + Iris + Sodium</system:String>
+    <system:String x:Key="Dash_FabricIrisSodiumInstalled">Iris + Sodium instalado</system:String>
+    <system:String x:Key="Dash_FabricIrisSodiumTooltip">Crea un perfil Fabric con Iris (shaders) y Sodium (rendimiento) preinstalados.</system:String>
     <system:String x:Key="Dash_OptiFineTooltip">OptiFine no se descarga automáticamente; se abrirá la página oficial.</system:String>
     <system:String x:Key="Dash_PerfNote">Iris+Sodium está disponible solo para perfiles Fabric. OptiFine requiere descarga manual.</system:String>
 
