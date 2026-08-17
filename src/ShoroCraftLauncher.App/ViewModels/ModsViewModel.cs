@@ -43,6 +43,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
             {
                 IsSearching = false;
                 ShowSearchResults = false;
+                ActiveTab = "Installed";
                 _ = LoadModsAsync(SelectedProfile.Id);
             }
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
@@ -56,6 +57,13 @@ public class ModsViewModel : BaseViewModel, IDisposable
     {
         get => _showSearchResults;
         set => SetProperty(ref _showSearchResults, value);
+    }
+
+    private string _activeTab = "Installed";
+    public string ActiveTab
+    {
+        get => _activeTab;
+        set => SetProperty(ref _activeTab, value);
     }
 
     private string _selectedProvider = "Modrinth";
@@ -105,7 +113,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         SearchCommand = new RelayCommand(async _ => await SearchMods(), _ => SelectedProfile != null && !string.IsNullOrWhiteSpace(SearchQuery) && !IsBusy);
         InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p), _ => SelectedProfile != null && !IsBusy);
-        ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
+        ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; ActiveTab = "Installed"; if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         ShowRecommendedCommand = new RelayCommand(async _ => await LoadRecommended(), _ => SelectedProfile != null && !IsBusy);
         ImportModpackCommand = new RelayCommand(async _ => await ImportModpack(), _ => SelectedProfile != null && !IsBusy);
 
@@ -136,6 +144,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
         IsSearching = true;
         IsBusy = true;
         ShowSearchResults = true;
+        ActiveTab = "Search";
         StatusMessage = "Buscando mods...";
 
         try
@@ -168,6 +177,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
         if (SelectedProfile == null) return;
 
         IsBusy = true;
+        ActiveTab = "Recommended";
         StatusMessage = "Cargando mods recomendados...";
         try
         {

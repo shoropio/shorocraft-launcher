@@ -64,6 +64,13 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _showSearchResults, value);
     }
 
+    private string _activeTab = "Installed";
+    public string ActiveTab
+    {
+        get => _activeTab;
+        set => SetProperty(ref _activeTab, value);
+    }
+
     private bool _hasShaderSupport;
     public bool HasShaderSupport
     {
@@ -100,9 +107,9 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder());
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id); });
         SearchCommand = new RelayCommand(async _ => await SearchShaders(), _ => SelectedProfile != null && !string.IsNullOrWhiteSpace(SearchQuery) && !IsBusy);
-        ExplorePopularCommand = new RelayCommand(async _ => await SearchShaders(), _ => SelectedProfile != null && !IsBusy);
+        ExplorePopularCommand = new RelayCommand(async _ => { ActiveTab = "Popular"; await SearchShaders(); }, _ => SelectedProfile != null && !IsBusy);
         InstallFromSearchCommand = new RelayCommand(async p => await InstallFromSearch(p), _ => SelectedProfile != null && !IsBusy);
-        ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
+        ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; ActiveTab = "Installed"; if (SelectedProfile != null) await LoadPacksAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         ShowRecommendedCommand = new RelayCommand(async _ => await LoadRecommended(), _ => SelectedProfile != null && !IsBusy);
 
         SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
@@ -190,6 +197,7 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         if (SelectedProfile == null) return;
 
         ShowSearchResults = true;
+        ActiveTab = "Popular";
         IsBusy = true;
         StatusMessage = string.IsNullOrWhiteSpace(SearchQuery) ? "Cargando shader packs populares..." : "Buscando shaders...";
 
@@ -210,7 +218,6 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         finally
         {
             IsBusy = false;
-            ShowSearchResults = false;
         }
     }
 
@@ -219,6 +226,7 @@ public class ShaderPacksViewModel : BaseViewModel, IDisposable
         if (SelectedProfile == null) return;
 
         IsBusy = true;
+        ActiveTab = "Recommended";
         StatusMessage = "Cargando shader packs recomendados...";
         try
         {
