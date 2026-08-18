@@ -272,25 +272,27 @@ public class ModService : IModService
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var loader = profile.Type.ToString().ToLowerInvariant();
-        var mcVersion = ToModrinthVersion(profile.MinecraftVersion);
+        var originalMcVersion = profile.MinecraftVersion;
+        var searchMcVersion = ToModrinthVersion(originalMcVersion);
 
-        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectSlug);
+        var resolved = FindBestVersion(doc, originalMcVersion, searchMcVersion, loader, projectId, preferRelease: true, projectSlug);
         if (resolved == null)
         {
             _logService.Warning("ModService", "ResolveVersion",
-                $"No hay versión estable de '{searchResult.Name}' para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
-            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectSlug);
+                $"No hay versión estable de '{searchResult.Name}' para Minecraft {originalMcVersion} ({loader}); se usará la última versión disponible.");
+            resolved = FindBestVersion(doc, originalMcVersion, searchMcVersion, loader, projectId, preferRelease: false, projectSlug);
         }
 
         if (resolved == null)
-            throw new Exception($"No se encontró una versión de '{searchResult.Name}' compatible con Minecraft {mcVersion} ({loader}).");
+            throw new Exception($"No se encontró una versión de '{searchResult.Name}' compatible con Minecraft {originalMcVersion} ({loader}).");
 
         return resolved with { ProjectSlug = projectSlug };
     }
 
     private static ModrinthVersionInfo? FindBestVersion(
         System.Text.Json.JsonDocument doc,
-        string mcVersion,
+        string originalMcVersion,
+        string searchMcVersion,
         string loader,
         string projectId,
         bool preferRelease,
@@ -311,10 +313,10 @@ public class ModService : IModService
             bool matchesMc = false;
             foreach (var gv in version.GetProperty("game_versions").EnumerateArray())
             {
-                if (gv.GetString() == mcVersion) { matchesMc = true; break; }
+                var gvStr = gv.GetString();
+                if (gvStr == originalMcVersion || gvStr == searchMcVersion) { matchesMc = true; break; }
             }
-            // El perfil por defecto se crea con "latest": aceptar cualquier versión del juego.
-            if (!matchesMc && mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            if (!matchesMc && originalMcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
                 matchesMc = true;
             if (!matchesMc) continue;
 
@@ -531,20 +533,21 @@ public class ModService : IModService
 
         var loader = profile.Type.ToString().ToLowerInvariant();
         var mcVersion = profile.MinecraftVersion;
+        var searchMcVersion = ToModrinthVersion(mcVersion);
 
         if (!string.IsNullOrEmpty(versionId))
         {
             return FindVersionById(doc, versionId)
-                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectId)
-                ?? FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectId);
+                ?? FindBestVersion(doc, mcVersion, searchMcVersion, loader, projectId, preferRelease: true, projectId)
+                ?? FindBestVersion(doc, mcVersion, searchMcVersion, loader, projectId, preferRelease: false, projectId);
         }
 
-        var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectId);
+        var resolved = FindBestVersion(doc, mcVersion, searchMcVersion, loader, projectId, preferRelease: true, projectId);
         if (resolved == null)
         {
             _logService.Warning("ModService", "ResolveVersion",
                 $"No hay versión estable de la dependencia para Minecraft {mcVersion} ({loader}); se usará la última versión disponible.");
-            resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: false, projectId);
+            resolved = FindBestVersion(doc, mcVersion, searchMcVersion, loader, projectId, preferRelease: false, projectId);
         }
 
         return resolved;
