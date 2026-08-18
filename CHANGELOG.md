@@ -19,6 +19,7 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Navegación por pestañas (Instalados/Popular/Recomendado) ahora resalta visualmente la pestaña activa con color primario.
 - Padding del sidebar ajustado para evitar desbordamiento al colapsar: header, nav items y panel de usuario ahora caben en 64 px.
 - Se deshabilita el botón "Fabric + Iris + Sodium" cuando los mods ya están instalados en el perfil seleccionado.
+- **Iris/Sodium crash en MC 26.2**: formato de versión incorrecto al buscar en Modrinth (launcher usaba `26.2`, Modrinth espera `1.21.2`). Ahora `ToModrinthVersion()` convierte `26.x` → `1.21.x` en búsqueda y resolución de descarga.
 
 ### 🏗️ Refactorización
 - `LauncherPaths`: clase estática para centralizar rutas de `%LocalAppData%\ShoroCraftLauncher` (reemplaza concatenaciones repetidas en `ProfileService` y `ServerService`).
