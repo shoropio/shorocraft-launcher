@@ -949,11 +949,13 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 ReadyStatus = "Instalando Iris + Sodium...";
                 StatusMessage = "Descargando Iris (Shaders) y Sodium (Rendimiento)...";
 
-                var irisMods = await _modService.SearchModsAsync("modrinth", "iris", mcVersion, "fabric");
+                var modrinthVersion = ToModrinthVersion(mcVersion);
+
+                var irisMods = await _modService.SearchModsAsync("modrinth", "iris", modrinthVersion, "fabric");
                 if (irisMods.Any())
                     await _modService.InstallFromSearchAsync(fabricProfile.Id, irisMods.First(), "modrinth");
 
-                var sodiumMods = await _modService.SearchModsAsync("modrinth", "sodium", mcVersion, "fabric");
+                var sodiumMods = await _modService.SearchModsAsync("modrinth", "sodium", modrinthVersion, "fabric");
                 if (sodiumMods.Any())
                     await _modService.InstallFromSearchAsync(fabricProfile.Id, sodiumMods.First(), "modrinth");
             }
@@ -1156,5 +1158,20 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             IsBusy = false;
         }
+    }
+
+    private static string ToModrinthVersion(string mcVersion)
+    {
+        if (string.IsNullOrWhiteSpace(mcVersion)) return mcVersion;
+        var trimmed = mcVersion.Trim();
+        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = trimmed.Split('.');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            {
+                return $"1.21.{minor}";
+            }
+        }
+        return trimmed;
     }
 }

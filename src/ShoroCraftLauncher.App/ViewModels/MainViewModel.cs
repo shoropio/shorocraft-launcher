@@ -139,8 +139,29 @@ public class MainViewModel : BaseViewModel, IDisposable
             if (value != null)
             {
                 SelectedProfileName = value.Name;
-                GameVersionStatus = $"{value.MinecraftVersion} | {value.Type}";
+                _ = UpdateGameVersionStatusAsync(value);
             }
+        }
+    }
+
+    private async Task UpdateGameVersionStatusAsync(Profile profile)
+    {
+        try
+        {
+            var version = profile.MinecraftVersion;
+            if (version.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                var resolved = await _minecraftService.ResolveVersionIdAsync("latest");
+                GameVersionStatus = $"{resolved} | {profile.Type}";
+            }
+            else
+            {
+                GameVersionStatus = $"{version} | {profile.Type}";
+            }
+        }
+        catch
+        {
+            GameVersionStatus = $"{profile.MinecraftVersion} | {profile.Type}";
         }
     }
 
