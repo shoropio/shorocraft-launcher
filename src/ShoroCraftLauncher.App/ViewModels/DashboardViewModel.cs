@@ -232,7 +232,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         InstallIrisCommand = new RelayCommand(async _ => await InstallIris(), _ => SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
         OptiFineInfoCommand = new RelayCommand(_ => 
         {
-            DialogHelper.Show("OptiFine no permite descargas automÃ¡ticas.\n\nSe abrirÃ¡ la pÃ¡gina oficial. Descarga la versiÃ³n correspondiente a tu juego, ve a la pestaÃ±a de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            DialogHelper.Show("OptiFine no permite descargas automáticas.\n\nSe abrirá la página oficial. Descarga la versión correspondiente a tu juego, ve a la pestaña de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://optifine.net/downloads") { UseShellExecute = true });
         });
         RepairProfileCommand = new RelayCommand(async _ => await RepairProfile(), _ => SelectedProfile != null && !IsBusy && !IsDownloading);
@@ -248,7 +248,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         StatCards.Clear();
         StatCards.Add(new StatCard
         {
-            Label = TryGetString("Dash_Version") ?? "VersiÃ³n",
+            Label = TryGetString("Dash_Version") ?? "Versión",
             Value = InstalledVersion,
             BarBrush = TryGetBrush("PrimaryGradient") ?? System.Windows.Media.Brushes.Transparent
         });
@@ -335,7 +335,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             {
                 HasLauncherUpdate = true;
                 _latestVersion = latestVersion;
-                LauncherUpdateMessage = $"Â¡ShoroCraft Launcher {latestVersion} disponible!";
+                LauncherUpdateMessage = $"¡ShoroCraft Launcher {latestVersion} disponible!";
                 _launcherUpdateUrl = downloadUrl;
             }
 
@@ -357,7 +357,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     {
         if (string.IsNullOrEmpty(_launcherUpdateUrl))
         {
-            DialogHelper.Show("No se encontrÃ³ una actualizaciÃ³n disponible para descargar.",
+            DialogHelper.Show("No se encontró una actualización disponible para descargar.",
                 "Actualizar Launcher", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             return;
         }
@@ -368,13 +368,13 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             var installerPath = await _updaterService.DownloadUpdateAsync(_launcherUpdateUrl, _latestVersion ?? "latest");
             if (installerPath == null)
             {
-                DialogHelper.Show("No se pudo descargar el instalador. Revisa tu conexiÃ³n e intÃ©ntalo de nuevo.",
+                DialogHelper.Show("No se pudo descargar el instalador. Revisa tu conexión e inténtalo de nuevo.",
                     "Error al actualizar", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 return;
             }
 
             var result = DialogHelper.Show(
-                "Se descargÃ³ la nueva versiÃ³n. El instalador se abrirÃ¡ y el Launcher se cerrarÃ¡. Â¿Continuar?",
+                "Se descargó la nueva versión. El instalador se abrirá y el Launcher se cerrará. ¿Continuar?",
                 "Actualizar Launcher",
                 System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Question);
@@ -387,7 +387,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Update install failed");
-            DialogHelper.Show("OcurriÃ³ un error al instalar la actualizaciÃ³n.", "Error",
+            DialogHelper.Show("Ocurrió un error al instalar la actualización.", "Error",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally
@@ -530,7 +530,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             var installedStable = stableVersions.FirstOrDefault(v => v.IsInstalled);
             ReadyStatus = installedStable != null ? "Instalado" : "Listo";
             StatusMessage = installedStable != null
-                ? $"VersiÃ³n estable instalada: {installedStable.VersionId}."
+                ? $"Versión estable instalada: {installedStable.VersionId}."
                 : $"Lista actualizada. Ultima estable: {stableVersions[0].VersionId}.";
             _launcherService.Log($"[INFO] {StatusMessage}");
         }
@@ -560,7 +560,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             }
 
             HasUpdateNotification = true;
-            UpdateNotificationMessage = $"Â¡La nueva versiÃ³n de Minecraft {latest} ya estÃ¡ disponible!";
+            UpdateNotificationMessage = $"¡La nueva versión de Minecraft {latest} ya está disponible!";
         }
         catch (Exception ex)
         {
@@ -704,7 +704,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             if (versionId.Equals("latest", StringComparison.OrdinalIgnoreCase))
             {
-                LogStatus("Resolviendo la versiÃ³n estable mÃ¡s nueva de Minecraft...");
+                LogStatus("Resolviendo la versión estable más nueva de Minecraft...");
                 versionId = await _minecraftService.ResolveVersionIdAsync("latest");
                 ReadyStatus = $"Instalando {versionId}...";
             }
@@ -744,14 +744,14 @@ public class DashboardViewModel : BaseViewModel, IDisposable
 
         IsDownloading = true;
         ReadyStatus = $"Preparando {loaderType}...";
-        _launcherService.Log($"[INFO] Preparando instalaciÃ³n de {loaderType}...");
-        StatusMessage = $"Preparando instalaciÃ³n de {loaderType}...";
+        _launcherService.Log($"[INFO] Preparando instalación de {loaderType}...");
+        StatusMessage = $"Preparando instalación de {loaderType}...";
         try
         {
             var mcVersion = SelectedProfile.MinecraftVersion;
             if (mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
             {
-                LogStatus("Resolviendo la versiÃ³n estable mÃ¡s nueva de Minecraft...");
+                LogStatus("Resolviendo la versión estable más nueva de Minecraft...");
                 mcVersion = await _minecraftService.ResolveVersionIdAsync("latest");
             }
 
@@ -759,11 +759,11 @@ public class DashboardViewModel : BaseViewModel, IDisposable
 
             if (loaderVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
             {
-                StatusMessage = $"Obteniendo Ãºltima versiÃ³n de {loaderType}...";
-                _launcherService.Log($"[INFO] Obteniendo la versiÃ³n estable mÃ¡s nueva de {loaderType} para Minecraft {mcVersion}...");
+                StatusMessage = $"Obteniendo última versión de {loaderType}...";
+                _launcherService.Log($"[INFO] Obteniendo la versión estable más nueva de {loaderType} para Minecraft {mcVersion}...");
                 var resolved = await _minecraftService.ResolveLatestLoaderVersionAsync(loaderType, mcVersion);
                 if (resolved.Equals("latest", StringComparison.OrdinalIgnoreCase))
-                    throw new Exception($"No se pudo determinar la Ãºltima versiÃ³n de {loaderType} para Minecraft {mcVersion}. Es posible que {loaderType} no tenga soporte para esa versiÃ³n.");
+                    throw new Exception($"No se pudo determinar la última versión de {loaderType} para Minecraft {mcVersion}. Es posible que {loaderType} no tenga soporte para esa versión.");
                 loaderVersion = resolved;
                 StatusMessage = $"{loaderType} {loaderVersion} encontrado.";
                 _launcherService.Log($"[INFO] {loaderType} {loaderVersion} encontrado.");
@@ -775,7 +775,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 LogStatus($"Buscando Java recomendado para Minecraft {mcVersion}...");
                 javaPath = await _javaService.GetRecommendedJavaPathAsync(mcVersion);
                 if (string.IsNullOrEmpty(javaPath))
-                    throw new Exception("No se encontrÃ³ Java instalado. Descarga e instala Java 17+ desde adoptium.net");
+                    throw new Exception("No se encontró Java instalado. Descarga e instala Java 17+ desde adoptium.net");
             }
 
             var progress = new Progress<double>(p => DownloadProgress = p);
@@ -802,8 +802,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         catch (OperationCanceledException)
         {
             ReadyStatus = "Error";
-            StatusMessage = $"La instalaciÃ³n de {loaderType} tardÃ³ demasiado y fue cancelada.";
-            _launcherService.Log($"[ERROR] La instalaciÃ³n de {loaderType} tardÃ³ demasiado y fue cancelada.");
+            StatusMessage = $"La instalación de {loaderType} tardó demasiado y fue cancelada.";
+            _launcherService.Log($"[ERROR] La instalación de {loaderType} tardó demasiado y fue cancelada.");
         }
         catch (Exception ex)
         {
@@ -823,7 +823,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         if (SelectedProfile == null) return;
         if (IsIrisSodiumInstalled)
         {
-            StatusMessage = "Iris + Sodium ya estÃ¡ instalado en este perfil.";
+            StatusMessage = "Iris + Sodium ya está instalado en este perfil.";
             ReadyStatus = "Instalado";
             return;
         }
@@ -1073,7 +1073,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 if (!IsJavaReady) missing.Add("Java");
                 if (!IsVersionReady) missing.Add("Minecraft");
                 if (!IsLoaderReady) missing.Add(SelectedProfile.Type.ToString());
-                if (!IsRamReady) missing.Add("AsignaciÃ³n de RAM");
+                if (!IsRamReady) missing.Add("Asignación de RAM");
                 ChecklistMessage = "Falta: " + string.Join(", ", missing);
             }
         }
@@ -1096,7 +1096,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             var gameDir = GetSelectedProfileGameDirectory();
 
-            _launcherService.Log("[INFO] Asegurando jerarquÃ­a de carpetas...");
+            _launcherService.Log("[INFO] Asegurando jerarquía de carpetas...");
             await _profileService.SyncProfileFilesAsync(SelectedProfile);
             await _minecraftService.RepairInstallationAsync(gameDir);
 
@@ -1142,7 +1142,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 }
             }
 
-            LogStatus("ReparaciÃ³n finalizada.");
+            LogStatus("Reparación finalizada.");
             ReadyStatus = "Listo";
             await UpdateProfileDetailsAsync();
             await UpdateComponentInstallStatesAsync();

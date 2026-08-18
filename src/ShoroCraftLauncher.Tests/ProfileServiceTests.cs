@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ShoroCraftLauncher.Core.Enums;
@@ -249,7 +250,7 @@ public class ProfileServiceTests
             Assert.NotNull(zip.GetEntry("saves/WorldOne/level.dat"));
 
             using var profileStream = zip.GetEntry("profile.json")!.Open();
-            using var reader = new StreamReader(profileStream);
+            using var reader = new StreamReader(profileStream, Encoding.UTF8);
             var json = await reader.ReadToEndAsync();
             Assert.Contains("\"GameDirectory\": \"\"", json);
             Assert.Contains("\"JavaPath\": \"\"", json);

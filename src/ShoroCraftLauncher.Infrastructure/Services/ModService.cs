@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -784,7 +785,7 @@ public class ModService : IModService
             var mcmodEntry = archive.GetEntry("mcmod.info");
             if (mcmodEntry != null)
             {
-                using var reader = new StreamReader(mcmodEntry.Open());
+                using var reader = new StreamReader(mcmodEntry.Open(), Encoding.UTF8);
                 var content = await reader.ReadToEndAsync();
                 return ParseMcmodInfo(content);
             }
@@ -793,7 +794,7 @@ public class ModService : IModService
                 e.FullName.StartsWith("fabric.mod.json", StringComparison.OrdinalIgnoreCase));
             if (fabricEntry != null)
             {
-                using var reader = new StreamReader(fabricEntry.Open());
+                using var reader = new StreamReader(fabricEntry.Open(), Encoding.UTF8);
                 var content = await reader.ReadToEndAsync();
                 return ParseFabricModJson(content);
             }
