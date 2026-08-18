@@ -14,4 +14,5 @@ public interface IModService
     Task<List<Mod>> GetRecommendedModsAsync();
     Task<Mod> InstallFromSearchAsync(int profileId, Mod searchResult, string provider);
     Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath);
+    Task<ModCompatibilityResult> CheckAndDisableIncompatibleModsAsync(int profileId, string targetMcVersion);
 }

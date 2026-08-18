@@ -17,6 +17,7 @@ public class MainViewModel : BaseViewModel, IDisposable
     private readonly IAuthenticationService _authService;
     private readonly IProfileService _profileService;
     private readonly IMinecraftService _minecraftService;
+    private readonly IModService _modService;
     private readonly Action _selectedProfileChangedHandler;
     private readonly Action<int> _gameExitedHandler;
     private readonly Action<double, string> _progressChangedHandler;
@@ -179,13 +180,15 @@ public class MainViewModel : BaseViewModel, IDisposable
         ILauncherService launcherService,
         IAuthenticationService authService,
         IProfileService profileService,
-        IMinecraftService minecraftService)
+        IMinecraftService minecraftService,
+        IModService modService)
     {
         _serviceProvider = serviceProvider;
         _launcherService = launcherService;
         _authService = authService;
         _profileService = profileService;
         _minecraftService = minecraftService;
+        _modService = modService;
 
         _selectedProfileChangedHandler = () =>
         {
@@ -357,6 +360,25 @@ public class MainViewModel : BaseViewModel, IDisposable
         {
             StatusMessage = $"Iniciando {SelectedProfileName}...";
             SelectedNav = "Nav_Console";
+
+            // Check mod compatibility before launch
+            var targetMcVersion = SelectedProfile.MinecraftVersion;
+            if (targetMcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                targetMcVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            }
+            
+            var compatResult = await _modService.CheckAndDisableIncompatibleModsAsync(SelectedProfile.Id, targetMcVersion);
+            if (compatResult.Disabled.Count > 0)
+            {
+                var disabledList = string.Join(", ", compatResult.Disabled);
+                StatusMessage = $"Se deshabilitaron {compatResult.Disabled.Count} mods incompatibles: {disabledList}";
+                _launcherService.Log($"[WARN] Mods incompatibles deshabilitados: {disabledList}");
+            }
+            else if (compatResult.Checked > 0)
+            {
+                StatusMessage = $"Compatibilidad verificada: {compatResult.Checked} mods OK";
+            }
 
             var result = await _launcherService.LaunchProfileAsync(SelectedProfile, _currentAuth);
 

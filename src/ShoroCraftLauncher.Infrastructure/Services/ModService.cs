@@ -871,4 +871,147 @@ public class ModService : IModService
         }
         return trimmed;
     }
+
+    public async Task<ModCompatibilityResult> CheckAndDisableIncompatibleModsAsync(int profileId, string targetMcVersion)
+    {
+        var profile = await _profileRepository.GetByIdAsync(profileId)
+            ?? throw new Exception($"Profile {profileId} not found");
+
+        var modsDir = await GetModsFolderAsync(profileId);
+        if (!Directory.Exists(modsDir))
+            return new ModCompatibilityResult { Checked = 0, Disabled = new List<string>(), Errors = new List<string>() };
+
+        var allMods = Directory.GetFiles(modsDir, "*.jar");
+        var disabled = new List<string>();
+        var errors = new List<string>();
+        var checkedCount = 0;
+
+        foreach (var modFile in allMods)
+        {
+            try
+            {
+                checkedCount++;
+                var mcVersion = await ExtractMcVersionFromModAsync(modFile);
+                
+                if (mcVersion != null && !IsVersionCompatible(mcVersion, targetMcVersion))
+                {
+                    var fileName = Path.GetFileName(modFile);
+                    var disabledPath = modFile + ".disabled";
+                    
+                    if (File.Exists(disabledPath)) File.Delete(disabledPath);
+                    File.Move(modFile, disabledPath);
+                    
+                    disabled.Add($"{fileName} (mod MC: {mcVersion}, target: {targetMcVersion})");
+                    _logService.Warning("ModService", "CompatibilityCheck", 
+                        $"Disabled incompatible mod: {fileName} (mod MC: {mcVersion}, target: {targetMcVersion})");
+                }
+            }
+            catch (Exception ex)
+            {
+                var err = $"Error checking {Path.GetFileName(modFile)}: {ex.Message}";
+                errors.Add(err);
+                _logService.Error("ModService", "CompatibilityCheck", err, ex);
+            }
+        }
+
+        if (disabled.Count > 0 || errors.Count > 0)
+        {
+            _logService.Info("ModService", "CompatibilityCheck", 
+                $"Compatibility check complete: {checkedCount} checked, {disabled.Count} disabled, {errors.Count} errors");
+        }
+
+        return new ModCompatibilityResult
+        {
+            Checked = checkedCount,
+            Disabled = disabled,
+            Errors = errors
+        };
+    }
+
+    private async Task<string?> ExtractMcVersionFromModAsync(string modPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(modPath);
+            
+            // Try fabric.mod.json first (Fabric mods)
+            var fabricEntry = archive.Entries.FirstOrDefault(e => 
+                e.FullName.Equals("fabric.mod.json", StringComparison.OrdinalIgnoreCase));
+            if (fabricEntry != null)
+            {
+                using var reader = new StreamReader(fabricEntry.Open(), Encoding.UTF8);
+                var content = await reader.ReadToEndAsync();
+                var (_, mcVersion, _) = ParseFabricModJson(content);
+                if (!string.IsNullOrEmpty(mcVersion)) return mcVersion;
+            }
+
+            // Try mcmod.info (Forge/FML mods)
+            var mcmodEntry = archive.Entries.FirstOrDefault(e => 
+                e.FullName.Equals("mcmod.info", StringComparison.OrdinalIgnoreCase));
+            if (mcmodEntry != null)
+            {
+                using var reader = new StreamReader(mcmodEntry.Open(), Encoding.UTF8);
+                var content = await reader.ReadToEndAsync();
+                var (_, mcVersion, _) = ParseMcmodInfo(content);
+                if (!string.IsNullOrEmpty(mcVersion)) return mcVersion;
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private static bool IsVersionCompatible(string modMcVersion, string targetMcVersion)
+    {
+        if (string.IsNullOrEmpty(modMcVersion) || string.IsNullOrEmpty(targetMcVersion))
+            return true; // Unknown = assume compatible
+
+        // Normalize both versions
+        var modVersion = NormalizeVersion(modMcVersion);
+        var targetVersion = NormalizeVersion(targetMcVersion);
+
+        // Exact match
+        if (modVersion.Equals(targetVersion, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Handle version ranges like "1.21" matching "1.21.1"
+        var modParts = modVersion.Split('.');
+        var targetParts = targetVersion.Split('.');
+
+        // If mod version is a prefix of target (e.g., mod "1.21" targets "1.21.1")
+        if (modParts.Length <= targetParts.Length)
+        {
+            bool prefixMatch = true;
+            for (int i = 0; i < modParts.Length; i++)
+            {
+                if (!modParts[i].Equals(targetParts[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    prefixMatch = false;
+                    break;
+                }
+            }
+            if (prefixMatch) return true;
+        }
+
+        // Handle wildcard "*"
+        if (modVersion.Contains("*")) return true;
+
+        return false;
+    }
+
+    private static string NormalizeVersion(string version)
+    {
+        if (string.IsNullOrEmpty(version)) return version;
+        
+        // Handle "26.x" format - convert to Modrinth format for comparison
+        var trimmed = version.Trim();
+        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = trimmed.Split('.');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            {
+                return $"1.21.{minor}";
+            }
+        }
+        return trimmed;
+    }
 }
