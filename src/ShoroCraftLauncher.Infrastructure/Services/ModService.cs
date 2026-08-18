@@ -47,12 +47,13 @@ public class ModService : IModService
 
     public async Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType)
     {
-        _logger.LogInformation("Searching Modrinth: {Query} for MC {Version} on {Loader}", query, minecraftVersion, loaderType);
+        var modrinthVersion = ToModrinthVersion(minecraftVersion);
+        _logger.LogInformation("Searching Modrinth: {Query} for MC {Version} (Modrinth: {ModrinthVersion}) on {Loader}", query, minecraftVersion, modrinthVersion, loaderType);
         _logService.Info("ModService", "SearchModrinth", $"Buscando '{query}' en Modrinth para MC {minecraftVersion} ({loaderType})...");
         
         try
         {
-            var url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets=[[\"versions:{minecraftVersion}\"],[\"categories:{loaderType.ToLower()}\"]]";
+            var url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets=[[\"versions:{modrinthVersion}\"],[\"categories:{loaderType.ToLower()}\"]]";
             _httpClient.DefaultRequestHeaders.UserAgent.Clear();
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
             
@@ -270,7 +271,7 @@ public class ModService : IModService
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var loader = profile.Type.ToString().ToLowerInvariant();
-        var mcVersion = profile.MinecraftVersion;
+        var mcVersion = ToModrinthVersion(profile.MinecraftVersion);
 
         var resolved = FindBestVersion(doc, mcVersion, loader, projectId, preferRelease: true, projectSlug);
         if (resolved == null)
@@ -850,5 +851,20 @@ public class ModService : IModService
         }
         catch { }
         return (null, null, null);
+    }
+
+    private static string ToModrinthVersion(string mcVersion)
+    {
+        if (string.IsNullOrWhiteSpace(mcVersion)) return mcVersion;
+        var trimmed = mcVersion.Trim();
+        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = trimmed.Split('.');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            {
+                return $"1.21.{minor}";
+            }
+        }
+        return trimmed;
     }
 }
