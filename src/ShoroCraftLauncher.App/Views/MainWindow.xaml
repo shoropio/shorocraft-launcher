@@ -47,8 +47,14 @@
                                         Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                 <TextBlock Text="ShoroCraft" FontSize="17" FontWeight="Bold"
                                            Foreground="{StaticResource PrimaryBrush}" />
-                                <TextBlock Text="{DynamicResource Main_LauncherTag}" FontSize="10"
-                                           Foreground="{StaticResource TextMutedBrush}" />
+                                <TextBlock FontSize="10"
+                                           Foreground="{StaticResource TextMutedBrush}">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="Launcher v{0}">
+                                            <Binding Path="LauncherVersion" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </StackPanel>
                         </StackPanel>
                     </Border>

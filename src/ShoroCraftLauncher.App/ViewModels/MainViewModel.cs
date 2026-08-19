@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ public class MainViewModel : BaseViewModel, IDisposable
 
     public ObservableCollection<NavItem> NavItems { get; } = new();
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
+    public string LauncherVersion { get; } = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
     private BaseViewModel? _currentView;
     public BaseViewModel? CurrentView

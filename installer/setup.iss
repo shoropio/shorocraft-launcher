@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=ShoroCraft Launcher
-AppVersion=1.4.0
+AppVersion=1.5.0
 AppPublisher=Shoropio Corporation
 DefaultDirName={localappdata}\ShoroCraftLauncher
 DefaultGroupName=ShoroCraft Launcher
