@@ -864,7 +864,7 @@ public class ModService : IModService
         if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
         {
             var parts = trimmed.Split('.');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
             {
                 return $"1.21.{minor}";
             }
@@ -957,6 +957,22 @@ public class ModService : IModService
             }
         }
         catch { }
+
+        // Fallback: extract MC version from filename pattern (e.g., "iris-fabric-1.11.3+mc26.1.2.jar")
+        try
+        {
+            var fileName = Path.GetFileNameWithoutExtension(modPath);
+            var mcIndex = fileName.LastIndexOf("+mc", StringComparison.OrdinalIgnoreCase);
+            if (mcIndex >= 0)
+            {
+                var mcVer = fileName.Substring(mcIndex + 3);
+                // Take only the version part (stop at next non-version char)
+                var match = System.Text.RegularExpressions.Regex.Match(mcVer, @"^[\d.]+");
+                if (match.Success) return match.Value;
+            }
+        }
+        catch { }
+
         return null;
     }
 
@@ -973,17 +989,32 @@ public class ModService : IModService
         if (modVersion.Equals(targetVersion, StringComparison.OrdinalIgnoreCase))
             return true;
 
+        // Handle wildcard "*"
+        if (modVersion.Contains("*")) return true;
+
+        // For MC 26.x versions (new versioning): require major.minor match
+        // 26.1 ≠ 26.2 (they are distinct releases, not sub-versions)
+        if (modVersion.StartsWith("1.21.", StringComparison.OrdinalIgnoreCase) &&
+            targetVersion.StartsWith("1.21.", StringComparison.OrdinalIgnoreCase))
+        {
+            var modParts = modVersion.Split('.');
+            var targetParts = targetVersion.Split('.');
+            // Compare major.minor only (first 2 parts)
+            if (modParts.Length >= 2 && targetParts.Length >= 2)
+                return modParts[0] == targetParts[0] && modParts[1] == targetParts[1];
+        }
+
         // Handle version ranges like "1.21" matching "1.21.1"
-        var modParts = modVersion.Split('.');
-        var targetParts = targetVersion.Split('.');
+        var modPartsLegacy = modVersion.Split('.');
+        var targetPartsLegacy = targetVersion.Split('.');
 
         // If mod version is a prefix of target (e.g., mod "1.21" targets "1.21.1")
-        if (modParts.Length <= targetParts.Length)
+        if (modPartsLegacy.Length <= targetPartsLegacy.Length)
         {
             bool prefixMatch = true;
-            for (int i = 0; i < modParts.Length; i++)
+            for (int i = 0; i < modPartsLegacy.Length; i++)
             {
-                if (!modParts[i].Equals(targetParts[i], StringComparison.OrdinalIgnoreCase))
+                if (!modPartsLegacy[i].Equals(targetPartsLegacy[i], StringComparison.OrdinalIgnoreCase))
                 {
                     prefixMatch = false;
                     break;
@@ -992,9 +1023,6 @@ public class ModService : IModService
             if (prefixMatch) return true;
         }
 
-        // Handle wildcard "*"
-        if (modVersion.Contains("*")) return true;
-
         return false;
     }
 
@@ -1002,12 +1030,12 @@ public class ModService : IModService
     {
         if (string.IsNullOrEmpty(version)) return version;
         
-        // Handle "26.x" format - convert to Modrinth format for comparison
         var trimmed = version.Trim();
+        // Handle "26.X" or "26.X.Y" format - convert to Modrinth format for comparison
         if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
         {
             var parts = trimmed.Split('.');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
             {
                 return $"1.21.{minor}";
             }

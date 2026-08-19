@@ -1187,7 +1187,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
         {
             var parts = trimmed.Split('.');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var minor))
+            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
             {
                 return $"1.21.{minor}";
             }
