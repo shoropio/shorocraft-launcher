@@ -17,8 +17,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 ; Herramienta de firma definida al compilar con /Ssigntool=...
 ; ej: ISCC.exe setup.iss "/Ssigntool=C:\...\signtool.exe sign /n $qShoroCraft Launcher$q /s my /fd sha256 /tr http://timestamp.digicert.com /td sha256 $f"
-SignTool=signtool
-SignedUninstaller=yes
+; SignTool=signtool
+; SignedUninstaller=yes
 
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
