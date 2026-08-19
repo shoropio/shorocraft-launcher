@@ -74,6 +74,7 @@
     <system:String x:Key="Dash_FabricIrisSodiumTooltip">Crea un perfil Fabric con Iris (shaders) y Sodium (rendimiento) preinstalados.</system:String>
     <system:String x:Key="Dash_OptiFineTooltip">OptiFine no se descarga automáticamente; se abrirá la página oficial.</system:String>
     <system:String x:Key="Dash_PerfNote">Iris+Sodium está disponible solo para perfiles Fabric. OptiFine requiere descarga manual.</system:String>
+    <system:String x:Key="Dash_NewsTitle">Noticias</system:String>
 
     <!-- Maps -->
     <system:String x:Key="Maps_Profiles">Perfiles</system:String>

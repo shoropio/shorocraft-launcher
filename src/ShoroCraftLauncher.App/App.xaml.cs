@@ -112,6 +112,7 @@ public partial class App : Application
                 services.AddSingleton<IServerService, ServerService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IUpdaterService, UpdaterService>();
+                services.AddSingleton<INewsService, NewsService>();
 
                 services.AddTransient<DashboardViewModel>();
                 services.AddTransient<ProfilesViewModel>();

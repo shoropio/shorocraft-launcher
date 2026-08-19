@@ -27,6 +27,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly IModService _modService;
     private readonly ISettingsRepository _settingsRepo;
     private readonly IProfileRepository _profileRepo;
+    private readonly INewsService _newsService;
     private readonly ILogger<DashboardViewModel> _logger;
 
     private const string LastNotifiedVersionKey = "last_notified_minecraft_version";
@@ -34,6 +35,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
     public ObservableCollection<GameVersion> AvailableVersions { get; } = new();
     public ObservableCollection<StatCard> StatCards { get; } = new();
+    public ObservableCollection<NewsItem> NewsItems { get; } = new();
 
     public Profile? SelectedProfile
     {
@@ -208,6 +210,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IModService modService,
         ISettingsRepository settingsRepo,
         IProfileRepository profileRepo,
+        INewsService newsService,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -219,6 +222,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _modService = modService;
         _settingsRepo = settingsRepo;
         _profileRepo = profileRepo;
+        _newsService = newsService;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -327,8 +331,9 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             var detailsTask = UpdateProfileDetailsAsync();
             var componentsTask = UpdateComponentInstallStatesAsync();
             var updateTask = _updaterService.CheckForUpdatesAsync(currentVersion);
+            var newsTask = LoadNewsAsync();
 
-            await Task.WhenAll(versionsTask, detailsTask, componentsTask, updateTask);
+            await Task.WhenAll(versionsTask, detailsTask, componentsTask, updateTask, newsTask);
 
             var (isUpdateAvailable, latestVersion, downloadUrl, _) = updateTask.Result;
             if (isUpdateAvailable)
@@ -350,6 +355,21 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task LoadNewsAsync()
+    {
+        try
+        {
+            var news = await _newsService.GetNewsAsync();
+            NewsItems.Clear();
+            foreach (var item in news)
+                NewsItems.Add(item);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load news feed");
         }
     }
 

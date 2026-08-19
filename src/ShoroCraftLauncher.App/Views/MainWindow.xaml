@@ -19,7 +19,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
-        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" ClipToBounds="True">
+        <Border x:Name="SidebarBorder" Grid.Column="0" Width="240" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

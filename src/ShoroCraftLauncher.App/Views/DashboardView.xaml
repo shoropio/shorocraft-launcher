@@ -292,6 +292,49 @@
                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" />
                 </StackPanel>
             </Border>
+
+            <!-- News Feed -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Dash_NewsTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                    <ItemsControl ItemsSource="{Binding NewsItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardBorder}" Padding="14" Margin="0,0,0,10"
+                                        MouseLeftButtonUp="NewsItem_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="4" Height="40" CornerRadius="2"
+                                                VerticalAlignment="Top" Margin="0,2,12,0">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Category}" Value="Servidor">
+                                                            <Setter Property="Background" Value="#FFFF9800" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Category}" Value="Snapshot">
+                                                            <Setter Property="Background" Value="#FF9C27B0" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="White" />
+                                            <TextBlock Text="{Binding Summary}" FontSize="12"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
