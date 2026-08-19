@@ -151,7 +151,7 @@ public class AuthenticationService : IAuthenticationService
         return "No se pudo iniciar sesión con Microsoft. Revisa tu conexión e inténtalo de nuevo.";
     }
 
-    public async Task<AuthResult> AuthenticateOfflineAsync(string username)
+    public AuthResult AuthenticateOfflineAsync(string username)
     {
         _logger.LogInformation("Offline authentication for {Username}", username);
 

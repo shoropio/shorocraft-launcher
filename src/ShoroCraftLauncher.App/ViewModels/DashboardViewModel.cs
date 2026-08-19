@@ -912,7 +912,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             }
 
             // 3. Install Fabric loader if needed
-            var loaderReady = await IsLoaderInstalledAsync(fabricProfile, mcVersion);
+            var loaderReady = IsLoaderInstalledAsync(fabricProfile, mcVersion);
             if (!loaderReady)
             {
                 ReadyStatus = "Instalando Fabric...";
@@ -985,7 +985,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         }
     }
 
-    private async Task<bool> IsLoaderInstalledAsync(Profile profile, string targetVersion)
+    private bool IsLoaderInstalledAsync(Profile profile, string targetVersion)
     {
         var mcPath = new CmlLib.Core.MinecraftPath(GetSelectedProfileGameDirectory());
         var loaderPrefix = profile.Type.ToString().ToLower();

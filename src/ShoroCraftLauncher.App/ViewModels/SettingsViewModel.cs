@@ -149,9 +149,9 @@ public class SettingsViewModel : BaseViewModel
         _logService = logService;
         _updaterService = updaterService;
 
-        BrowseGameDirCommand = new RelayCommand(async _ => await BrowseGameDir());
+        BrowseGameDirCommand = new RelayCommand(_ => BrowseGameDir());
         SaveGameDirCommand = new RelayCommand(async _ => await SaveGameDir());
-        CleanTempCommand = new RelayCommand(async _ => await CleanTemp());
+        CleanTempCommand = new RelayCommand(_ => CleanTemp());
         CheckUpdatesCommand = new RelayCommand(async _ => await CheckUpdates());
         OpenLogsFolderCommand = new RelayCommand(_ => OpenLogsFolder());
         ExportDiagnosticsCommand = new RelayCommand(async _ => await ExportDiagnostics());
@@ -185,7 +185,7 @@ public class SettingsViewModel : BaseViewModel
         IsBusy = false;
     }
 
-    private async Task BrowseGameDir()
+    private void BrowseGameDir()
     {
         using var dialog = new System.Windows.Forms.FolderBrowserDialog();
         dialog.Description = "Selecciona la carpeta de Minecraft";
@@ -229,7 +229,7 @@ public class SettingsViewModel : BaseViewModel
         StatusMessage = "Configuración guardada.";
     }
 
-    private async Task CleanTemp()
+    private void CleanTemp()
     {
         IsBusy = true;
         try

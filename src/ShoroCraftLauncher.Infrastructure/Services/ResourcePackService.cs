@@ -52,7 +52,7 @@ public class ResourcePackService : IResourcePackService
         _logService.Info("ResourcePackService", "AddPack", $"Copiando {fileName} a resourcepacks...");
         File.Copy(sourceFilePath, destPath);
 
-        var previewPath = await ExtractPreviewImageAsync(destPath, packsDir);
+        var previewPath = ExtractPreviewImageAsync(destPath, packsDir);
 
         var pack = new ResourcePack
         {
@@ -109,7 +109,7 @@ public class ResourcePackService : IResourcePackService
         return _minecraftService.GetResourcePacksDirectory(gameDir);
     }
 
-    private async Task<string> ExtractPreviewImageAsync(string zipPath, string packsDir)
+    private string ExtractPreviewImageAsync(string zipPath, string packsDir)
     {
         try
         {

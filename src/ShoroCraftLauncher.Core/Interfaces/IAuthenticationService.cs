@@ -15,7 +15,7 @@ public interface IAuthenticationService
 {
     Task<AuthResult> AuthenticateAsync();
     Task<AuthResult> AuthenticateSilentlyAsync();
-    Task<AuthResult> AuthenticateOfflineAsync(string username);
+    AuthResult AuthenticateOfflineAsync(string username);
     Task<bool> ValidateTokenAsync(string accessToken);
     Task LogoutAsync();
 }

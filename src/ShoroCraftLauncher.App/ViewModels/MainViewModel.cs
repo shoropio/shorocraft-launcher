@@ -345,7 +345,7 @@ public class MainViewModel : BaseViewModel, IDisposable
 
         if (_currentAuth == null || !_currentAuth.Success || (_currentAuth.IsOffline && _currentAuth.Username != Username))
         {
-            _currentAuth = await _authService.AuthenticateOfflineAsync(Username);
+            _currentAuth = _authService.AuthenticateOfflineAsync(Username);
             if (!_currentAuth.Success)
             {
                 StatusMessage = "Error: No hay autenticación disponible.";
@@ -443,7 +443,7 @@ public class MainViewModel : BaseViewModel, IDisposable
             StatusMessage = "Autenticando offline...";
             await Task.Delay(300);
 
-            _currentAuth = await _authService.AuthenticateOfflineAsync(Username);
+            _currentAuth = _authService.AuthenticateOfflineAsync(Username);
             if (_currentAuth.Success)
             {
                 IsAuthenticated = true;

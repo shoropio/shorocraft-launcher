@@ -112,7 +112,7 @@ public class MinecraftLaunchIntegrationTest
                 GameDirectory = testGameDir
             };
 
-            var authResult = await auth.AuthenticateOfflineAsync("TestPlayer");
+            var authResult = auth.AuthenticateOfflineAsync("TestPlayer");
             Assert.True(authResult.Success);
 
             var result = await launcher.LaunchProfileAsync(profile, authResult);

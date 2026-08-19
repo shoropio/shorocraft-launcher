@@ -354,7 +354,7 @@ public class MinecraftService : IMinecraftService
             || text.StartsWith("Building", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task<bool> VerifyInstallationAsync(string gameDir)
+    public bool VerifyInstallationAsync(string gameDir)
     {
         gameDir = ResolveGameDirectory(gameDir);
         var versionsDir = Path.Combine(gameDir, "versions");
@@ -363,9 +363,10 @@ public class MinecraftService : IMinecraftService
 
         return Directory.GetDirectories(versionsDir)
             .Select(Path.GetFileName)
-            .Any(v => File.Exists(Path.Combine(versionsDir, v, $"{v}.jar"))
-                   && File.Exists(Path.Combine(versionsDir, v, $"{v}.json"))
-                   && File.Exists(Path.Combine(versionsDir, v, ".shorocraft-installed.json")));
+            .Where(v => !string.IsNullOrEmpty(v))
+            .Any(v => File.Exists(Path.Combine(versionsDir, v!, $"{v}.jar"))
+                   && File.Exists(Path.Combine(versionsDir, v!, $"{v}.json"))
+                   && File.Exists(Path.Combine(versionsDir, v!, ".shorocraft-installed.json")));
     }
 
     public async Task RepairInstallationAsync(string gameDir, IProgress<double>? progress = null)
