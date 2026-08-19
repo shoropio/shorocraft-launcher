@@ -64,6 +64,8 @@
                              Background="Transparent" BorderThickness="0"
                              SelectedValue="{Binding SelectedNav}"
                              SelectedValuePath="Name"
+                             HorizontalAlignment="Stretch"
+                             Width="{Binding ActualWidth, ElementName=SidebarBorder}"
                              Margin="4,12,4,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="vm:NavItem">

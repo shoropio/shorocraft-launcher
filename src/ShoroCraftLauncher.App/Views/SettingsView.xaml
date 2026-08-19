@@ -69,6 +69,7 @@
                                      AutomationProperties.Name="CurseForge API key"
                                      PasswordChanged="CurseForgeKeyBox_PasswordChanged" />
                         <ToggleButton x:Name="RevealKeyButton" Grid.Column="1" Margin="8,0,0,0"
+                                      Style="{StaticResource EyeToggleButton}"
                                       VerticalAlignment="Stretch" MinWidth="40"
                                       AutomationProperties.Name="Show/hide API key"
                                       Checked="RevealKeyButton_Checked" Unchecked="RevealKeyButton_Checked">
