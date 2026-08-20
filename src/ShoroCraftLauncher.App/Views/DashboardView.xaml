@@ -126,6 +126,17 @@
                         <TextBlock Text="{DynamicResource Dash_ChecklistTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
                         <TextBlock Text="{Binding ChecklistMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,14" />
                         
+                        <!-- Loader update notification -->
+                        <Border Background="#33FF9800" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
+                                Visibility="{Binding HasLoaderUpdate, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding LoaderUpdateMessage}" Foreground="#FFFF9800" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Button Content="Actualizar" Command="{Binding UpdateLoaderCommand}"
+                                        Style="{StaticResource PrimaryButton}" Margin="12,0,0,0" Padding="10,4"
+                                        FontSize="12" Height="28" />
+                            </StackPanel>
+                        </Border>
+                        
                         <WrapPanel>
                             <!-- RAM checklist item -->
                             <StackPanel Orientation="Horizontal" Margin="0,0,24,8">

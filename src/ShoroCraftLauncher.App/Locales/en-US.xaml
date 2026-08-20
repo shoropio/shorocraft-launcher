@@ -96,6 +96,7 @@
     <system:String x:Key="Mods_Refresh">Refresh</system:String>
     <system:String x:Key="Mods_CheckUpdates">Check for updates</system:String>
     <system:String x:Key="Mods_UpdateAll">Update all</system:String>
+    <system:String x:Key="Dash_LoaderUpdate">Loader update available</system:String>
     <system:String x:Key="Mods_Delete">Delete</system:String>
     <system:String x:Key="Mods_Install">Install</system:String>
 

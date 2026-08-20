@@ -1127,4 +1127,43 @@ public class MinecraftService : IMinecraftService
             return allowed;
         }
     }
+
+    public async Task<string?> CheckLoaderUpdateAsync(string loaderType, string mcVersion, string currentLoaderVersion)
+    {
+        if (string.IsNullOrEmpty(currentLoaderVersion) || currentLoaderVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try
+        {
+            if (loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!await FabricSupportsGameVersionAsync(mcVersion))
+                    return null;
+
+                var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl);
+                var doc = JsonDocument.Parse(json);
+                var latest = doc.RootElement[0].GetProperty("version").GetString();
+                if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
+                    return latest;
+            }
+            else if (loaderType.Equals("quilt", StringComparison.OrdinalIgnoreCase))
+            {
+                var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl);
+                var doc = JsonDocument.Parse(json);
+                var latest = doc.RootElement[0].GetProperty("version").GetString();
+                if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
+                    return latest;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    public async Task UpdateLoaderAsync(string mcVersion, string loaderType, string newLoaderVersion, string javaPath, string gameDir, Action<string>? onProgress = null)
+    {
+        onProgress?.Invoke($"Actualizando {loaderType} a {newLoaderVersion}...");
+        await InstallLoaderAsync(mcVersion, loaderType, newLoaderVersion, javaPath, onProgress: onProgress, gameDir: gameDir);
+        onProgress?.Invoke($"{loaderType} actualizado a {newLoaderVersion}.");
+    }
 }

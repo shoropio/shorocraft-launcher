@@ -19,6 +19,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     private readonly ILogger<ProfilesViewModel> _logger;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
+    private readonly IModService _modService;
 
     public ObservableCollection<Profile> Profiles => _profileService.Profiles;
 
@@ -130,7 +131,8 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         IMinecraftService minecraftService,
         ILogger<ProfilesViewModel> logger,
         ILogService logService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IModService modService)
     {
         _profileService = profileService;
         _profileRepo = profileRepo;
@@ -138,6 +140,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         _logger = logger;
         _logService = logService;
         _dialogService = dialogService;
+        _modService = modService;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
 
@@ -271,6 +274,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
     {
         if (SelectedProfile == null) return;
 
+        var oldVersion = SelectedProfile.MinecraftVersion;
         IsBusy = true;
         try
         {
@@ -300,6 +304,30 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             _logService.Info("Profile", "Saved", "Perfil actualizado.", new { SelectedProfile.Id, SelectedProfile.Name, SelectedProfile.MinecraftVersion, SelectedProfile.Type });
             await LoadProfilesAsync();
             StatusMessage = "Perfil actualizado.";
+
+            if (!string.IsNullOrEmpty(oldVersion) && !string.IsNullOrEmpty(McVersion)
+                && !oldVersion.Equals(McVersion, StringComparison.OrdinalIgnoreCase)
+                && !oldVersion.Equals("latest", StringComparison.OrdinalIgnoreCase)
+                && !McVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var updates = await _modService.CheckForUpdatesAsync(SelectedProfile.Id, McVersion);
+                    if (updates.Count > 0)
+                    {
+                        var names = string.Join(", ", updates.Take(3).Select(u => u.ModName));
+                        var more = updates.Count > 3 ? $" y {updates.Count - 3} más" : "";
+                        var result = DialogHelper.Confirm(
+                            $"Se encontraron {updates.Count} actualización(es) de mods para Minecraft {McVersion}:\n{names}{more}\n\n¿Deseas ir a la pestaña Mods para actualizarlos?",
+                            "Actualizaciones de mods disponibles");
+                        if (result == MessageBoxResult.Yes)
+                        {
+                            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+                        }
+                    }
+                }
+                catch { }
+            }
         }
         catch (Exception ex)
         {

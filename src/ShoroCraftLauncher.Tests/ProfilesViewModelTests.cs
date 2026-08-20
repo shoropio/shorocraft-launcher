@@ -67,7 +67,7 @@ public class ProfilesViewModelTests
         var mockDialog = new Mock<IDialogService>(MockBehavior.Strict);
         mockDialog.Setup(d => d.ShowSaveFileDialog(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>())).Returns(exportPath);
 
-        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object);
+        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object, Mock.Of<IModService>());
 
         // invoke private ExportProfile method via reflection
         var method = typeof(ProfilesViewModel).GetMethod("ExportProfile", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -98,7 +98,7 @@ public class ProfilesViewModelTests
         var mockLogService = new Mock<Core.Interfaces.ILogService>(MockBehavior.Loose);
         var mockDialog = new Mock<IDialogService>();
 
-        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object);
+        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object, Mock.Of<IModService>());
         vm.SelectedProfileTemplate = vm.ProfileTemplates.First(t => t.Type == ProfileType.Fabric);
 
         var method = typeof(ProfilesViewModel).GetMethod("CreateProfile", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -131,7 +131,7 @@ public class ProfilesViewModelTests
         var mockLogService = new Mock<Core.Interfaces.ILogService>(MockBehavior.Loose);
         var mockDialog = new Mock<IDialogService>();
 
-        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object);
+        var vm = new ProfilesViewModel(profileService, mockRepo.Object, mockMinecraft.Object, mockLogger, mockLogService.Object, mockDialog.Object, Mock.Of<IModService>());
         vm.SelectedProfileTemplate = vm.ProfileTemplates.First(t => t.Type == ProfileType.Fabric);
 
         var method = typeof(ProfilesViewModel).GetMethod("CreateProfile", BindingFlags.NonPublic | BindingFlags.Instance);

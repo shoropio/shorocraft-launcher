@@ -172,6 +172,27 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _isLoaderReady, value);
     }
 
+    private string? _loaderUpdateVersion;
+    public string? LoaderUpdateVersion
+    {
+        get => _loaderUpdateVersion;
+        set => SetProperty(ref _loaderUpdateVersion, value);
+    }
+
+    private bool _hasLoaderUpdate;
+    public bool HasLoaderUpdate
+    {
+        get => _hasLoaderUpdate;
+        set => SetProperty(ref _hasLoaderUpdate, value);
+    }
+
+    private string _loaderUpdateMessage = string.Empty;
+    public string LoaderUpdateMessage
+    {
+        get => _loaderUpdateMessage;
+        set => SetProperty(ref _loaderUpdateMessage, value);
+    }
+
     private bool _isRamReady;
     public bool IsRamReady
     {
@@ -197,6 +218,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public ICommand InstallMinecraftUpdateCommand { get; }
     public ICommand DismissMinecraftUpdateCommand { get; }
     public ICommand InstallFabricIrisSodiumCommand { get; }
+    public ICommand UpdateLoaderCommand { get; }
 
     private string? _latestAvailableVersion;
 
@@ -243,6 +265,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         InstallMinecraftUpdateCommand = new RelayCommand(async _ => await InstallMinecraftUpdateAsync());
         DismissMinecraftUpdateCommand = new RelayCommand(async _ => await DismissMinecraftUpdateAsync());
         InstallFabricIrisSodiumCommand = new RelayCommand(async _ => await InstallFabricIrisSodium(), _ => !IsDownloading && !IsBusy && !IsIrisSodiumInstalled);
+        UpdateLoaderCommand = new RelayCommand(async _ => await UpdateLoader(), _ => !IsDownloading && !IsBusy && HasLoaderUpdate && SelectedProfile != null);
 
         InitializeStatCards();
     }
@@ -1083,6 +1106,27 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 IsLoaderReady = match != null;
             }
 
+            // 4b. Loader update check
+            HasLoaderUpdate = false;
+            LoaderUpdateVersion = null;
+            LoaderUpdateMessage = string.Empty;
+            if (IsLoaderReady && SelectedProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla
+                && !string.IsNullOrEmpty(SelectedProfile.LoaderVersion))
+            {
+                try
+                {
+                    var latestLoader = await _minecraftService.CheckLoaderUpdateAsync(
+                        SelectedProfile.Type.ToString(), targetVersion, SelectedProfile.LoaderVersion);
+                    if (!string.IsNullOrEmpty(latestLoader))
+                    {
+                        HasLoaderUpdate = true;
+                        LoaderUpdateVersion = latestLoader;
+                        LoaderUpdateMessage = $"{SelectedProfile.Type} {SelectedProfile.LoaderVersion} → {latestLoader}";
+                    }
+                }
+                catch { }
+            }
+
             if (IsJavaReady && IsVersionReady && IsLoaderReady && IsRamReady)
             {
                 ChecklistMessage = "Perfil listo para jugar.";
@@ -1101,6 +1145,56 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         {
             _logger.LogWarning(ex, "Failed to validate profile checklist");
             ChecklistMessage = "Error al validar estado.";
+        }
+    }
+
+    private async Task UpdateLoader()
+    {
+        if (SelectedProfile == null || !HasLoaderUpdate || string.IsNullOrEmpty(LoaderUpdateVersion)) return;
+        IsBusy = true;
+        IsDownloading = true;
+        ReadyStatus = $"Actualizando {SelectedProfile.Type}...";
+
+        try
+        {
+            var gameDir = GetSelectedProfileGameDirectory();
+            var targetVersion = SelectedProfile.MinecraftVersion;
+            if (targetVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+
+            var javaPath = SelectedProfile.JavaPath;
+            if (string.IsNullOrEmpty(javaPath))
+                javaPath = await _javaService.GetRecommendedJavaPathAsync(targetVersion);
+
+            if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
+            {
+                ReadyStatus = "Java no encontrado.";
+                return;
+            }
+
+            await _minecraftService.UpdateLoaderAsync(
+                targetVersion, SelectedProfile.Type.ToString(), LoaderUpdateVersion,
+                javaPath, gameDir, msg => LogStatus(msg));
+
+            SelectedProfile.LoaderVersion = LoaderUpdateVersion;
+            await _profileService.UpdateProfileAsync(SelectedProfile);
+
+            ReadyStatus = $"{SelectedProfile.Type} actualizado a {LoaderUpdateVersion}.";
+            HasLoaderUpdate = false;
+            LoaderUpdateVersion = null;
+            LoaderUpdateMessage = string.Empty;
+
+            await ValidateProfileChecklistAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update loader");
+            ReadyStatus = $"Error al actualizar loader: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            IsDownloading = false;
         }
     }
 
