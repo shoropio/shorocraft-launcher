@@ -124,7 +124,7 @@ public class MainViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _selectedProfileName, value);
     }
 
-    private string? _skinUrl = "https://crafatar.com/renders/body/8667ba71-b85a-4004-af54-457a9734eed7?overlay=true";
+    private string? _skinUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={Environment.UserName}";
     public string? SkinUrl
     {
         get => _skinUrl;
@@ -482,7 +482,7 @@ public class MainViewModel : BaseViewModel, IDisposable
             IsAuthenticated = false;
             AuthStatus = "User_NotAuthenticated";
             Username = Environment.UserName;
-            SkinUrl = null;
+            SkinUrl = $"https://api.dicebear.com/7.x/bottts/svg?seed={Environment.UserName}";
             StatusMessage = "Sesión cerrada.";
         }
         finally

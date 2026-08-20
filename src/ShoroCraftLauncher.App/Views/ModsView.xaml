@@ -125,11 +125,13 @@
             <ProgressBar Grid.Row="2" Height="4" Margin="0,0,0,12" IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
                          Style="{StaticResource AccentProgressBar}" />
-            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}"
-                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
-            <TextBlock Grid.Row="3" Text="{Binding UpdateStatus}"
-                       Foreground="{StaticResource SuccessBrush}" Margin="0,0,0,8"
-                       Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <StackPanel Grid.Row="3" Margin="0,0,0,12">
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding UpdateStatus}"
+                           Foreground="{StaticResource SuccessBrush}"
+                           Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
 
             <!-- Mods list / Search results -->
             <Grid Grid.Row="4">
@@ -139,7 +141,7 @@
                          Visibility="{Binding ShowSearchResults, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                            <Border Style="{StaticResource FlatCardBorder}" Margin="0,0,0,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -175,7 +177,7 @@
                          Visibility="{Binding ShowSearchResults, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                            <Border Style="{StaticResource FlatCardBorder}" Margin="0,0,0,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="50" />
