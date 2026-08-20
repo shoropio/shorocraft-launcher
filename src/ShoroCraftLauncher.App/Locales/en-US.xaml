@@ -94,6 +94,8 @@
     <system:String x:Key="Mods_ImportModpack">Import Modpack (.mrpack)</system:String>
     <system:String x:Key="Mods_OpenFolder">Open folder</system:String>
     <system:String x:Key="Mods_Refresh">Refresh</system:String>
+    <system:String x:Key="Mods_CheckUpdates">Check for updates</system:String>
+    <system:String x:Key="Mods_UpdateAll">Update all</system:String>
     <system:String x:Key="Mods_Delete">Delete</system:String>
     <system:String x:Key="Mods_Install">Install</system:String>
 

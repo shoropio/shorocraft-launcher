@@ -48,6 +48,33 @@ public class DbInitializer
                 cmd.ExecuteNonQuery();
             }
 
+            // Check and add SourceProvider column to Mods (for update tracking)
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='SourceProvider'";
+            var hasSource = (long)(cmd.ExecuteScalar() ?? 0L);
+            if (hasSource == 0)
+            {
+                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN SourceProvider TEXT NULL";
+                cmd.ExecuteNonQuery();
+            }
+
+            // Check and add RemoteProjectId column to Mods (for update tracking)
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='RemoteProjectId'";
+            var hasRemoteId = (long)(cmd.ExecuteScalar() ?? 0L);
+            if (hasRemoteId == 0)
+            {
+                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN RemoteProjectId TEXT NULL";
+                cmd.ExecuteNonQuery();
+            }
+
+            // Check and add RemoteSlug column to Mods (for update tracking)
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='RemoteSlug'";
+            var hasRemoteSlug = (long)(cmd.ExecuteScalar() ?? 0L);
+            if (hasRemoteSlug == 0)
+            {
+                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN RemoteSlug TEXT NULL";
+                cmd.ExecuteNonQuery();
+            }
+
             // Create GameMaps table if it doesn't exist
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS GameMaps (

@@ -105,6 +105,20 @@
                         Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
                 <Button Content="{DynamicResource Mods_OpenFolder}" Command="{Binding OpenModsFolderCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                <Button Content="{DynamicResource Mods_CheckUpdates}" Command="{Binding CheckForUpdatesCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,10,10" />
+                <Button Command="{Binding UpdateAllCommand}" Margin="0,0,10,10">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                            <Setter Property="Content" Value="Actualizar Mods" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasUpdates}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <Button Content="{DynamicResource Mods_Refresh}" Command="{Binding RefreshCommand}"
                         Style="{StaticResource SecondaryButton}" Margin="0,0,0,10" />
             </WrapPanel>
@@ -113,6 +127,9 @@
                          Style="{StaticResource AccentProgressBar}" />
             <TextBlock Grid.Row="3" Text="{Binding StatusMessage}"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+            <TextBlock Grid.Row="3" Text="{Binding UpdateStatus}"
+                       Foreground="{StaticResource SuccessBrush}" Margin="0,0,0,8"
+                       Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVisibilityConverter}}" />
 
             <!-- Mods list / Search results -->
             <Grid Grid.Row="4">

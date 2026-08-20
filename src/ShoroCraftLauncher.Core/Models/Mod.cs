@@ -17,6 +17,9 @@ public class Mod : INotifyPropertyChanged
     public string ModVersion { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? IconPath { get; set; }
+    public string? SourceProvider { get; set; }
+    public string? RemoteProjectId { get; set; }
+    public string? RemoteSlug { get; set; }
 
     private ModStatus _status = ModStatus.Active;
     public ModStatus Status

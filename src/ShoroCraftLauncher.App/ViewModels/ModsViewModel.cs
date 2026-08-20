@@ -80,6 +80,22 @@ public class ModsViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _isSearching, value);
     }
 
+    public ObservableCollection<ModUpdateInfo> AvailableUpdates { get; } = new();
+
+    private bool _hasUpdates;
+    public bool HasUpdates
+    {
+        get => _hasUpdates;
+        set => SetProperty(ref _hasUpdates, value);
+    }
+
+    private string _updateStatus = string.Empty;
+    public string UpdateStatus
+    {
+        get => _updateStatus;
+        set => SetProperty(ref _updateStatus, value);
+    }
+
     public ICommand AddModCommand { get; }
     public ICommand ToggleModCommand { get; }
     public ICommand RemoveModCommand { get; }
@@ -90,6 +106,9 @@ public class ModsViewModel : BaseViewModel, IDisposable
     public ICommand ShowInstalledCommand { get; }
     public ICommand ShowRecommendedCommand { get; }
     public ICommand ImportModpackCommand { get; }
+    public ICommand CheckForUpdatesCommand { get; }
+    public ICommand UpdateAllCommand { get; }
+    public ICommand UpdateModCommand { get; }
 
     public ModsViewModel(
         IProfileService profileService,
@@ -116,6 +135,9 @@ public class ModsViewModel : BaseViewModel, IDisposable
         ShowInstalledCommand = new RelayCommand(async _ => { ShowSearchResults = false; ActiveTab = "Installed"; if (SelectedProfile != null) await LoadModsAsync(SelectedProfile.Id); }, _ => SelectedProfile != null && !IsBusy);
         ShowRecommendedCommand = new RelayCommand(async _ => await LoadRecommended(), _ => SelectedProfile != null && !IsBusy);
         ImportModpackCommand = new RelayCommand(async _ => await ImportModpack(), _ => SelectedProfile != null && !IsBusy);
+        CheckForUpdatesCommand = new RelayCommand(async _ => await CheckForUpdates(), _ => SelectedProfile != null && !IsBusy);
+        UpdateAllCommand = new RelayCommand(async _ => await UpdateAllMods(), _ => SelectedProfile != null && !IsBusy && HasUpdates);
+        UpdateModCommand = new RelayCommand(async p => await UpdateSingleMod(p), _ => SelectedProfile != null && !IsBusy);
 
         if (SelectedProfile != null) _ = LoadModsAsync(SelectedProfile.Id);
     }
@@ -468,6 +490,112 @@ public class ModsViewModel : BaseViewModel, IDisposable
         {
             _logger.LogError(ex, "Failed to open mods folder for profile {ProfileId}", SelectedProfile.Id);
             StatusMessage = $"Error al abrir la carpeta: {ex.Message}";
+        }
+    }
+
+    private async Task CheckForUpdates()
+    {
+        if (SelectedProfile == null) return;
+        IsBusy = true;
+        UpdateStatus = "Buscando actualizaciones...";
+        AvailableUpdates.Clear();
+        try
+        {
+            var mcVersion = SelectedProfile.MinecraftVersion;
+            if (mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
+                var resolved = await _modService.CheckForUpdatesAsync(SelectedProfile.Id, mcVersion);
+                AvailableUpdates.Clear();
+                foreach (var u in resolved) AvailableUpdates.Add(u);
+            }
+            else
+            {
+                var resolved = await _modService.CheckForUpdatesAsync(SelectedProfile.Id, mcVersion);
+                AvailableUpdates.Clear();
+                foreach (var u in resolved) AvailableUpdates.Add(u);
+            }
+
+            HasUpdates = AvailableUpdates.Count > 0;
+            UpdateStatus = AvailableUpdates.Count > 0
+                ? $"{AvailableUpdates.Count} actualización(es) disponible(s)."
+                : "Todos los mods están actualizados.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check for updates");
+            UpdateStatus = $"Error al buscar actualizaciones: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task UpdateAllMods()
+    {
+        if (SelectedProfile == null || AvailableUpdates.Count == 0) return;
+        IsBusy = true;
+        UpdateStatus = "Actualizando mods...";
+        try
+        {
+            var mcVersion = SelectedProfile.MinecraftVersion;
+            var count = 0;
+            foreach (var update in AvailableUpdates.ToList())
+            {
+                try
+                {
+                    UpdateStatus = $"Actualizando {update.ModName}... ({count + 1}/{AvailableUpdates.Count})";
+                    await _modService.UpdateModAsync(update.ModId, mcVersion);
+                    count++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update mod {ModName}", update.ModName);
+                }
+            }
+
+            AvailableUpdates.Clear();
+            HasUpdates = false;
+            UpdateStatus = $"{count} mod(s) actualizado(s).";
+            if (SelectedProfile != null)
+                await LoadModsAsync(SelectedProfile.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update mods");
+            UpdateStatus = $"Error al actualizar: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task UpdateSingleMod(object? param)
+    {
+        if (param is not int modId || SelectedProfile == null) return;
+        IsBusy = true;
+        try
+        {
+            var mcVersion = SelectedProfile.MinecraftVersion;
+            var updated = await _modService.UpdateModAsync(modId, mcVersion);
+            if (updated != null)
+            {
+                var existing = AvailableUpdates.FirstOrDefault(u => u.ModId == modId);
+                if (existing != null) AvailableUpdates.Remove(existing);
+                HasUpdates = AvailableUpdates.Count > 0;
+                UpdateStatus = $"'{updated.Name}' actualizado a {updated.ModVersion}.";
+                await LoadModsAsync(SelectedProfile.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update mod {ModId}", modId);
+            StatusMessage = $"Error al actualizar: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 }

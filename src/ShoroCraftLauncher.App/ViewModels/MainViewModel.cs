@@ -333,7 +333,10 @@ public class MainViewModel : BaseViewModel, IDisposable
         }
 
         if (!ReferenceEquals(CurrentView, vm) && CurrentView is IDisposable disposable)
-            disposable.Dispose();
+        {
+            if (CurrentView is not ConsoleViewModel)
+                disposable.Dispose();
+        }
 
         CurrentView = vm;
 

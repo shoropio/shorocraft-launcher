@@ -86,6 +86,7 @@ public sealed class LogService : ILogService, IDisposable
     public void MinecraftStdout(string line)
     {
         _queue.Writer.TryWrite(new LogWrite(MinecraftPath: _minecraftStdoutPath, Text: Sanitize(line)));
+        Write(LauncherLogLevel.Info, "Minecraft", "Stdout", line);
     }
 
     public void MinecraftStderr(string line)

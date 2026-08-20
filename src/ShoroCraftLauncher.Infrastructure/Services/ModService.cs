@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -239,7 +240,10 @@ public class ModService : IModService
             ModVersion = modVersion,
             IconPath = searchResult.IconPath,
             Description = searchResult.Description,
-            Status = ModStatus.Active
+            Status = ModStatus.Active,
+            SourceProvider = provider,
+            RemoteProjectId = searchResult.FileName,
+            RemoteSlug = projectSlug
         };
 
         await _modRepository.CreateAsync(mod);
@@ -926,6 +930,80 @@ public class ModService : IModService
             Disabled = disabled,
             Errors = errors
         };
+    }
+
+    public async Task<List<ModUpdateInfo>> CheckForUpdatesAsync(int profileId, string mcVersion)
+    {
+        var mods = await _modRepository.GetByProfileIdAsync(profileId);
+        var modrinthVersion = ToModrinthVersion(mcVersion);
+        var updates = new List<ModUpdateInfo>();
+
+        foreach (var mod in mods.Where(m => m.Status == ModStatus.Active && !string.IsNullOrEmpty(m.RemoteProjectId)))
+        {
+            try
+            {
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.5");
+                var url = $"https://api.modrinth.com/v2/project/{mod.RemoteProjectId}/version?game_versions=%5B%22{modrinthVersion}%22%5D&loaders=%5B%22fabric%22%5D";
+                var response = await http.GetAsync(url);
+                if (!response.IsSuccessStatusCode) continue;
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                if (!doc.RootElement.ValueKind.Equals(JsonValueKind.Array)) continue;
+
+                var versions = doc.RootElement.EnumerateArray().ToList();
+                if (versions.Count == 0) continue;
+
+                var best = versions.FirstOrDefault(v =>
+                    v.TryGetProperty("version_type", out var vt) && vt.GetString() == "release");
+                if (best.ValueKind.Equals(JsonValueKind.Undefined))
+                    best = versions[0];
+
+                var latestVersion = "";
+                if (best.TryGetProperty("version_number", out var vn))
+                    latestVersion = vn.GetString() ?? "";
+
+                if (!string.IsNullOrEmpty(latestVersion) && !latestVersion.Equals(mod.ModVersion, StringComparison.OrdinalIgnoreCase))
+                {
+                    updates.Add(new ModUpdateInfo(
+                        mod.Id, mod.Name, mod.ModVersion, latestVersion,
+                        mod.SourceProvider ?? "modrinth", mod.RemoteProjectId, mod.RemoteSlug));
+                }
+            }
+            catch
+            {
+                // Skip mods that fail update check
+            }
+        }
+
+        if (updates.Count > 0)
+            _logService.Info("ModService", "UpdateCheck", $"Found {updates.Count} mod(s) with updates available.");
+
+        return updates;
+    }
+
+    public async Task<Mod?> UpdateModAsync(int modId, string mcVersion)
+    {
+        var mod = await _modRepository.GetByIdAsync(modId);
+        if (mod == null || string.IsNullOrEmpty(mod.RemoteProjectId)) return null;
+
+        _logService.Info("ModService", "UpdateMod", $"Updating '{mod.Name}'...");
+
+        var profile = await _profileRepository.GetByIdAsync(mod.ProfileId)
+            ?? throw new Exception($"Profile {mod.ProfileId} not found");
+
+        var searchResult = new Mod
+        {
+            Name = mod.Name,
+            FileName = mod.RemoteProjectId,
+            IconPath = mod.IconPath,
+            Description = mod.Description
+        };
+
+        var updated = await InstallFromSearchAsync(mod.ProfileId, searchResult, mod.SourceProvider ?? "modrinth");
+        _logService.Info("ModService", "UpdateMod", $"'{mod.Name}' updated to {updated.ModVersion}.");
+        return updated;
     }
 
     private async Task<string?> ExtractMcVersionFromModAsync(string modPath)
