@@ -15,6 +15,10 @@ public class Mod : INotifyPropertyChanged
     public long FileSizeBytes { get; set; }
     public string MinecraftVersion { get; set; } = string.Empty;
     public string ModVersion { get; set; } = string.Empty;
+    public string? LatestVersion { get; set; }
+    public bool HasUpdate { get; set; }
+    public string? UpdateStatusText { get; set; }
+    public string? UpdateAvailableText { get; set; }
     public string? Description { get; set; }
     public string? IconPath { get; set; }
     public string? SourceProvider { get; set; }

@@ -135,7 +135,7 @@
 
             <!-- Mods list / Search results -->
             <Grid Grid.Row="4">
-                <ListBox ItemsSource="{Binding Mods}"
+<ListBox ItemsSource="{Binding Mods}"
                          Background="Transparent" BorderThickness="0"
                          ItemContainerStyle="{StaticResource FlushListBoxItem}"
                          Visibility="{Binding ShowSearchResults, Converter={StaticResource InverseBoolToVisibilityConverter}}">
@@ -152,13 +152,19 @@
                                         <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
                                         <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
                                             <TextBlock Text="{Binding ModVersion}" Style="{StaticResource CardSubtitle}" Margin="0" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="18,0,0,0" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" Margin="18,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding MinecraftVersion, StringFormat='MC {0}'}" Style="{StaticResource CardSubtitle}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding FileSizeBytes, Converter={StaticResource FileSizeConverter}}" Style="{StaticResource CardSubtitle}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding LatestVersion, StringFormat='v{0}'}" Style="{StaticResource CardSubtitle}" Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource WarningBrush}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisibilityConverter}}" />
                                         </StackPanel>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <ToggleButton IsChecked="{Binding Status, Converter={StaticResource StatusToBoolConverter}}"
                                                       Style="{StaticResource SwitchToggle}" />
+                                        <Button Content="{DynamicResource Mods_Update}" Style="{StaticResource PrimaryButton}"
+                                                Padding="10,5" FontSize="12" Margin="10,0,0,0"
+                                                Command="{Binding ElementName=root, Path=DataContext.UpdateModCommand}"
+                                                CommandParameter="{Binding Id}"
+                                                Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisibilityConverter}}" />
                                         <Button Content="{DynamicResource Mods_Delete}" Style="{StaticResource DangerButton}"
                                                 Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                                 Command="{Binding ElementName=root, Path=DataContext.RemoveModCommand}"

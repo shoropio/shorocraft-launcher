@@ -8,4 +8,6 @@
     <c:StatusToBoolConverter x:Key="StatusToBoolConverter" />
     <c:TranslationConverter x:Key="TranslationConverter" />
     <c:ImageSourceConverter x:Key="ImageSourceConverter" />
+    <c:ModUpdateHasUpdateConverter x:Key="ModUpdateHasUpdateConverter" />
+    <c:ModUpdateLatestVersionConverter x:Key="ModUpdateLatestVersionConverter" />
 </ResourceDictionary>

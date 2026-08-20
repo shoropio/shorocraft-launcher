@@ -935,6 +935,16 @@ public class ModService : IModService
     public async Task<List<ModUpdateInfo>> CheckForUpdatesAsync(int profileId, string mcVersion)
     {
         var mods = await _modRepository.GetByProfileIdAsync(profileId);
+        // Reset update status for all mods
+        foreach (var mod in mods)
+        {
+            mod.LatestVersion = null;
+            mod.HasUpdate = false;
+        }
+        foreach (var mod in mods)
+        {
+            await _modRepository.UpdateAsync(mod);
+        }
         var modrinthVersion = ToModrinthVersion(mcVersion);
         var updates = new List<ModUpdateInfo>();
 
@@ -966,6 +976,9 @@ public class ModService : IModService
 
                 if (!string.IsNullOrEmpty(latestVersion) && !latestVersion.Equals(mod.ModVersion, StringComparison.OrdinalIgnoreCase))
                 {
+                    mod.LatestVersion = latestVersion;
+                    mod.HasUpdate = true;
+                    await _modRepository.UpdateAsync(mod);
                     updates.Add(new ModUpdateInfo(
                         mod.Id, mod.Name, mod.ModVersion, latestVersion,
                         mod.SourceProvider ?? "modrinth", mod.RemoteProjectId, mod.RemoteSlug));
