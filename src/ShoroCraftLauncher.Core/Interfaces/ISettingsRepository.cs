@@ -1,5 +1,3 @@
-using ShoroCraftLauncher.Core.Models;
-
 namespace ShoroCraftLauncher.Core.Interfaces;
 
 public interface ISettingsRepository
@@ -7,4 +5,5 @@ public interface ISettingsRepository
     Task<string?> GetAsync(string key);
     Task SetAsync(string key, string value);
     Task<Dictionary<string, string>> GetAllAsync();
+    Task RemoveFromDatabaseAsync(string key);
 }

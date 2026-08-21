@@ -23,12 +23,14 @@ public class DialogService : IDialogService
 
     public string? ShowFolderBrowserDialog(string description)
     {
-        using var dialog = new System.Windows.Forms.FolderBrowserDialog();
-        dialog.Description = description;
-        
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            return dialog.SelectedPath;
+            Title = description
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            return dialog.FolderName;
         }
 
         return null;

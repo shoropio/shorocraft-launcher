@@ -4,12 +4,14 @@ using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using ShoroCraftLauncher.App.ViewModels;
 using ShoroCraftLauncher.App.Views;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Data.Database;
 using ShoroCraftLauncher.Data.Repositories;
+using ShoroCraftLauncher.Infrastructure;
 using ShoroCraftLauncher.Infrastructure.Authentication;
 using ShoroCraftLauncher.Infrastructure.Minecraft;
 using ShoroCraftLauncher.Infrastructure.Services;
@@ -97,12 +99,14 @@ public partial class App : Application
                 services.AddSingleton<ISettingsRepository, SettingsRepository>();
                 services.AddSingleton<IServerRepository, ServerRepository>();
 
+                services.AddSingleton<ISecretStorage, WindowsCredentialStorage>();
                 services.AddSingleton<ILogService, LogService>();
                 services.AddSingleton<IMinecraftService, MinecraftService>();
                 services.AddSingleton<IJavaService, JavaService>();
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
                 services.AddSingleton<ILauncherService, LauncherService>();
                 services.AddSingleton<IModService, ModService>();
+                services.AddSingleton<ModSearchService>();
                 services.AddSingleton<IResourcePackService, ResourcePackService>();
                 services.AddSingleton<IShaderPackService, ShaderPackService>();
                 services.AddSingleton<IScriptService, ScriptService>();
@@ -200,20 +204,34 @@ public partial class App : Application
     protected override async void OnExit(ExitEventArgs e)
     {
         base.OnExit(e);
-        _logService?.Info("App", "Shutdown", "ShoroCraft Launcher cerrando.");
         try
         {
-            var serverService = _host.Services.GetService<IServerService>();
-            if (serverService != null)
-                await serverService.StopAllAsync();
+            _logService?.Info("App", "Shutdown", "ShoroCraft Launcher cerrando.");
+            try
+            {
+                var serverService = _host.Services.GetService<IServerService>();
+                if (serverService != null)
+                    await serverService.StopAllAsync();
+            }
+            catch (Exception ex)
+            {
+                _logService?.Error("App", "Shutdown", "Error deteniendo servidores durante el cierre.", ex);
+            }
+            if (_logService != null)
+                await _logService.FlushAsync();
         }
         catch (Exception ex)
         {
-            _logService?.Error("App", "Shutdown", "Error deteniendo servidores durante el cierre.", ex);
+            _logService?.Error("App", "Shutdown", "Error durante el cierre de la aplicación.", ex);
         }
-        if (_logService != null)
-            await _logService.FlushAsync();
-        await _host.StopAsync();
-        Log.CloseAndFlush();
+        finally
+        {
+            try
+            {
+                await _host.StopAsync();
+            }
+            catch { }
+            Log.CloseAndFlush();
+        }
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Collections;
@@ -98,12 +98,12 @@ public sealed class LogService : ILogService, IDisposable
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
         while (_queue.Reader.Count > 0 && !cancellationToken.IsCancellationRequested)
-            await Task.Delay(25, cancellationToken);
+            await Task.Delay(25, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<string> ExportDiagnosticsZipAsync(DiagnosticExportOptions options, CancellationToken cancellationToken = default)
     {
-        await FlushAsync(cancellationToken);
+        await FlushAsync(cancellationToken).ConfigureAwait(false);
 
         var exportDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -192,12 +192,12 @@ public sealed class LogService : ILogService, IDisposable
             {
                 if (write.Event != null)
                 {
-                    await File.AppendAllTextAsync(_launcherLogPath, FormatHuman(write.Event, write.Exception) + Environment.NewLine, _cts.Token);
-                    await File.AppendAllTextAsync(_jsonLogPath, JsonSerializer.Serialize(write.Event, JsonOptions(writeIndented: false)) + Environment.NewLine, _cts.Token);
+                    await File.AppendAllTextAsync(_launcherLogPath, FormatHuman(write.Event, write.Exception) + Environment.NewLine, _cts.Token).ConfigureAwait(false);
+                    await File.AppendAllTextAsync(_jsonLogPath, JsonSerializer.Serialize(write.Event, JsonOptions(writeIndented: false)) + Environment.NewLine, _cts.Token).ConfigureAwait(false);
                 }
 
                 if (write.MinecraftPath != null && write.Text != null)
-                    await File.AppendAllTextAsync(write.MinecraftPath, write.Text + Environment.NewLine, _cts.Token);
+                    await File.AppendAllTextAsync(write.MinecraftPath, write.Text + Environment.NewLine, _cts.Token).ConfigureAwait(false);
             }
             catch
             {
@@ -257,14 +257,19 @@ public sealed class LogService : ILogService, IDisposable
     internal static string Sanitize(string value)
     {
         if (string.IsNullOrEmpty(value)) return value;
-        var redactedKeys = new[] { "access_token", "accessToken", "clientToken", "uuid", "session" };
+        var redactedKeys = new[] { "access_token", "accessToken", "clientToken", "uuid", "session",
+            "x-api-key", "x_api_key", "apiKey", "api_key", "curseforge_api_key", "curseforgeApiKey",
+            "clientSecret", "password", "secret" };
         foreach (var key in redactedKeys)
-            value = System.Text.RegularExpressions.Regex.Replace(value, $"({key}\\s*[=:]\\s*)\\S+", "$1[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            value = System.Text.RegularExpressions.Regex.Replace(value, $"({System.Text.RegularExpressions.Regex.Escape(key)}\\s*[=:]\\s*)\\S+", "$1[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         // Flags de línea de comandos de Minecraft: --accessToken <jwt>, --accessToken=<jwt>, --clientId <uuid>, etc.
         var redactedFlags = new[] { "accessToken", "access_token", "clientToken", "clientId", "xuid", "uuid" };
         foreach (var flag in redactedFlags)
             value = System.Text.RegularExpressions.Regex.Replace(value, $"--{flag}\\s*[= ]\\s*[^\\s\"]+", $"--{flag}=[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Tokens Bearer en encabezados: "Authorization: Bearer eyJ..."
+        value = System.Text.RegularExpressions.Regex.Replace(value, "(Bearer\\s+)[A-Za-z0-9._\\-]{8,}", "$1[REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return value;
     }

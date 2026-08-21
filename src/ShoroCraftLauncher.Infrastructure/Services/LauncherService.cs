@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -72,7 +72,7 @@ public class LauncherService : ILauncherService
             Directory.CreateDirectory(gameDir);
             _logService?.Debug("Launch", "GameDirectoryReady", "Directorio de juego listo.", new { gameDir });
             _logger.LogInformation("Repairing installation in {GameDir}", gameDir);
-            await _minecraftService.RepairInstallationAsync(gameDir);
+            await _minecraftService.RepairInstallationAsync(gameDir).ConfigureAwait(false);
             _logger.LogInformation("Installation repair completed");
 
             var javaPath = profile.JavaPath;
@@ -80,7 +80,7 @@ public class LauncherService : ILauncherService
             {
                 _logger.LogInformation("Java path not specified, trying to find recommended Java");
                 _logService?.Info("Java", "ResolveStarted", "Buscando Java recomendado.", new { profile.MinecraftVersion });
-                var recommended = await _javaService.GetRecommendedJavaPathAsync(profile.MinecraftVersion);
+                var recommended = await _javaService.GetRecommendedJavaPathAsync(profile.MinecraftVersion).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(recommended))
                 {
                     _logger.LogInformation("Recommended Java not found, starting auto-download");
@@ -92,7 +92,7 @@ public class LauncherService : ILauncherService
                             var msg = $"Descargando Java necesario... {pct:0}%";
                             Log($"[INFO] {msg}");
                             ProgressChanged?.Invoke(pct, msg);
-                        }));
+                        })).ConfigureAwait(false);
                 }
                 
                 if (string.IsNullOrEmpty(recommended))
@@ -114,7 +114,7 @@ public class LauncherService : ILauncherService
                 (pct, msg) => {
                     Log($"[INFO] {msg}");
                     ProgressChanged?.Invoke(pct, msg);
-                });
+                }).ConfigureAwait(false);
 
             process.OutputDataReceived += (_, e) =>
             {
@@ -187,8 +187,8 @@ public class LauncherService : ILauncherService
                 _logService?.Warning("Launch", "PathRepair", "Se detectó un error de ruta; intentando reparar e iniciar de nuevo.");
                 try
                 {
-                    await _minecraftService.RepairInstallationAsync(gameDir);
-                    return await LaunchProfileInternalAsync(profile, auth, true);
+                    await _minecraftService.RepairInstallationAsync(gameDir).ConfigureAwait(false);
+                    return await LaunchProfileInternalAsync(profile, auth, true).ConfigureAwait(false);
                 }
                 catch (Exception retryEx)
                 {

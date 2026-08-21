@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
@@ -38,7 +38,7 @@ public class ModpackService : IModpackService
         if (Path.GetExtension(mrpackPath).ToLowerInvariant() != ".mrpack")
             throw new Exception("Solo se permiten archivos .mrpack (modpacks de Modrinth).");
 
-        return await ImportCoreAsync(profileId, mrpackPath, onProgress);
+        return await ImportCoreAsync(profileId, mrpackPath, onProgress).ConfigureAwait(false);
     }
 
     public async Task<ModpackImportResult> ImportFromUrlAsync(int profileId, string url, Action<string>? onProgress = null)
@@ -47,8 +47,8 @@ public class ModpackService : IModpackService
         var tempFile = Path.Combine(Path.GetTempPath(), $"mrpack_{Guid.NewGuid():N}.mrpack");
         try
         {
-            await _resumableDownloadService.DownloadAsync(url, tempFile);
-            return await ImportCoreAsync(profileId, tempFile, onProgress);
+            await _resumableDownloadService.DownloadAsync(url, tempFile).ConfigureAwait(false);
+            return await ImportCoreAsync(profileId, tempFile, onProgress).ConfigureAwait(false);
         }
         finally
         {
@@ -59,7 +59,7 @@ public class ModpackService : IModpackService
 
     private async Task<ModpackImportResult> ImportCoreAsync(int profileId, string mrpackPath, Action<string>? onProgress)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Perfil {profileId} no encontrado.");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
@@ -78,7 +78,7 @@ public class ModpackService : IModpackService
             if (!File.Exists(indexPath))
                 throw new Exception("El modpack no contiene modrinth.index.json.");
 
-            var index = JsonSerializer.Deserialize<MrpackIndex>(await File.ReadAllTextAsync(indexPath))
+            var index = JsonSerializer.Deserialize<MrpackIndex>(await File.ReadAllTextAsync(indexPath).ConfigureAwait(false))
                 ?? throw new Exception("No se pudo leer modrinth.index.json.");
 
             var result = new ModpackImportResult
@@ -122,11 +122,11 @@ public class ModpackService : IModpackService
                 try
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-                    await DownloadWithHashCheckAsync(file.Downloads[0], targetPath, file.Hashes?.Sha1, file.FileSize);
+                    await DownloadWithHashCheckAsync(file.Downloads[0], targetPath, file.Hashes?.Sha1, file.FileSize).ConfigureAwait(false);
 
                     if (safePath.StartsWith("mods/") && fileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
                     {
-                        var existing = await _modRepository.GetByProfileIdAsync(profileId);
+                        var existing = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
                         var alreadyInstalled = existing.Any(m =>
                             string.Equals(m.FileName, fileName, StringComparison.OrdinalIgnoreCase));
 
@@ -141,7 +141,7 @@ public class ModpackService : IModpackService
                                 FileSizeBytes = new FileInfo(targetPath).Length,
                                 MinecraftVersion = result.MinecraftVersion ?? string.Empty,
                                 Status = ModStatus.Active
-                            });
+                            }).ConfigureAwait(false);
                             result.ModsInstalled++;
                         }
                     }
@@ -172,7 +172,7 @@ public class ModpackService : IModpackService
 
     private async Task DownloadWithHashCheckAsync(string url, string destPath, string? expectedSha1, long expectedSize)
     {
-        await _resumableDownloadService.DownloadAsync(url, destPath, expectedSha1, expectedSize);
+        await _resumableDownloadService.DownloadAsync(url, destPath, expectedSha1, expectedSize).ConfigureAwait(false);
     }
 
     private static void CopyDirectory(string source, string dest)

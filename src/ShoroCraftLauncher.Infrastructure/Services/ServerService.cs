@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -60,7 +60,7 @@ public class ServerService : IServerService
 
     public async Task LoadAsync()
     {
-        var servers = await _repository.GetAllAsync();
+        var servers = await _repository.GetAllAsync().ConfigureAwait(false);
         lock (_lock)
         {
             _servers.Clear();
@@ -71,7 +71,7 @@ public class ServerService : IServerService
 
     public async Task<List<string>> GetAvailableVanillaVersionsAsync()
     {
-        var versions = await _minecraftService.FetchAvailableVersionsAsync();
+        var versions = await _minecraftService.FetchAvailableVersionsAsync().ConfigureAwait(false);
         return versions
             .Where(v => v.VersionType == "release")
             .Select(v => v.VersionId)
@@ -82,7 +82,7 @@ public class ServerService : IServerService
     {
         try
         {
-            var json = await _httpClient.GetStringAsync(PaperApiBaseUrl);
+            var json = await _httpClient.GetStringAsync(PaperApiBaseUrl).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
             var versions = new List<string>();
             if (doc.RootElement.TryGetProperty("versions", out var versionsProp))
@@ -122,7 +122,7 @@ public class ServerService : IServerService
             Status = ServerStatus.Stopped
         };
 
-        server.Id = await _repository.CreateAsync(server);
+        server.Id = await _repository.CreateAsync(server).ConfigureAwait(false);
 
         lock (_lock)
         {
@@ -135,7 +135,7 @@ public class ServerService : IServerService
 
     public async Task DeleteServerAsync(MinecraftServer server)
     {
-        await StopAsync(server);
+        await StopAsync(server).ConfigureAwait(false);
 
         _logService?.Info("ServerService", "Delete", $"Eliminando servidor '{server.Name}'...");
 
@@ -149,7 +149,7 @@ public class ServerService : IServerService
             _logger.LogWarning(ex, "Failed to delete server directory");
         }
 
-        await _repository.DeleteAsync(server.Id);
+        await _repository.DeleteAsync(server.Id).ConfigureAwait(false);
 
         lock (_lock)
         {
@@ -167,20 +167,20 @@ public class ServerService : IServerService
 
         try
         {
-            await KillOrphanProcessAsync(server.DirectoryPath);
+            await KillOrphanProcessAsync(server.DirectoryPath).ConfigureAwait(false);
             Directory.CreateDirectory(server.DirectoryPath);
             if (!File.Exists(Path.Combine(server.DirectoryPath, "eula.txt")))
                 WriteEula(server.DirectoryPath);
 
-            await EnsurePauseDisabledAsync(server.DirectoryPath);
+            await EnsurePauseDisabledAsync(server.DirectoryPath).ConfigureAwait(false);
 
-            var jarPath = await EnsureServerJarAsync(server);
+            var jarPath = await EnsureServerJarAsync(server).ConfigureAwait(false);
 
             var javaPath = server.JavaPath;
             if (string.IsNullOrEmpty(javaPath))
             {
                 _logService?.Info("Java", "ResolveStarted", "Buscando Java recomendado para el servidor...", new { server.MinecraftVersion });
-                javaPath = await _javaService.GetRecommendedJavaPathAsync(server.MinecraftVersion);
+                javaPath = await _javaService.GetRecommendedJavaPathAsync(server.MinecraftVersion).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(javaPath))
                 {
                     Log($"Descargando Java necesario para el servidor...");
@@ -193,14 +193,14 @@ public class ServerService : IServerService
                         ProgressChanged?.Invoke(pct, msg);
                         if (whole % 10 == 0)
                             Log($"[INFO] {msg}");
-                    }));
+                    })).ConfigureAwait(false);
                 }
 
                 if (string.IsNullOrEmpty(javaPath))
                     return new ServerLaunchResult { Success = false, ErrorMessage = "No se pudo encontrar ni descargar Java. Revisa tu conexión." };
 
                 server.JavaPath = javaPath;
-                await _repository.UpdateAsync(server);
+                await _repository.UpdateAsync(server).ConfigureAwait(false);
             }
 
             var startInfo = new ProcessStartInfo
@@ -269,7 +269,7 @@ public class ServerService : IServerService
 
             try
             {
-                await WritePidFileAsync(server.DirectoryPath, process.Id);
+                await WritePidFileAsync(server.DirectoryPath, process.Id).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -345,7 +345,7 @@ public class ServerService : IServerService
 
         _logService?.Info("ServerService", "StopAll", $"Deteniendo {running.Length} servidor(es) en ejecución...");
         var tasks = running.Select(s => Task.Run(() => StopAsync(s)));
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public Task SendCommandAsync(MinecraftServer server, string command)
@@ -402,8 +402,8 @@ public class ServerService : IServerService
         LogServer(server.Id, $"[INFO] Descargando jar del servidor ({server.Type} {server.MinecraftVersion})...");
 
         var url = server.Type == ServerType.Paper
-            ? await ResolvePaperJarUrlAsync(server.MinecraftVersion)
-            : await _minecraftService.GetServerJarUrlAsync(server.MinecraftVersion);
+            ? await ResolvePaperJarUrlAsync(server.MinecraftVersion).ConfigureAwait(false)
+            : await _minecraftService.GetServerJarUrlAsync(server.MinecraftVersion).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(url))
             throw new Exception($"No se encontró el jar para {server.Type} {server.MinecraftVersion}.");
@@ -421,7 +421,7 @@ public class ServerService : IServerService
             }
         });
 
-        await _resumableDownloadService.DownloadAsync(url, jarPath, progress);
+        await _resumableDownloadService.DownloadAsync(url, jarPath, progress).ConfigureAwait(false);
         LogServer(server.Id, $"[INFO] Jar del servidor descargado.");
         return jarPath;
     }
@@ -429,7 +429,7 @@ public class ServerService : IServerService
     private async Task<string?> ResolvePaperJarUrlAsync(string minecraftVersion)
     {
         var buildsUrl = $"{PaperApiBaseUrl}/versions/{minecraftVersion}/builds";
-        var json = await _httpClient.GetStringAsync(buildsUrl);
+        var json = await _httpClient.GetStringAsync(buildsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
 
         if (!doc.RootElement.TryGetProperty("builds", out var builds) || builds.GetArrayLength() == 0)
@@ -477,7 +477,7 @@ public class ServerService : IServerService
 
         try
         {
-            var pidText = await File.ReadAllTextAsync(pidPath);
+            var pidText = await File.ReadAllTextAsync(pidPath).ConfigureAwait(false);
             if (!int.TryParse(pidText.Trim(), out var pid) || pid <= 0)
             {
                 TryDelete(pidPath);
@@ -540,7 +540,7 @@ public class ServerService : IServerService
     {
         try
         {
-            await File.WriteAllTextAsync(GetServerPidPath(directoryPath), pid.ToString());
+            await File.WriteAllTextAsync(GetServerPidPath(directoryPath), pid.ToString()).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -596,17 +596,17 @@ public class ServerService : IServerService
         var propsPath = Path.Combine(directoryPath, "server.properties");
         if (!File.Exists(propsPath)) return;
 
-        var content = await File.ReadAllTextAsync(propsPath);
+        var content = await File.ReadAllTextAsync(propsPath).ConfigureAwait(false);
         if (content.Contains("pause-when-empty-seconds", StringComparison.OrdinalIgnoreCase))
         {
             var updated = System.Text.RegularExpressions.Regex.Replace(
                 content, @"(?im)^\s*pause-when-empty-seconds\s*=.*$", "pause-when-empty-seconds=0");
             if (!string.Equals(updated, content, StringComparison.Ordinal))
-                await File.WriteAllTextAsync(propsPath, updated);
+                await File.WriteAllTextAsync(propsPath, updated).ConfigureAwait(false);
             return;
         }
 
-        await File.AppendAllTextAsync(propsPath, "pause-when-empty-seconds=0\n");
+        await File.AppendAllTextAsync(propsPath, "pause-when-empty-seconds=0\n").ConfigureAwait(false);
     }
 
     private static void WriteServerProperties(string directoryPath, string? worldName)

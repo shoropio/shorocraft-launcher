@@ -13,46 +13,46 @@ public class GameVersionRepository : IGameVersionRepository
 
     public async Task<List<GameVersion>> GetAllAsync()
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.GameVersions.AsNoTracking().OrderByDescending(g => g.ReleasedAt).ToListAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        return await context.GameVersions.AsNoTracking().OrderByDescending(g => g.ReleasedAt).ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<GameVersion?> GetByIdAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id).ConfigureAwait(false);
     }
 
     public async Task<GameVersion?> GetByVersionIdAsync(string versionId)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.VersionId == versionId);
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        return await context.GameVersions.AsNoTracking().FirstOrDefaultAsync(g => g.VersionId == versionId).ConfigureAwait(false);
     }
 
     public async Task<int> CreateAsync(GameVersion version)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
         context.GameVersions.Add(version);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return version.Id;
     }
 
     public async Task UpdateAsync(GameVersion version)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
         version.UpdatedAt = DateTime.UtcNow;
         context.GameVersions.Update(version);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(int id)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var version = await context.GameVersions.FindAsync(id);
+        await using var context = await _contextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        var version = await context.GameVersions.FindAsync(id).ConfigureAwait(false);
         if (version != null)
         {
             context.GameVersions.Remove(version);
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

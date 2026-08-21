@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -30,7 +30,7 @@ public class GameMapService : IGameMapService
 
     public async Task<List<GameMap>> GetMapsAsync(int profileId)
     {
-        var dbMaps = await _repository.GetByProfileIdAsync(profileId);
+        var dbMaps = await _repository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
         var result = new List<GameMap>();
 
         foreach (var map in dbMaps)
@@ -39,7 +39,7 @@ public class GameMapService : IGameMapService
                 result.Add(map);
         }
 
-        var savesDir = await GetMapsFolderAsync(profileId);
+        var savesDir = await GetMapsFolderAsync(profileId).ConfigureAwait(false);
         if (Directory.Exists(savesDir))
         {
             var knownFolders = result
@@ -80,7 +80,7 @@ public class GameMapService : IGameMapService
         if (ext != ".zip" && ext != ".mcworld")
             throw new Exception("Solo se permiten archivos .zip o .mcworld como mapas.");
 
-        var mapsDir = await GetMapsFolderAsync(profileId);
+        var mapsDir = await GetMapsFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(mapsDir);
 
         string destDir;
@@ -126,7 +126,7 @@ public class GameMapService : IGameMapService
             Status = PackStatus.Active
         };
 
-        await _repository.CreateAsync(map);
+        await _repository.CreateAsync(map).ConfigureAwait(false);
         _logService.Info("GameMapService", "AddMap", $"Mundo '{map.Name}' agregado.");
         return map;
     }
@@ -154,13 +154,13 @@ public class GameMapService : IGameMapService
         catch { }
 
         if (map.Id > 0)
-            await _repository.DeleteAsync(map.Id);
+            await _repository.DeleteAsync(map.Id).ConfigureAwait(false);
         _logService.Info("GameMapService", "RemoveMap", $"Mundo '{map.Name}' eliminado.");
     }
 
     public async Task<string> GetMapsFolderAsync(int profileId)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)

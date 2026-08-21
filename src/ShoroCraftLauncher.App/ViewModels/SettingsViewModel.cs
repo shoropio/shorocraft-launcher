@@ -8,12 +8,14 @@ using ShoroCraftLauncher.App.Commands;
 using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
 public class SettingsViewModel : BaseViewModel
 {
     private readonly ISettingsRepository _settingsRepo;
+    private readonly ISecretStorage _secretStorage;
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly ILogService _logService;
     private readonly IUpdaterService _updaterService;
@@ -104,7 +106,11 @@ public class SettingsViewModel : BaseViewModel
     public void SetCurseForgeApiKeyFromUi(string key)
     {
         if (SetProperty(ref _curseForgeApiKey, key))
+        {
             CurseForgeApiKeyChanged?.Invoke(this, key);
+            // Store API key securely in Windows Credential Locker
+            _ = _secretStorage.SetSecretAsync("curseforge_api_key", key);
+        }
     }
 
     private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
@@ -140,11 +146,13 @@ public class SettingsViewModel : BaseViewModel
 
     public SettingsViewModel(
         ISettingsRepository settingsRepo,
+        ISecretStorage secretStorage,
         ILogger<SettingsViewModel> logger,
         ILogService logService,
         IUpdaterService updaterService)
     {
         _settingsRepo = settingsRepo;
+        _secretStorage = secretStorage;
         _logger = logger;
         _logService = logService;
         _updaterService = updaterService;
@@ -170,7 +178,11 @@ public class SettingsViewModel : BaseViewModel
             KeepOpen = settings.GetValueOrDefault("keep_launcher_open") != "false";
             GameDir = settings.GetValueOrDefault("game_directory") ?? string.Empty;
             Language = settings.GetValueOrDefault("language") ?? "es";
-            CurseForgeApiKey = SecretProtector.Decrypt(settings.GetValueOrDefault("curseforge_api_key") ?? string.Empty);
+
+            // Get CurseForge API key from secure storage (with automatic migration from DPAPI)
+            var apiKey = await GetCurseForgeApiKeyAsync();
+            CurseForgeApiKey = apiKey;
+
             LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
             _totalSizeBytes = await CalculateTotalSizeAsync();
@@ -185,12 +197,46 @@ public class SettingsViewModel : BaseViewModel
         IsBusy = false;
     }
 
+    private async Task<string?> GetCurseForgeApiKeyAsync()
+    {
+        // Try to get from secure storage first
+        var secret = await _secretStorage.GetSecretAsync("curseforge_api_key");
+        if (secret != null)
+        {
+            return secret;
+        }
+
+        // Fallback: try database with DPAPI decryption (migration from old format)
+        var dbKey = await _settingsRepo.GetAsync("curseforge_api_key");
+        if (!string.IsNullOrWhiteSpace(dbKey))
+        {
+            try
+            {
+                var decrypted = SecretProtector.Decrypt(dbKey);
+                // Migrate to secure storage
+                await _secretStorage.SetSecretAsync("curseforge_api_key", decrypted);
+                // Remove from database after successful migration
+                await _settingsRepo.RemoveFromDatabaseAsync("curseforge_api_key");
+                _logger.LogInformation("CurseForge API key migrated from DPAPI to secure storage");
+                return decrypted;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to decrypt and migrate CurseForge API key from DPAPI");
+            }
+        }
+
+        return null;
+    }
+
     private void BrowseGameDir()
     {
-        using var dialog = new System.Windows.Forms.FolderBrowserDialog();
-        dialog.Description = "Selecciona la carpeta de Minecraft";
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            GameDir = dialog.SelectedPath;
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Selecciona la carpeta de Minecraft"
+        };
+        if (dialog.ShowDialog() == true)
+            GameDir = dialog.FolderName;
     }
 
     private async Task SaveGameDir()
@@ -224,7 +270,8 @@ public class SettingsViewModel : BaseViewModel
 
         GameDirValidationVisible = false;
         await _settingsRepo.SetAsync("game_directory", GameDir);
-        await _settingsRepo.SetAsync("curseforge_api_key", SecretProtector.Encrypt(CurseForgeApiKey));
+        // API key now stored securely via ISecretStorage, not in SettingsRepository
+        // The CurseForgeApiKey property is updated separately if changed via UI
         _logService.Info("Settings", "GameDirectorySaved", "Directorio de Minecraft guardado.", new { GameDir });
         StatusMessage = "Configuración guardada.";
     }

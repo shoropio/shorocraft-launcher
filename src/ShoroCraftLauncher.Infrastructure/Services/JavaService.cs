@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -41,14 +41,14 @@ public class JavaService : IJavaService
 
             foreach (var dir in Directory.GetDirectories(basePath, "*", SearchOption.AllDirectories))
             {
-                await TryAddJavaFromDir(dir, installations);
+                await TryAddJavaFromDir(dir, installations).ConfigureAwait(false);
             }
         }
 
         var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (!string.IsNullOrEmpty(javaHome))
         {
-            var info = await GetJavaInfoFromDir(Path.Combine(javaHome, "bin"));
+            var info = await GetJavaInfoFromDir(Path.Combine(javaHome, "bin")).ConfigureAwait(false);
             if (info != null && !installations.Any(i => i.Path.Equals(info.Path, StringComparison.OrdinalIgnoreCase)))
                 installations.Add(info);
         }
@@ -56,7 +56,7 @@ public class JavaService : IJavaService
         var pathJava = FindJavaInPath();
         if (pathJava != null)
         {
-            var info = await GetJavaInfoAsync(pathJava);
+            var info = await GetJavaInfoAsync(pathJava).ConfigureAwait(false);
             if (info != null && !installations.Any(i => i.Path.Equals(info.Path, StringComparison.OrdinalIgnoreCase)))
                 installations.Add(info);
         }
@@ -66,13 +66,13 @@ public class JavaService : IJavaService
 
     public async Task<string> GetRecommendedJavaPathAsync(string minecraftVersion)
     {
-        var installations = await FindJavaInstallationsAsync();
+        var installations = await FindJavaInstallationsAsync().ConfigureAwait(false);
         var valid = installations.Where(i => i.IsValid).ToList();
 
         if (valid.Count == 0)
             return string.Empty;
 
-        var recommendedJavaVersion = await GetRecommendedJavaMajorAsync(minecraftVersion);
+        var recommendedJavaVersion = await GetRecommendedJavaMajorAsync(minecraftVersion).ConfigureAwait(false);
 
         var withMajor = valid
             .Select(j => (Info: j, Major: ParseVersion(j.Version)))
@@ -98,7 +98,7 @@ public class JavaService : IJavaService
     {
         _logger.LogInformation("Downloading Java for Minecraft {Version}", minecraftVersion);
 
-        var major = await GetRecommendedJavaMajorAsync(minecraftVersion);
+        var major = await GetRecommendedJavaMajorAsync(minecraftVersion).ConfigureAwait(false);
         var component = major >= 21 ? "java-runtime-delta" : major >= 17 ? "java-runtime-alpha" : "jre-legacy";
 
         var minecraftPath = new CmlLib.Core.MinecraftPath();
@@ -124,7 +124,7 @@ public class JavaService : IJavaService
                         progress.Report((double)e.ProgressedTasks / e.TotalTasks * 100);
                 };
             }
-            await launcher.InstallAsync(minecraftVersion);
+            await launcher.InstallAsync(minecraftVersion).ConfigureAwait(false);
             var binPath = path.GetJavaBinaryPath(javaVer, new CmlLib.Core.Rules.RulesEvaluatorContext(CmlLib.Core.Rules.LauncherOSRule.Current));
             return File.Exists(binPath) ? binPath : string.Empty;
         }
@@ -138,8 +138,8 @@ public class JavaService : IJavaService
     public async Task<JavaInfo?> DownloadJavaAsync(IProgress<double>? progress = null)
     {
         // Redirect to a default (e.g. 17)
-        var path = await DownloadJavaForVersionAsync("1.17", progress);
-        return await GetJavaInfoAsync(path);
+        var path = await DownloadJavaForVersionAsync("1.17", progress).ConfigureAwait(false);
+        return await GetJavaInfoAsync(path).ConfigureAwait(false);
     }
 
     private async Task<JavaInfo?> GetJavaInfoAsync(string javaPath)
@@ -159,8 +159,8 @@ public class JavaService : IJavaService
             };
 
             process.Start();
-            var output = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var output = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            await process.WaitForExitAsync().ConfigureAwait(false);
 
             if (process.ExitCode != 0) return null;
 
@@ -190,7 +190,7 @@ public class JavaService : IJavaService
             var javaPath = Path.Combine(dir, "bin", exe);
             if (!File.Exists(javaPath)) continue;
 
-            var info = await GetJavaInfoAsync(javaPath);
+            var info = await GetJavaInfoAsync(javaPath).ConfigureAwait(false);
             if (info != null && !installations.Any(i => i.Path.Equals(info.Path, StringComparison.OrdinalIgnoreCase)))
             {
                 installations.Add(info);
@@ -205,7 +205,7 @@ public class JavaService : IJavaService
         {
             var javaPath = Path.Combine(binDir, exe);
             if (!File.Exists(javaPath)) continue;
-            return await GetJavaInfoAsync(javaPath);
+            return await GetJavaInfoAsync(javaPath).ConfigureAwait(false);
         }
         return null;
     }
@@ -253,7 +253,7 @@ public class JavaService : IJavaService
     {
         try
         {
-            var json = await _httpClient.GetStringAsync(VersionManifestUrl);
+            var json = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
             using var manifest = JsonDocument.Parse(json);
             var resolvedVersion = minecraftVersion;
 
@@ -274,7 +274,7 @@ public class JavaService : IJavaService
                 if (string.IsNullOrWhiteSpace(versionUrl))
                     break;
 
-                var versionJson = await _httpClient.GetStringAsync(versionUrl);
+                var versionJson = await _httpClient.GetStringAsync(versionUrl).ConfigureAwait(false);
                 using var versionDoc = JsonDocument.Parse(versionJson);
                 if (versionDoc.RootElement.TryGetProperty("javaVersion", out var javaVersion)
                     && javaVersion.TryGetProperty("majorVersion", out var major)

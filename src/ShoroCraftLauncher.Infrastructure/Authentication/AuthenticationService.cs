@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 
@@ -24,7 +24,7 @@ public class AuthenticationService : IAuthenticationService
 
             try
             {
-                var silentSession = await loginHandler.AuthenticateSilently();
+                var silentSession = await loginHandler.AuthenticateSilently().ConfigureAwait(false);
                 if (silentSession != null)
                 {
                     return new AuthResult
@@ -41,7 +41,7 @@ public class AuthenticationService : IAuthenticationService
                 _logger.LogInformation("Silent Microsoft authentication requires an interactive login");
             }
 
-            var session = await loginHandler.Authenticate();
+            var session = await loginHandler.Authenticate().ConfigureAwait(false);
 
             if (session != null)
             {
@@ -78,7 +78,7 @@ public class AuthenticationService : IAuthenticationService
             var loginHandler = new CmlLib.Core.Auth.Microsoft.JELoginHandlerBuilder()
                 .Build();
 
-            var session = await loginHandler.AuthenticateSilently();
+            var session = await loginHandler.AuthenticateSilently().ConfigureAwait(false);
             if (session != null)
             {
                 return new AuthResult
@@ -189,7 +189,7 @@ public class AuthenticationService : IAuthenticationService
         {
             var loginHandler = new CmlLib.Core.Auth.Microsoft.JELoginHandlerBuilder()
                 .Build();
-            await loginHandler.Signout();
+            await loginHandler.Signout().ConfigureAwait(false);
             _logger.LogInformation("Microsoft session cleared");
         }
         catch (Exception ex)

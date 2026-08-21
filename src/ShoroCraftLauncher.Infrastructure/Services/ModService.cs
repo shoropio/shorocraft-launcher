@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -15,6 +15,7 @@ public class ModService : IModService
     private readonly IProfileRepository _profileRepository;
     private readonly ISettingsRepository _settingsRepository;
     private readonly IMinecraftService _minecraftService;
+    private readonly ModSearchService _modSearchService;
     private readonly ILogger<ModService> _logger;
     private readonly ILogService _logService;
     private readonly HttpClient _httpClient;
@@ -25,15 +26,18 @@ public class ModService : IModService
         IProfileRepository profileRepository,
         ISettingsRepository settingsRepository,
         IMinecraftService minecraftService,
+        ModSearchService modSearchService,
         ILogger<ModService> logger,
         ILogService logService,
         HttpClient httpClient,
         IResumableDownloadService? resumableDownloadService = null)
+        : base()
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
         _settingsRepository = settingsRepository;
         _minecraftService = minecraftService;
+        _modSearchService = modSearchService;
         _logger = logger;
         _logService = logService;
         _httpClient = httpClient;
@@ -42,122 +46,22 @@ public class ModService : IModService
 
     public async Task<List<Mod>> SearchModsAsync(string provider, string query, string minecraftVersion, string loaderType)
     {
-        return provider.Equals("CurseForge", StringComparison.OrdinalIgnoreCase)
-            ? await SearchCurseForgeAsync(query, minecraftVersion, loaderType)
-            : await SearchModrinthAsync(query, minecraftVersion, loaderType);
+        return await _modSearchService.SearchModsAsync(provider, query, minecraftVersion, loaderType).ConfigureAwait(false);
     }
 
     public async Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType)
     {
-        var modrinthVersion = ToModrinthVersion(minecraftVersion);
-        _logger.LogInformation("Searching Modrinth: {Query} for MC {Version} (Modrinth: {ModrinthVersion}) on {Loader}", query, minecraftVersion, modrinthVersion, loaderType);
-        _logService.Info("ModService", "SearchModrinth", $"Buscando '{query}' en Modrinth para MC {minecraftVersion} ({loaderType})...");
-        
-        try
-        {
-            var url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets=[[\"versions:{modrinthVersion}\"],[\"categories:{loaderType.ToLower()}\"]]";
-            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
-            
-            var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            
-            var json = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-            
-            var results = new List<Mod>();
-            foreach (var item in doc.RootElement.GetProperty("hits").EnumerateArray())
-            {
-                results.Add(new Mod
-                {
-                    Name = item.GetProperty("title").GetString() ?? "Unknown",
-                    Description = item.GetProperty("description").GetString(),
-                    IconPath = item.TryGetProperty("icon_url", out var icon) ? icon.GetString() : null,
-                    FileName = item.GetProperty("project_id").GetString() ?? string.Empty,
-                    ModVersion = (item.TryGetProperty("latest_version", out var v) ? v.GetString() : "latest") ?? "latest"
-                });
-            }
-            _logService.Info("ModService", "SearchModrinth", $"Encontrados {results.Count} resultados.");
-            return results;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Modrinth search failed");
-            _logService.Error("ModService", "SearchModrinth", $"Error en búsqueda: {ex.Message}", ex);
-            return new List<Mod>();
-        }
-    }
-
-    private async Task<List<Mod>> SearchCurseForgeAsync(string query, string minecraftVersion, string loaderType)
-    {
-        var apiKey = await _settingsRepository.GetAsync("curseforge_api_key");
-        if (string.IsNullOrWhiteSpace(apiKey))
-            throw new InvalidOperationException("Configura una API key de CurseForge en Configuración.");
-
-        var loaderTypeId = loaderType.ToLowerInvariant() switch
-        {
-            "forge" => 1,
-            "neoforge" => 6,
-            "fabric" => 4,
-            "quilt" => 5,
-            _ => 0
-        };
-
-        var url = "https://api.curseforge.com/v1/mods/search"
-            + "?gameId=432"
-            + "&classId=6"
-            + $"&searchFilter={Uri.EscapeDataString(query)}"
-            + $"&gameVersion={Uri.EscapeDataString(minecraftVersion)}"
-            + $"&modLoaderType={loaderTypeId}"
-            + "&sortField=2"
-            + "&sortOrder=desc"
-            + "&pageSize=20";
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
-
-        using var response = await _httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = System.Text.Json.JsonDocument.Parse(json);
-        var results = new List<Mod>();
-
-        foreach (var item in doc.RootElement.GetProperty("data").EnumerateArray())
-        {
-            var latest = item.TryGetProperty("latestFilesIndexes", out var indexes)
-                ? indexes.EnumerateArray().FirstOrDefault()
-                : default;
-
-            results.Add(new Mod
-            {
-                Name = item.GetProperty("name").GetString() ?? "Unknown",
-                Description = item.TryGetProperty("summary", out var summary) ? summary.GetString() : null,
-                IconPath = item.TryGetProperty("logo", out var logo) && logo.TryGetProperty("thumbnailUrl", out var icon)
-                    ? icon.GetString()
-                    : null,
-                FileName = item.GetProperty("id").GetInt32().ToString(),
-                MinecraftVersion = latest.ValueKind == System.Text.Json.JsonValueKind.Object && latest.TryGetProperty("gameVersion", out var gameVersion)
-                    ? gameVersion.GetString() ?? minecraftVersion
-                    : minecraftVersion,
-                ModVersion = latest.ValueKind == System.Text.Json.JsonValueKind.Object && latest.TryGetProperty("filename", out var filename)
-                    ? filename.GetString() ?? "latest"
-                    : "latest"
-            });
-        }
-
-        return results;
+        return await _modSearchService.SearchModrinthAsync(query, minecraftVersion, loaderType).ConfigureAwait(false);
     }
 
     public async Task<Mod> InstallFromSearchAsync(int profileId, Mod searchResult, string provider)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         _logService.Info("ModService", "InstallFromSearch", $"Instalando '{searchResult.Name}' desde {provider}...");
 
-        var modsDir = await GetModsFolderAsync(profileId);
+        var modsDir = await GetModsFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(modsDir);
 
         string downloadUrl;
@@ -168,10 +72,10 @@ public class ModService : IModService
         IReadOnlyList<ModrinthDependency>? dependencies = null;
 
         if (provider.Equals("CurseForge", StringComparison.OrdinalIgnoreCase))
-            (downloadUrl, fileName, modVersion, fileSize) = await ResolveCurseForgeDownloadAsync(searchResult, profile);
+            (downloadUrl, fileName, modVersion, fileSize) = await ResolveCurseForgeDownloadAsync(searchResult, profile).ConfigureAwait(false);
         else
         {
-            var resolved = await ResolveModrinthDownloadAsync(searchResult, profile);
+            var resolved = await ResolveModrinthDownloadAsync(searchResult, profile).ConfigureAwait(false);
             downloadUrl = resolved.Url;
             fileName = resolved.FileName;
             modVersion = resolved.Version;
@@ -180,12 +84,14 @@ public class ModService : IModService
             projectSlug = resolved.ProjectSlug;
         }
 
+        fileName = DownloadPathGuard.SafeFileName(fileName);
+
         var destPath = Path.Combine(modsDir, fileName);
         var tempPath = destPath + ".tmp";
 
         // Localiza una instalación previa del mismo mod, pero NO la borra todavía:
         // si la descarga falla, el mod original queda intacto.
-        var existingMods = await _modRepository.GetByProfileIdAsync(profileId);
+        var existingMods = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
         var existing = string.IsNullOrWhiteSpace(projectSlug)
             ? existingMods.FirstOrDefault(m => string.Equals(m.FileName, fileName, StringComparison.OrdinalIgnoreCase))
             : existingMods.FirstOrDefault(m => StartsWithModSlug(m.FileName, projectSlug));
@@ -194,7 +100,7 @@ public class ModService : IModService
         _logService.Info("ModService", "DownloadMod", $"Descargando {fileName} ({FormatFileSize(fileSize)})...");
         try
         {
-            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath);
+            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath).ConfigureAwait(false);
         }
         catch
         {
@@ -217,7 +123,7 @@ public class ModService : IModService
             {
                 _logger.LogWarning(ex, "Failed to delete previous file {Path}", existing.FilePath);
             }
-            await _modRepository.DeleteAsync(existing.Id);
+            await _modRepository.DeleteAsync(existing.Id).ConfigureAwait(false);
             _logService.Info("ModService", "InstallFromSearch",
                 $"Reemplazando '{existing.FileName}' por '{fileName}'.");
         }
@@ -246,12 +152,12 @@ public class ModService : IModService
             RemoteSlug = projectSlug
         };
 
-        await _modRepository.CreateAsync(mod);
+        await _modRepository.CreateAsync(mod).ConfigureAwait(false);
         _logger.LogInformation("Mod {Name} installed from {Provider}", mod.Name, provider);
         _logService.Info("ModService", "InstallFromSearch", $"'{searchResult.Name}' instalado correctamente.");
 
         if (dependencies is { Count: > 0 })
-            await InstallRequiredDependenciesAsync(profileId, modsDir, profile, dependencies);
+            await InstallRequiredDependenciesAsync(profileId, modsDir, profile, dependencies).ConfigureAwait(false);
 
         return mod;
     }
@@ -266,13 +172,14 @@ public class ModService : IModService
     private async Task<ModrinthVersionInfo> ResolveModrinthDownloadAsync(Mod searchResult, Profile profile)
     {
         var projectId = searchResult.FileName;
-        var projectSlug = await GetProjectSlugAsync(projectId);
+        var projectSlug = await GetProjectSlugAsync(projectId).ConfigureAwait(false);
         EnsureUserAgent();
 
-        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
+        await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var loader = profile.Type.ToString().ToLowerInvariant();
@@ -418,16 +325,17 @@ public class ModService : IModService
     }
 
     private async Task<string> GetProjectSlugAsync(string projectId)
-        => (await GetProjectInfoAsync(projectId)).slug;
+        => (await GetProjectInfoAsync(projectId).ConfigureAwait(false)).slug;
 
     private async Task<(string slug, string title, string icon)> GetProjectInfoAsync(string projectId)
     {
         try
         {
             EnsureUserAgent();
-            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}");
+            await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}").ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             var root = doc.RootElement;
             var slug = root.TryGetProperty("slug", out var s) ? s.GetString() ?? projectId : projectId;
             var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? projectId : projectId;
@@ -449,13 +357,13 @@ public class ModService : IModService
     private async Task InstallRequiredDependenciesAsync(int profileId, string modsDir, Profile profile, IReadOnlyList<ModrinthDependency> dependencies)
     {
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, dependencies, visited);
+        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, dependencies, visited).ConfigureAwait(false);
     }
 
     private async Task InstallDependenciesRecursiveAsync(int profileId, string modsDir, Profile profile, IReadOnlyList<ModrinthDependency> dependencies, HashSet<string> visited)
     {
         foreach (var dep in dependencies.Where(d => d.DependencyType.Equals("required", StringComparison.OrdinalIgnoreCase)))
-            await InstallDependencyAsync(profileId, modsDir, profile, dep, visited);
+            await InstallDependencyAsync(profileId, modsDir, profile, dep, visited).ConfigureAwait(false);
     }
 
     private async Task InstallDependencyAsync(int profileId, string modsDir, Profile profile, ModrinthDependency dependency, HashSet<string> visited)
@@ -466,8 +374,8 @@ public class ModService : IModService
         if (!visited.Add(dependency.ProjectId))
             return;
 
-        var (slug, title, icon) = await GetProjectInfoAsync(dependency.ProjectId);
-        var resolved = await ResolveDependencyVersionAsync(dependency.ProjectId, dependency.VersionId, profile);
+        var (slug, title, icon) = await GetProjectInfoAsync(dependency.ProjectId).ConfigureAwait(false);
+        var resolved = await ResolveDependencyVersionAsync(dependency.ProjectId, dependency.VersionId, profile).ConfigureAwait(false);
         if (resolved == null)
         {
             _logService.Warning("ModService", "InstallDependency",
@@ -475,16 +383,17 @@ public class ModService : IModService
             return;
         }
 
-        var destPath = Path.Combine(modsDir, resolved.FileName);
+        var safeDependencyFileName = DownloadPathGuard.SafeFileName(resolved.FileName);
+        var destPath = Path.Combine(modsDir, safeDependencyFileName);
 
         if (File.Exists(destPath) || File.Exists(destPath + ".disabled"))
         {
             _logService.Info("ModService", "InstallDependency", $"La dependencia '{title}' ya está instalada ({resolved.FileName}).");
-            await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited);
+            await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited).ConfigureAwait(false);
             return;
         }
 
-        var existing = (await _modRepository.GetByProfileIdAsync(profileId))
+        var existing = (await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false))
             .FirstOrDefault(m => StartsWithModSlug(m.FileName, slug));
         if (existing != null)
         {
@@ -498,20 +407,20 @@ public class ModService : IModService
             {
                 _logger.LogWarning(ex, "Failed to delete outdated dependency file {Path}", existing.FilePath);
             }
-            await _modRepository.DeleteAsync(existing.Id);
+            await _modRepository.DeleteAsync(existing.Id).ConfigureAwait(false);
             _logService.Info("ModService", "InstallDependency",
                 $"Reemplazando '{existing.FileName}' por la versión requerida '{resolved.FileName}'.");
         }
 
         _logService.Info("ModService", "InstallDependency", $"Instalando dependencia '{title}' ({resolved.FileName})...");
-        await _resumableDownloadService.DownloadAsync(resolved.Url, destPath);
+        await _resumableDownloadService.DownloadAsync(resolved.Url, destPath).ConfigureAwait(false);
         var dependencyBytes = new FileInfo(destPath).Length;
 
         var mod = new Mod
         {
             ProfileId = profileId,
             Name = title,
-            FileName = resolved.FileName,
+            FileName = safeDependencyFileName,
             FilePath = destPath,
             FileSizeBytes = resolved.Size > 0 ? resolved.Size : dependencyBytes,
             MinecraftVersion = profile.MinecraftVersion,
@@ -520,19 +429,20 @@ public class ModService : IModService
             Description = "Instalado automáticamente como dependencia.",
             Status = ModStatus.Active
         };
-        await _modRepository.CreateAsync(mod);
+        await _modRepository.CreateAsync(mod).ConfigureAwait(false);
         _logService.Info("ModService", "InstallDependency", $"Dependencia '{title}' instalada correctamente.");
 
-        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited);
+        await InstallDependenciesRecursiveAsync(profileId, modsDir, profile, resolved.Dependencies, visited).ConfigureAwait(false);
     }
 
     private async Task<ModrinthVersionInfo?> ResolveDependencyVersionAsync(string projectId, string versionId, Profile profile)
     {
         EnsureUserAgent();
-        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
+        await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version").ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) return null;
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var loader = profile.Type.ToString().ToLowerInvariant();
@@ -568,7 +478,7 @@ public class ModService : IModService
 
     private async Task<(string url, string fileName, string version, long size)> ResolveCurseForgeDownloadAsync(Mod searchResult, Profile profile)
     {
-        var apiKey = await _settingsRepository.GetAsync("curseforge_api_key");
+        var apiKey = await _settingsRepository.GetAsync("curseforge_api_key").ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException("Configura una API key de CurseForge en Configuración.");
 
@@ -579,10 +489,11 @@ public class ModService : IModService
         request.Headers.Add("x-api-key", apiKey);
         request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
 
-        using var response = await _httpClient.SendAsync(request);
+        await CurseForgeApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        using var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var loaderTypeId = profile.Type.ToString().ToLowerInvariant() switch
@@ -640,10 +551,11 @@ public class ModService : IModService
             try
             {
                 EnsureUserAgent();
-                var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}");
+                await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+                var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}").ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
                 var root = doc.RootElement;
                 results.Add(new Mod
                 {
@@ -672,25 +584,25 @@ public class ModService : IModService
         "Nv2fQJo5", // ReplayMod (grabador de partidas)
         "mOgUt4GM", // Mod Menu
         "PtjYWJkn", // Sodium Extra
-        "hvFnDODi", // LazyDFU
+        "hvFnDODi", // LazyDFU,
     };
 
     public async Task<List<Mod>> GetModsAsync(int profileId) =>
-        await _modRepository.GetByProfileIdAsync(profileId);
+        await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
 
     public async Task<Mod> AddModAsync(int profileId, string sourceFilePath)
     {
         _logger.LogInformation("Adding mod from {Source} to profile {ProfileId}", sourceFilePath, profileId);
         _logService.Info("ModService", "AddMod", $"Agregando mod desde {Path.GetFileName(sourceFilePath)}...");
 
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var extension = Path.GetExtension(sourceFilePath).ToLowerInvariant();
         if (extension != ".jar")
             throw new Exception("Solo se permiten archivos .jar como mods.");
 
-        var modsDir = await GetModsFolderAsync(profileId);
+        var modsDir = await GetModsFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(modsDir);
 
         var fileName = Path.GetFileName(sourceFilePath);
@@ -701,7 +613,7 @@ public class ModService : IModService
 
         File.Copy(sourceFilePath, destPath, false);
 
-        var modInfo = await ExtractModInfoAsync(destPath);
+        var modInfo = await ExtractModInfoAsync(destPath).ConfigureAwait(false);
         var mod = new Mod
         {
             ProfileId = profileId,
@@ -714,7 +626,7 @@ public class ModService : IModService
             Status = ModStatus.Active
         };
 
-        await _modRepository.CreateAsync(mod);
+        await _modRepository.CreateAsync(mod).ConfigureAwait(false);
         _logger.LogInformation("Mod {Name} added successfully", mod.Name);
         _logService.Info("ModService", "AddMod", $"Mod '{mod.Name}' agregado.");
         return mod;
@@ -722,7 +634,7 @@ public class ModService : IModService
 
     public async Task ToggleModAsync(int modId)
     {
-        var mod = await _modRepository.GetByIdAsync(modId)
+        var mod = await _modRepository.GetByIdAsync(modId).ConfigureAwait(false)
             ?? throw new Exception($"Mod {modId} not found");
 
         if (mod.Status == ModStatus.Active)
@@ -749,14 +661,14 @@ public class ModService : IModService
             mod.Status = ModStatus.Active;
         }
 
-        await _modRepository.UpdateAsync(mod);
+        await _modRepository.UpdateAsync(mod).ConfigureAwait(false);
         _logger.LogInformation("Mod {Name} toggled to {Status}", mod.Name, mod.Status);
         _logService.Info("ModService", "ToggleMod", $"Mod '{mod.Name}' {(mod.Status == ModStatus.Active ? "activado" : "desactivado")}.");
     }
 
     public async Task RemoveModAsync(int modId)
     {
-        var mod = await _modRepository.GetByIdAsync(modId)
+        var mod = await _modRepository.GetByIdAsync(modId).ConfigureAwait(false)
             ?? throw new Exception($"Mod {modId} not found");
 
         try
@@ -769,14 +681,14 @@ public class ModService : IModService
             _logger.LogWarning(ex, "Failed to delete mod file {Path}", mod.FilePath);
         }
 
-        await _modRepository.DeleteAsync(modId);
+        await _modRepository.DeleteAsync(modId).ConfigureAwait(false);
         _logger.LogInformation("Mod {Name} removed", mod.Name);
         _logService.Info("ModService", "RemoveMod", $"Mod '{mod.Name}' eliminado.");
     }
 
     public async Task<string> GetModsFolderAsync(int profileId)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)
@@ -793,7 +705,7 @@ public class ModService : IModService
             if (mcmodEntry != null)
             {
                 using var reader = new StreamReader(mcmodEntry.Open(), Encoding.UTF8);
-                var content = await reader.ReadToEndAsync();
+                var content = await reader.ReadToEndAsync().ConfigureAwait(false);
                 return ParseMcmodInfo(content);
             }
 
@@ -802,7 +714,7 @@ public class ModService : IModService
             if (fabricEntry != null)
             {
                 using var reader = new StreamReader(fabricEntry.Open(), Encoding.UTF8);
-                var content = await reader.ReadToEndAsync();
+                var content = await reader.ReadToEndAsync().ConfigureAwait(false);
                 return ParseFabricModJson(content);
             }
         }
@@ -878,10 +790,10 @@ public class ModService : IModService
 
     public async Task<ModCompatibilityResult> CheckAndDisableIncompatibleModsAsync(int profileId, string targetMcVersion)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
-        var modsDir = await GetModsFolderAsync(profileId);
+        var modsDir = await GetModsFolderAsync(profileId).ConfigureAwait(false);
         if (!Directory.Exists(modsDir))
             return new ModCompatibilityResult { Checked = 0, Disabled = new List<string>(), Errors = new List<string>() };
 
@@ -895,7 +807,7 @@ public class ModService : IModService
             try
             {
                 checkedCount++;
-                var mcVersion = await ExtractMcVersionFromModAsync(modFile);
+                var mcVersion = await ExtractMcVersionFromModAsync(modFile).ConfigureAwait(false);
                 
                 if (mcVersion != null && !IsVersionCompatible(mcVersion, targetMcVersion))
                 {
@@ -934,7 +846,7 @@ public class ModService : IModService
 
     public async Task<List<ModUpdateInfo>> CheckForUpdatesAsync(int profileId, string mcVersion)
     {
-        var mods = await _modRepository.GetByProfileIdAsync(profileId);
+        var mods = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
         // Reset update status for all mods
         foreach (var mod in mods)
         {
@@ -943,7 +855,7 @@ public class ModService : IModService
         }
         foreach (var mod in mods)
         {
-            await _modRepository.UpdateAsync(mod);
+            await _modRepository.UpdateAsync(mod).ConfigureAwait(false);
         }
         var modrinthVersion = ToModrinthVersion(mcVersion);
         var updates = new List<ModUpdateInfo>();
@@ -952,13 +864,14 @@ public class ModService : IModService
         {
             try
             {
-                using var http = new HttpClient();
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.5");
+                _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+                _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.5");
                 var url = $"https://api.modrinth.com/v2/project/{mod.RemoteProjectId}/version?game_versions=%5B%22{modrinthVersion}%22%5D&loaders=%5B%22fabric%22%5D";
-                var response = await http.GetAsync(url);
+                await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+                var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) continue;
 
-                var json = await response.Content.ReadAsStringAsync();
+                var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 using var doc = JsonDocument.Parse(json);
                 if (!doc.RootElement.ValueKind.Equals(JsonValueKind.Array)) continue;
 
@@ -978,7 +891,7 @@ public class ModService : IModService
                 {
                     mod.LatestVersion = latestVersion;
                     mod.HasUpdate = true;
-                    await _modRepository.UpdateAsync(mod);
+                    await _modRepository.UpdateAsync(mod).ConfigureAwait(false);
                     updates.Add(new ModUpdateInfo(
                         mod.Id, mod.Name, mod.ModVersion, latestVersion,
                         mod.SourceProvider ?? "modrinth", mod.RemoteProjectId, mod.RemoteSlug));
@@ -998,12 +911,12 @@ public class ModService : IModService
 
     public async Task<Mod?> UpdateModAsync(int modId, string mcVersion)
     {
-        var mod = await _modRepository.GetByIdAsync(modId);
+        var mod = await _modRepository.GetByIdAsync(modId).ConfigureAwait(false);
         if (mod == null || string.IsNullOrEmpty(mod.RemoteProjectId)) return null;
 
         _logService.Info("ModService", "UpdateMod", $"Updating '{mod.Name}'...");
 
-        var profile = await _profileRepository.GetByIdAsync(mod.ProfileId)
+        var profile = await _profileRepository.GetByIdAsync(mod.ProfileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {mod.ProfileId} not found");
 
         var searchResult = new Mod
@@ -1014,7 +927,7 @@ public class ModService : IModService
             Description = mod.Description
         };
 
-        var updated = await InstallFromSearchAsync(mod.ProfileId, searchResult, mod.SourceProvider ?? "modrinth");
+        var updated = await InstallFromSearchAsync(mod.ProfileId, searchResult, mod.SourceProvider ?? "modrinth").ConfigureAwait(false);
         _logService.Info("ModService", "UpdateMod", $"'{mod.Name}' updated to {updated.ModVersion}.");
         return updated;
     }
@@ -1031,7 +944,7 @@ public class ModService : IModService
             if (fabricEntry != null)
             {
                 using var reader = new StreamReader(fabricEntry.Open(), Encoding.UTF8);
-                var content = await reader.ReadToEndAsync();
+                var content = await reader.ReadToEndAsync().ConfigureAwait(false);
                 var (_, mcVersion, _) = ParseFabricModJson(content);
                 if (!string.IsNullOrEmpty(mcVersion)) return mcVersion;
             }
@@ -1042,7 +955,7 @@ public class ModService : IModService
             if (mcmodEntry != null)
             {
                 using var reader = new StreamReader(mcmodEntry.Open(), Encoding.UTF8);
-                var content = await reader.ReadToEndAsync();
+                var content = await reader.ReadToEndAsync().ConfigureAwait(false);
                 var (_, mcVersion, _) = ParseMcmodInfo(content);
                 if (!string.IsNullOrEmpty(mcVersion)) return mcVersion;
             }

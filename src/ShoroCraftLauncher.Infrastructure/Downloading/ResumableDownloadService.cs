@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 
@@ -28,7 +28,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
     }
 
     public async Task DownloadAsync(string url, string destinationPath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
-        => await DownloadAsync(url, destinationPath, null, 0, progress, cancellationToken);
+        => await DownloadAsync(url, destinationPath, null, 0, progress, cancellationToken).ConfigureAwait(false);
 
     public async Task DownloadAsync(string url, string destinationPath, string? expectedSha1, long expectedSize,
         IProgress<double>? progress = null, CancellationToken cancellationToken = default)
@@ -49,13 +49,13 @@ public sealed class ResumableDownloadService : IResumableDownloadService
             if (attempt > 1)
             {
                 var backoff = TimeSpan.FromSeconds(Math.Min(30, _retryDelay.TotalSeconds * attempt));
-                try { await Task.Delay(backoff, cancellationToken); }
+                try { await Task.Delay(backoff, cancellationToken).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             }
 
             try
             {
-                completed = await DownloadCoreAsync(url, partPath, completed, progress, cancellationToken);
+                completed = await DownloadCoreAsync(url, partPath, completed, progress, cancellationToken).ConfigureAwait(false);
                 Finalize(partPath, destinationPath, expectedSha1, expectedSize);
                 return;
             }
@@ -83,12 +83,12 @@ public sealed class ResumableDownloadService : IResumableDownloadService
         if (completed > 0)
             request.Headers.Range = new RangeHeaderValue(completed, null);
 
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             File.Delete(partPath);
-            return await DownloadCoreAsync(url, partPath, 0, progress, cancellationToken);
+            return await DownloadCoreAsync(url, partPath, 0, progress, cancellationToken).ConfigureAwait(false);
         }
 
         if (response.StatusCode == HttpStatusCode.OK)
@@ -102,7 +102,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
         }
 
         var totalBytes = GetTotalBytes(response, completed);
-        using var contentStream = await response.Content.ReadAsStreamAsync();
+        using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
         await using (var fileStream = new FileStream(partPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read))
         {
@@ -114,10 +114,10 @@ public sealed class ResumableDownloadService : IResumableDownloadService
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var read = await ReadWithIdleTimeoutAsync(contentStream, buffer, cancellationToken);
+                var read = await ReadWithIdleTimeoutAsync(contentStream, buffer, cancellationToken).ConfigureAwait(false);
                 if (read <= 0) break;
 
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                await fileStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 written += read;
                 if (totalBytes > 0)
                     progress?.Report(Math.Min(written, totalBytes) / (double)totalBytes * 100);
@@ -126,7 +126,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
             if (totalBytes > 0 && written != totalBytes)
                 throw new DownloadException($"Tamaño esperado {totalBytes} bytes, se descargaron {written}.");
 
-            await fileStream.FlushAsync(cancellationToken);
+            await fileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
             return written;
         }
     }
@@ -138,7 +138,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
 
         try
         {
-            return await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), timeoutCts.Token);
+            return await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), timeoutCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

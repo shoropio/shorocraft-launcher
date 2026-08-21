@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
@@ -27,14 +27,14 @@ public class UpdaterService : IUpdaterService
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/shoropio/shorocraft-launcher/releases/latest");
             request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0");
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Update check failed with status {Status}", response.StatusCode);
                 return (false, null, null, null);
             }
 
-            var release = await response.Content.ReadFromJsonAsync<GitHubRelease>();
+            var release = await response.Content.ReadFromJsonAsync<GitHubRelease>().ConfigureAwait(false);
             if (release == null || string.IsNullOrEmpty(release.TagName)) return (false, null, null, null);
 
             var latestVersion = release.TagName.Replace("v", "");
@@ -67,6 +67,10 @@ public class UpdaterService : IUpdaterService
             Directory.CreateDirectory(updatesDir);
 
             var safeVersion = string.IsNullOrWhiteSpace(version) ? "latest" : version.TrimStart('v');
+            foreach (var c in Path.GetInvalidFileNameChars())
+                safeVersion = safeVersion.Replace(c, '_');
+            if (safeVersion.Length > 64)
+                safeVersion = safeVersion[..64];
             var fileName = $"ShoroCraftLauncher_Setup_{safeVersion}.exe";
             var filePath = Path.Combine(updatesDir, fileName);
 
@@ -77,7 +81,7 @@ public class UpdaterService : IUpdaterService
                 File.Delete(filePath);
             }
 
-            await _resumableDownloadService.DownloadAsync(downloadUrl, filePath);
+            await _resumableDownloadService.DownloadAsync(downloadUrl, filePath).ConfigureAwait(false);
 
             if (!MatchesExpectedHash(filePath, expectedSha256))
             {

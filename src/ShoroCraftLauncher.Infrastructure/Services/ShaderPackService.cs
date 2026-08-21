@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -38,7 +38,7 @@ public class ShaderPackService : IShaderPackService
     }
 
     public async Task<List<ShaderPack>> GetPacksAsync(int profileId) =>
-        await _repository.GetByProfileIdAsync(profileId);
+        await _repository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
 
     public async Task<ShaderPack> AddPackAsync(int profileId, string sourceFilePath)
     {
@@ -49,7 +49,7 @@ public class ShaderPackService : IShaderPackService
         if (ext != ".zip")
             throw new Exception("Solo se permiten archivos .zip como shader packs.");
 
-        var packsDir = await GetPacksFolderAsync(profileId);
+        var packsDir = await GetPacksFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(packsDir);
 
         var fileName = Path.GetFileName(sourceFilePath);
@@ -71,36 +71,36 @@ public class ShaderPackService : IShaderPackService
             Status = PackStatus.Active
         };
 
-        await _repository.CreateAsync(pack);
+        await _repository.CreateAsync(pack).ConfigureAwait(false);
         _logService.Info("ShaderPackService", "AddPack", $"Shader '{pack.Name}' agregado.");
         return pack;
     }
 
     public async Task TogglePackAsync(int packId)
     {
-        var pack = await _repository.GetByIdAsync(packId)
+        var pack = await _repository.GetByIdAsync(packId).ConfigureAwait(false)
             ?? throw new Exception($"Shader pack {packId} not found");
         pack.Status = pack.Status == PackStatus.Active ? PackStatus.Inactive : PackStatus.Active;
-        await _repository.UpdateAsync(pack);
+        await _repository.UpdateAsync(pack).ConfigureAwait(false);
         _logService.Info("ShaderPackService", "TogglePack", $"Shader '{pack.Name}' {(pack.Status == PackStatus.Active ? "activado" : "desactivado")}.");
     }
 
     public async Task RemovePackAsync(int packId)
     {
-        var pack = await _repository.GetByIdAsync(packId)
+        var pack = await _repository.GetByIdAsync(packId).ConfigureAwait(false)
             ?? throw new Exception($"Shader pack {packId} not found");
 
         _logService.Info("ShaderPackService", "RemovePack", $"Eliminando shader '{pack.Name}'...");
         try { if (File.Exists(pack.FilePath)) File.Delete(pack.FilePath); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete shader file"); }
 
-        await _repository.DeleteAsync(packId);
+        await _repository.DeleteAsync(packId).ConfigureAwait(false);
         _logService.Info("ShaderPackService", "RemovePack", $"Shader '{pack.Name}' eliminado.");
     }
 
     public async Task<string> GetPacksFolderAsync(int profileId)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)
@@ -110,13 +110,13 @@ public class ShaderPackService : IShaderPackService
 
     public async Task<bool> HasShaderSupportAsync(int profileId)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         if (profile.Type is ProfileType.OptiFine or ProfileType.Iris)
             return true;
 
-        var mods = await _modRepository.GetByProfileIdAsync(profileId);
+        var mods = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
         if (mods.Any(IsActiveShaderMod))
             return true;
 
@@ -169,10 +169,11 @@ public class ShaderPackService : IShaderPackService
             + "&limit=40&sort=downloads";
 
         EnsureUserAgent();
-        using var response = await _httpClient.GetAsync(url);
+        await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        using var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var results = new List<ShaderPackSearchResult>();
@@ -194,24 +195,24 @@ public class ShaderPackService : IShaderPackService
 
     public async Task<ShaderPack> InstallFromSearchAsync(int profileId, ShaderPackSearchResult searchResult)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         _logService.Info("ShaderPackService", "InstallFromSearch",
             $"Instalando shader '{searchResult.Name}' desde Modrinth...");
 
-        var packsDir = await GetPacksFolderAsync(profileId);
+        var packsDir = await GetPacksFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(packsDir);
 
         var (downloadUrl, fileName, version, size) =
-            await ResolveShaderVersionAsync(searchResult.ProjectId, profile.MinecraftVersion);
+            await ResolveShaderVersionAsync(searchResult.ProjectId, profile.MinecraftVersion).ConfigureAwait(false);
 
         var destPath = Path.Combine(packsDir, fileName);
         var tempPath = destPath + ".tmp";
 
         // Localiza una instalación previa del mismo pack, pero NO la borra todavía:
         // si la descarga falla, el pack original queda intacto.
-        var existingPacks = await _repository.GetByProfileIdAsync(profileId);
+        var existingPacks = await _repository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
         var existing = existingPacks.FirstOrDefault(p =>
             string.Equals(p.FileName, fileName, StringComparison.OrdinalIgnoreCase)
             || string.Equals(p.Name, searchResult.Name, StringComparison.OrdinalIgnoreCase));
@@ -220,7 +221,7 @@ public class ShaderPackService : IShaderPackService
         _logService.Info("ShaderPackService", "DownloadShader", $"Descargando {fileName}...");
         try
         {
-            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath);
+            await _resumableDownloadService.DownloadAsync(downloadUrl, tempPath).ConfigureAwait(false);
         }
         catch
         {
@@ -241,7 +242,7 @@ public class ShaderPackService : IShaderPackService
             {
                 _logger.LogWarning(ex, "Failed to delete previous file {Path}", existing.FilePath);
             }
-            await _repository.DeleteAsync(existing.Id);
+            await _repository.DeleteAsync(existing.Id).ConfigureAwait(false);
             _logService.Info("ShaderPackService", "InstallFromSearch",
                 $"Reemplazando '{existing.FileName}' por '{fileName}'.");
         }
@@ -262,7 +263,7 @@ public class ShaderPackService : IShaderPackService
             Status = PackStatus.Active
         };
 
-        await _repository.CreateAsync(pack);
+        await _repository.CreateAsync(pack).ConfigureAwait(false);
         _logger.LogInformation("Shader {Name} installed ({Version})", pack.Name, version);
         _logService.Info("ShaderPackService", "InstallFromSearch", $"Shader '{searchResult.Name}' instalado correctamente.");
         return pack;
@@ -271,10 +272,11 @@ public class ShaderPackService : IShaderPackService
     private async Task<(string url, string fileName, string version, long size)> ResolveShaderVersionAsync(string projectId, string mcVersion)
     {
         EnsureUserAgent();
-        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version");
+        await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
 
         var candidates = new List<System.Text.Json.JsonElement>();
@@ -377,7 +379,7 @@ public class ShaderPackService : IShaderPackService
         var results = new List<ShaderPackSearchResult>();
         foreach (var projectId in RecommendedShaderProjectIds)
         {
-            var project = await GetProjectAsync(projectId);
+            var project = await GetProjectAsync(projectId).ConfigureAwait(false);
             if (project != null) results.Add(project);
         }
         _logService.Info("ShaderPackService", "GetRecommended", $"Cargados {results.Count} shader packs recomendados.");
@@ -389,10 +391,11 @@ public class ShaderPackService : IShaderPackService
         try
         {
             EnsureUserAgent();
-            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}");
+            await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}").ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             var root = doc.RootElement;
             return new ShaderPackSearchResult
             {

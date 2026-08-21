@@ -15,9 +15,11 @@ public partial class DashboardView : UserControl
 
     private void NewsItem_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is NewsItem item && !string.IsNullOrEmpty(item.Url))
+        if (sender is FrameworkElement fe && fe.DataContext is NewsItem item && !string.IsNullOrEmpty(item.Url)
+            && Uri.TryCreate(item.Url, UriKind.Absolute, out var uri)
+            && uri.Scheme is "http" or "https")
         {
-            Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
         }
     }
 }

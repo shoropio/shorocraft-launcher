@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
@@ -16,6 +16,8 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ProfileService : IProfileService
 {
+    #region Estado y constructor
+
     private readonly IProfileRepository _profileRepo;
     private readonly IModRepository _modRepo;
     private readonly IShaderPackRepository _shaderPackRepo;
@@ -60,13 +62,17 @@ public class ProfileService : IProfileService
         _logService = logService;
     }
 
+    #endregion
+
+    #region Carga y actualización de perfiles
+
     public async Task LoadProfilesAsync()
     {
-        await _loadLock.WaitAsync();
+        await _loadLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var selectedId = SelectedProfile?.Id;
-            var profiles = await _profileRepo.GetAllAsync();
+            var profiles = await _profileRepo.GetAllAsync().ConfigureAwait(false);
             Profiles.Clear();
             foreach (var p in profiles)
             {
@@ -85,7 +91,7 @@ public class ProfileService : IProfileService
                     WindowWidth = 854,
                     WindowHeight = 480
                 };
-                await _profileRepo.CreateAsync(defaultProfile);
+                await _profileRepo.CreateAsync(defaultProfile).ConfigureAwait(false);
                 Profiles.Add(defaultProfile);
             }
 
@@ -108,7 +114,7 @@ public class ProfileService : IProfileService
 
     public async Task UpdateProfileAsync(Profile profile)
     {
-        await _profileRepo.UpdateAsync(profile);
+        await _profileRepo.UpdateAsync(profile).ConfigureAwait(false);
 
         var idx = Profiles.ToList().FindIndex(p => p.Id == profile.Id);
         if (idx >= 0)
@@ -129,6 +135,10 @@ public class ProfileService : IProfileService
         _selectedProfile = profile;
         SelectedProfileChanged?.Invoke();
     }
+
+    #endregion
+
+    #region Sincronización de archivos del perfil
 
     public async Task SyncProfileFilesAsync(Profile profile)
     {
@@ -163,7 +173,7 @@ public class ProfileService : IProfileService
             var jarFiles = Directory.GetFiles(modsDir, "*.jar")
                 .Concat(Directory.GetFiles(modsDir, "*.jar.disabled"))
                 .ToArray();
-            var dbMods = await _modRepo.GetByProfileIdAsync(profile.Id);
+            var dbMods = await _modRepo.GetByProfileIdAsync(profile.Id).ConfigureAwait(false);
 
             var onDisk = new Dictionary<string, (string FilePath, ModStatus Status)>(StringComparer.OrdinalIgnoreCase);
             foreach (var jar in jarFiles)
@@ -183,7 +193,7 @@ public class ProfileService : IProfileService
                     string.Equals(m.FileName, logicalName, StringComparison.OrdinalIgnoreCase));
                 if (existing is null)
                 {
-                    var modInfo = await _modService.ExtractModInfoAsync(entry.FilePath);
+                    var modInfo = await _modService.ExtractModInfoAsync(entry.FilePath).ConfigureAwait(false);
                     var mod = new Mod
                     {
                         ProfileId = profile.Id,
@@ -195,14 +205,14 @@ public class ProfileService : IProfileService
                         ModVersion = modInfo.ModVersion ?? "unknown",
                         Status = entry.Status
                     };
-                    await _modRepo.CreateAsync(mod);
+                    await _modRepo.CreateAsync(mod).ConfigureAwait(false);
                 }
                 else if (!string.Equals(existing.FilePath, entry.FilePath, StringComparison.OrdinalIgnoreCase)
                          || existing.Status != entry.Status)
                 {
                     existing.FilePath = entry.FilePath;
                     existing.Status = entry.Status;
-                    await _modRepo.UpdateAsync(existing);
+                    await _modRepo.UpdateAsync(existing).ConfigureAwait(false);
                 }
             }
 
@@ -211,7 +221,7 @@ public class ProfileService : IProfileService
             {
                 if (!onDisk.ContainsKey(mod.FileName))
                 {
-                    await _modRepo.DeleteAsync(mod.Id);
+                    await _modRepo.DeleteAsync(mod.Id).ConfigureAwait(false);
                 }
             }
         }
@@ -225,7 +235,7 @@ public class ProfileService : IProfileService
         {
             var zipFiles = Directory.GetFiles(shadersDir, "*.zip");
             var zipFileNames = zipFiles.Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var dbShaders = await _shaderPackRepo.GetByProfileIdAsync(profile.Id);
+            var dbShaders = await _shaderPackRepo.GetByProfileIdAsync(profile.Id).ConfigureAwait(false);
 
             foreach (var zip in zipFiles)
             {
@@ -241,7 +251,7 @@ public class ProfileService : IProfileService
                         FileSizeBytes = new FileInfo(zip).Length,
                         Status = PackStatus.Active
                     };
-                    await _shaderPackRepo.CreateAsync(shader);
+                    await _shaderPackRepo.CreateAsync(shader).ConfigureAwait(false);
                 }
             }
 
@@ -249,7 +259,7 @@ public class ProfileService : IProfileService
             {
                 if (!zipFileNames.Contains(shader.FileName))
                 {
-                    await _shaderPackRepo.DeleteAsync(shader.Id);
+                    await _shaderPackRepo.DeleteAsync(shader.Id).ConfigureAwait(false);
                 }
             }
         }
@@ -263,7 +273,7 @@ public class ProfileService : IProfileService
         {
             var zipFiles = Directory.GetFiles(resourcepacksDir, "*.zip");
             var zipFileNames = zipFiles.Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var dbPacks = await _resourcePackRepo.GetByProfileIdAsync(profile.Id);
+            var dbPacks = await _resourcePackRepo.GetByProfileIdAsync(profile.Id).ConfigureAwait(false);
 
             foreach (var zip in zipFiles)
             {
@@ -295,7 +305,7 @@ public class ProfileService : IProfileService
                         PreviewImagePath = previewPath,
                         Status = PackStatus.Active
                     };
-                    await _resourcePackRepo.CreateAsync(pack);
+                    await _resourcePackRepo.CreateAsync(pack).ConfigureAwait(false);
                 }
             }
 
@@ -303,7 +313,7 @@ public class ProfileService : IProfileService
             {
                 if (!zipFileNames.Contains(pack.FileName))
                 {
-                    await _resourcePackRepo.DeleteAsync(pack.Id);
+                    await _resourcePackRepo.DeleteAsync(pack.Id).ConfigureAwait(false);
                 }
             }
         }
@@ -326,7 +336,7 @@ public class ProfileService : IProfileService
                 .Concat(dirs.Select(Path.GetFileName))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var dbMaps = await _gameMapRepo.GetByProfileIdAsync(profile.Id);
+            var dbMaps = await _gameMapRepo.GetByProfileIdAsync(profile.Id).ConfigureAwait(false);
 
             // Add missing files/folders
             foreach (var file in files)
@@ -359,7 +369,7 @@ public class ProfileService : IProfileService
                         PreviewImagePath = previewPath,
                         Status = PackStatus.Active
                     };
-                    await _gameMapRepo.CreateAsync(map);
+                    await _gameMapRepo.CreateAsync(map).ConfigureAwait(false);
                 }
             }
 
@@ -390,7 +400,7 @@ public class ProfileService : IProfileService
                         PreviewImagePath = previewPath,
                         Status = PackStatus.Active
                     };
-                    await _gameMapRepo.CreateAsync(map);
+                    await _gameMapRepo.CreateAsync(map).ConfigureAwait(false);
                 }
             }
 
@@ -399,7 +409,7 @@ public class ProfileService : IProfileService
             {
                 if (!diskMapNames.Contains(map.FileName))
                 {
-                    await _gameMapRepo.DeleteAsync(map.Id);
+                    await _gameMapRepo.DeleteAsync(map.Id).ConfigureAwait(false);
                 }
             }
         }
@@ -415,7 +425,7 @@ public class ProfileService : IProfileService
                 .Where(f => f.EndsWith(".js", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             var scriptFileNames = scriptFiles.Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var dbScripts = await _scriptRepo.GetByProfileIdAsync(profile.Id);
+            var dbScripts = await _scriptRepo.GetByProfileIdAsync(profile.Id).ConfigureAwait(false);
 
             foreach (var file in scriptFiles)
             {
@@ -431,7 +441,7 @@ public class ProfileService : IProfileService
                         CreatedAt = DateTime.UtcNow,
                         ModifiedAt = DateTime.UtcNow
                     };
-                    await _scriptRepo.CreateAsync(script);
+                    await _scriptRepo.CreateAsync(script).ConfigureAwait(false);
                 }
             }
 
@@ -439,7 +449,7 @@ public class ProfileService : IProfileService
             {
                 if (!scriptFileNames.Contains(script.FileName))
                 {
-                    await _scriptRepo.DeleteAsync(script.Id);
+                    await _scriptRepo.DeleteAsync(script.Id).ConfigureAwait(false);
                 }
             }
         }
@@ -449,9 +459,13 @@ public class ProfileService : IProfileService
         }
     }
 
+    #endregion
+
+    #region Exportación e importación
+
     public async Task ExportProfileAsync(int profileId, string exportZipPath)
     {
-        var profile = await _profileRepo.GetByIdAsync(profileId)
+        var profile = await _profileRepo.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
@@ -481,7 +495,7 @@ public class ProfileService : IProfileService
             };
 
             var profileJson = JsonSerializer.Serialize(exportProfile, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(Path.Combine(tempRoot, "profile.json"), profileJson);
+            await File.WriteAllTextAsync(Path.Combine(tempRoot, "profile.json"), profileJson).ConfigureAwait(false);
 
             void CopyDirectory(string source, string dest)
             {
@@ -544,14 +558,14 @@ public class ProfileService : IProfileService
             if (!File.Exists(jsonPath))
                 throw new Exception("El archivo no es un paquete válido de ShoroCraft (falta profile.json).");
 
-            var jsonContent = await File.ReadAllTextAsync(jsonPath);
+            var jsonContent = await File.ReadAllTextAsync(jsonPath).ConfigureAwait(false);
             var importedProfile = JsonSerializer.Deserialize<Profile>(jsonContent)
                 ?? throw new Exception("Error al deserializar la información del perfil.");
 
             var originalName = importedProfile.Name;
             var name = originalName;
             var counter = 1;
-            var existingProfiles = await _profileRepo.GetAllAsync();
+            var existingProfiles = await _profileRepo.GetAllAsync().ConfigureAwait(false);
             while (existingProfiles.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
             {
                 name = $"{originalName} ({counter++})";
@@ -607,8 +621,8 @@ public class ProfileService : IProfileService
                 CopyDirectory(scriptsSrc, Path.Combine(newGameDir, "scripts", name));
             }
 
-            await _profileRepo.CreateAsync(profileToImport);
-            await SyncProfileFilesAsync(profileToImport);
+            await _profileRepo.CreateAsync(profileToImport).ConfigureAwait(false);
+            await SyncProfileFilesAsync(profileToImport).ConfigureAwait(false);
         }
         finally
         {
@@ -620,9 +634,13 @@ public class ProfileService : IProfileService
         }
     }
 
+    #endregion
+
+    #region Backups
+
     public async Task CreateBackupAsync(int profileId, string backupType)
     {
-        var profile = await _profileRepo.GetByIdAsync(profileId)
+        var profile = await _profileRepo.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
@@ -696,6 +714,14 @@ public class ProfileService : IProfileService
             }
 
             ZipFile.CreateFromDirectory(tempDir, zipPath);
+
+            // Verifica que el ZIP generado sea legible antes de considerarlo válido
+            using (var archive = ZipFile.OpenRead(zipPath))
+            {
+                _ = archive.Entries.Count;
+            }
+
+            PruneOldBackups(profile.Name);
         }
         finally
         {
@@ -708,7 +734,7 @@ public class ProfileService : IProfileService
         if (!File.Exists(backupZipPath))
             throw new FileNotFoundException("El archivo de copia de seguridad no existe.", backupZipPath);
 
-        var profile = await _profileRepo.GetByIdAsync(profileId)
+        var profile = await _profileRepo.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
@@ -773,7 +799,7 @@ public class ProfileService : IProfileService
                 }
             }
 
-            await SyncProfileFilesAsync(profile);
+            await SyncProfileFilesAsync(profile).ConfigureAwait(false);
         }
         finally
         {
@@ -783,16 +809,44 @@ public class ProfileService : IProfileService
 
     public Task DeleteBackupAsync(int profileId, string backupZipPath)
     {
-        if (File.Exists(backupZipPath))
-        {
-            File.Delete(backupZipPath);
-        }
+        if (string.IsNullOrWhiteSpace(backupZipPath) || !File.Exists(backupZipPath))
+            return Task.CompletedTask;
+
+        var backupsRoot = Path.GetFullPath(LauncherPaths.GetPath("backups"));
+        var fullTarget = Path.GetFullPath(backupZipPath);
+        var isInsideBackups = fullTarget.StartsWith(
+            backupsRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase);
+        if (!isInsideBackups)
+            throw new UnauthorizedAccessException("Solo se pueden eliminar copias dentro del directorio de backups.");
+
+        File.Delete(fullTarget);
         return Task.CompletedTask;
+    }
+
+    private static void PruneOldBackups(string profileName, int maxBackups = 10)
+    {
+        try
+        {
+            var backupsDir = LauncherPaths.GetPath("backups", profileName);
+            if (!Directory.Exists(backupsDir)) return;
+
+            var files = Directory.GetFiles(backupsDir, "*.zip")
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .ToList();
+
+            foreach (var file in files.Skip(maxBackups))
+            {
+                try { file.Delete(); } catch { }
+            }
+        }
+        catch { }
     }
 
     public async Task<List<BackupItem>> GetBackupsAsync(int profileId)
     {
-        var profile = await _profileRepo.GetByIdAsync(profileId);
+        var profile = await _profileRepo.GetByIdAsync(profileId).ConfigureAwait(false);
         if (profile == null) return new List<BackupItem>();
 
         var backupsDir = LauncherPaths.GetPath("backups", profile.Name);
@@ -826,4 +880,6 @@ public class ProfileService : IProfileService
 
         return list.OrderByDescending(b => b.Timestamp).ToList();
     }
+
+    #endregion
 }

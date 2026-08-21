@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using ShoroCraftLauncher.Core.Enums;
@@ -46,7 +46,7 @@ public class ResourcePack : INotifyPropertyChanged
         PropertyChangedEventHandler handler = async (_, e) =>
         {
             if (e.PropertyName == nameof(Status))
-                await onChange();
+                await onChange().ConfigureAwait(false);
         };
         PropertyChanged += handler;
         return new ActionDisposable(() => PropertyChanged -= handler);

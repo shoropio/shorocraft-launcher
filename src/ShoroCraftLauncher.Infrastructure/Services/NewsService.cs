@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -22,7 +22,7 @@ public class NewsService : INewsService
 
         try
         {
-            var statusItems = await FetchMojangStatusAsync();
+            var statusItems = await FetchMojangStatusAsync().ConfigureAwait(false);
             items.AddRange(statusItems);
         }
         catch (Exception ex)
@@ -32,7 +32,7 @@ public class NewsService : INewsService
 
         try
         {
-            var versionItems = await FetchVersionNewsAsync();
+            var versionItems = await FetchVersionNewsAsync().ConfigureAwait(false);
             items.AddRange(versionItems);
         }
         catch (Exception ex)
@@ -47,10 +47,10 @@ public class NewsService : INewsService
     {
         var items = new List<NewsItem>();
 
-        var response = await _httpClient.GetAsync("https://status.mojang.com/api/v2/components");
+        var response = await _httpClient.GetAsync("https://status.mojang.com/api/v2/components").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
 
         if (!doc.RootElement.TryGetProperty("components", out var components))
@@ -93,10 +93,10 @@ public class NewsService : INewsService
     {
         var items = new List<NewsItem>();
 
-        var response = await _httpClient.GetAsync("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json");
+        var response = await _httpClient.GetAsync("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json").ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var manifest = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var manifest = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
 
         if (!manifest.TryGetProperty("latest", out var latest))
             return items;

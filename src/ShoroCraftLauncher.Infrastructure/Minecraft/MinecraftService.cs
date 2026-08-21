@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Sockets;
 using System.Reflection;
@@ -15,6 +15,8 @@ namespace ShoroCraftLauncher.Infrastructure.Minecraft;
 
 public class MinecraftService : IMinecraftService
 {
+    #region Campos y configuración
+
     private readonly ILogger<MinecraftService> _logger;
     private readonly HttpClient _httpClient;
     private readonly ILogService? _logService;
@@ -31,6 +33,10 @@ public class MinecraftService : IMinecraftService
     private static readonly TimeSpan InstallAttemptTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan CmlHttpTimeout = TimeSpan.FromMinutes(5);
 
+    #endregion
+
+    #region Constructor
+
     public MinecraftService(ILogger<MinecraftService> logger, HttpClient httpClient, ILogService? logService = null,
         IResumableDownloadService? resumableDownloadService = null)
     {
@@ -39,6 +45,10 @@ public class MinecraftService : IMinecraftService
         _logService = logService;
         _resumableDownloadService = resumableDownloadService ?? new ResumableDownloadService(httpClient);
     }
+
+    #endregion
+
+    #region Rutas y directorios públicos
 
     public string GetDefaultGameDirectory(string profileName)
     {
@@ -54,12 +64,16 @@ public class MinecraftService : IMinecraftService
     public string GetShaderPacksDirectory(string gameDir) => Path.Combine(gameDir, "shaderpacks");
     public string GetSavesDirectory(string gameDir) => Path.Combine(gameDir, "saves");
 
+    #endregion
+
+    #region Obtención de versiones disponibles
+
     public async Task<List<GameVersion>> FetchAvailableVersionsAsync()
     {
         try
         {
             _logger.LogInformation("Fetching Minecraft version manifest...");
-            var json = await _httpClient.GetStringAsync(VersionManifestUrl);
+            var json = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
             var versions = new List<GameVersion>();
 
@@ -82,13 +96,17 @@ public class MinecraftService : IMinecraftService
         }
     }
 
+    #endregion
+
+    #region Instalación de versiones y loaders
+
     public async Task InstallVersionAsync(string versionId, IProgress<double>? progress = null, string? gameDir = null)
     {
         gameDir = ResolveGameDirectory(gameDir);
         using var operation = _logService?.BeginOperation("MinecraftInstall", "InstallVersion", new { versionId, gameDir });
         _logger.LogInformation("Installing Minecraft version {Version}", versionId);
         _logService?.Info("MinecraftInstall", "Started", "Instalando versión de Minecraft.", new { versionId });
-        var versionData = await FetchVersionDataAsync(versionId);
+        var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
         if (versionData == null)
             throw new Exception($"Version {versionId} not found");
 
@@ -98,7 +116,7 @@ public class MinecraftService : IMinecraftService
         if (IsVersionComplete(versionsDir, versionId))
         {
             _logService?.Info("MinecraftInstall", "AlreadyComplete", "La versión ya está instalada.", new { versionId, versionsDir });
-            await EnsureLauncherProfileAsync(gameDir, versionId);
+            await EnsureLauncherProfileAsync(gameDir, versionId).ConfigureAwait(false);
             return;
         }
 
@@ -113,14 +131,14 @@ public class MinecraftService : IMinecraftService
             if (clientUrl == null) throw new Exception($"No download URL for version {versionId}");
             _logger.LogInformation("Downloading client jar for {Version}", versionId);
             _logService?.Info("MinecraftInstall", "ClientDownloadStarted", "Descargando cliente de Minecraft.", new { versionId, clientUrl });
-            await DownloadFileAsync(clientUrl, jarPath, progress);
+            await DownloadFileAsync(clientUrl, jarPath, progress).ConfigureAwait(false);
 
             var jsonPath = Path.Combine(tempVersionsDir, $"{versionId}.json");
-            var versionJson = await _httpClient.GetStringAsync(versionData.Url);
-            await File.WriteAllTextAsync(jsonPath, versionJson);
+            var versionJson = await _httpClient.GetStringAsync(versionData.Url).ConfigureAwait(false);
+            await File.WriteAllTextAsync(jsonPath, versionJson).ConfigureAwait(false);
 
             var libsDir = Path.Combine(gameDir, "libraries");
-            var libCount = await DownloadLibrariesAsync(versionData, libsDir, progress);
+            var libCount = await DownloadLibrariesAsync(versionData, libsDir, progress).ConfigureAwait(false);
 
             if (Directory.Exists(versionsDir))
                 Directory.Delete(versionsDir, recursive: true);
@@ -131,9 +149,9 @@ public class MinecraftService : IMinecraftService
                 versionId,
                 installedAt = DateTimeOffset.Now,
                 launcher = "ShoroCraftLauncher"
-            }, new JsonSerializerOptions { WriteIndented = true }));
+            }, new JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
 
-            await EnsureLauncherProfileAsync(gameDir, versionId);
+            await EnsureLauncherProfileAsync(gameDir, versionId).ConfigureAwait(false);
 
             _logger.LogInformation("Version {Version} installed ({LibCount} libraries)", versionId, libCount);
             _logService?.Info("MinecraftInstall", "Completed", "Versión de Minecraft instalada correctamente.", new { versionId, libCount });
@@ -174,13 +192,13 @@ public class MinecraftService : IMinecraftService
             _logService?.Warning("LoaderInstall", "BaseVersionMissing", "Minecraft base no está instalado; se instalará antes del loader.", new { versionId });
             onLog?.Invoke($"[INFO] Minecraft {versionId} no está instalado. Instalando versión base...");
             onProgress?.Invoke($"Instalando Minecraft {versionId}...");
-            await InstallVersionAsync(versionId, progress, gameDir);
+            await InstallVersionAsync(versionId, progress, gameDir).ConfigureAwait(false);
         }
 
-        await EnsureLauncherProfileAsync(gameDir, versionId);
+        await EnsureLauncherProfileAsync(gameDir, versionId).ConfigureAwait(false);
 
         var installerVersion = loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase)
-            ? await ResolveLatestFabricInstallerVersionAsync()
+            ? await ResolveLatestFabricInstallerVersionAsync().ConfigureAwait(false)
             : loaderVersion;
 
         var installerUrl = loaderType.ToLower() switch
@@ -201,7 +219,7 @@ public class MinecraftService : IMinecraftService
             onProgress?.Invoke($"Descargando instalador de {loaderType}...");
             try
             {
-                await DownloadFileAsync(installerUrl, installerPath, progress);
+                await DownloadFileAsync(installerUrl, installerPath, progress).ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {
@@ -229,7 +247,7 @@ public class MinecraftService : IMinecraftService
             using var jp = Process.Start(javaVersionPsi);
             if (jp != null)
             {
-                var javaVer = await jp.StandardError.ReadToEndAsync();
+                var javaVer = await jp.StandardError.ReadToEndAsync().ConfigureAwait(false);
                 _logger.LogInformation("Java version: {JavaVersion}", javaVer.Trim());
                 onLog?.Invoke($"[INFO] Java: {javaVer.Trim()}");
             }
@@ -287,12 +305,12 @@ public class MinecraftService : IMinecraftService
 
         try
         {
-            await process.WaitForExitAsync(cts.Token);
+            await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch { }
-            try { await process.WaitForExitAsync(); } catch { }
+            try { await process.WaitForExitAsync().ConfigureAwait(false); } catch { }
             throw new Exception($"El instalador de {loaderType} tardó más de 5 minutos y fue cancelado.");
         }
 
@@ -354,6 +372,10 @@ public class MinecraftService : IMinecraftService
             || text.StartsWith("Building", StringComparison.OrdinalIgnoreCase);
     }
 
+    #endregion
+
+    #region Verificación y reparación
+
     public bool VerifyInstallationAsync(string gameDir)
     {
         gameDir = ResolveGameDirectory(gameDir);
@@ -387,7 +409,7 @@ public class MinecraftService : IMinecraftService
 
             try
             {
-                var versionData = await FetchVersionDataAsync(versionId);
+                var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
                 if (versionData == null)
                 {
                     _logService?.Warning("MinecraftRepair", "VersionDataMissing",
@@ -400,14 +422,14 @@ public class MinecraftService : IMinecraftService
                 {
                     var clientUrl = versionData.GetClientUrl();
                     if (clientUrl != null)
-                        await DownloadFileAsync(clientUrl, jarPath, progress);
+                        await DownloadFileAsync(clientUrl, jarPath, progress).ConfigureAwait(false);
                 }
 
                 var jsonPath = Path.Combine(versionDir, $"{versionId}.json");
                 if (!File.Exists(jsonPath))
-                    await File.WriteAllTextAsync(jsonPath, await _httpClient.GetStringAsync(versionData.Url));
+                    await File.WriteAllTextAsync(jsonPath, await _httpClient.GetStringAsync(versionData.Url)).ConfigureAwait(false);
 
-                await DownloadLibrariesAsync(versionData, Path.Combine(gameDir, "libraries"), progress);
+                await DownloadLibrariesAsync(versionData, Path.Combine(gameDir, "libraries"), progress).ConfigureAwait(false);
                 _logService?.Info("MinecraftRepair", "VersionRepaired", "Versión reparada correctamente.", new { versionId });
             }
             catch (Exception ex)
@@ -419,6 +441,10 @@ public class MinecraftService : IMinecraftService
         }
     }
 
+    #endregion
+
+    #region Lanzamiento del juego
+
     public async Task<Process> LaunchGameAsync(Profile profile, string gameDir, string javaPath, string accessToken, string uuid, string username, Action<double, string>? onProgress = null)
     {
         _logger.LogInformation("Launching: profile={Profile}, version={Version}", profile.Name, profile.MinecraftVersion);
@@ -429,7 +455,7 @@ public class MinecraftService : IMinecraftService
 
         if (profile.MinecraftVersion.ToLower() == "latest")
         {
-            targetVersion = await ResolveVersionIdAsync("latest");
+            targetVersion = await ResolveVersionIdAsync("latest").ConfigureAwait(false);
         }
 
         if (profile.Type != Core.Enums.ProfileType.Vanilla)
@@ -478,7 +504,7 @@ public class MinecraftService : IMinecraftService
             FullScreen = profile.IsFullscreen
         };
 
-        var process = await InstallAndBuildWithRetryAsync(globalDir, targetVersion, launchOption, onProgress);
+        var process = await InstallAndBuildWithRetryAsync(globalDir, targetVersion, launchOption, onProgress).ConfigureAwait(false);
         
         process.StartInfo.WorkingDirectory = gameDir;
         process.StartInfo.RedirectStandardOutput = true;
@@ -489,6 +515,10 @@ public class MinecraftService : IMinecraftService
         _logger.LogInformation("Launch duration: {Duration}s", (DateTime.UtcNow - launchStartTime).TotalSeconds);
         return process;
     }
+
+    #endregion
+
+    #region Reintentos de instalación y cliente HTTP
 
     private async Task<Process> InstallAndBuildWithRetryAsync(
         string globalDir,
@@ -527,7 +557,7 @@ public class MinecraftService : IMinecraftService
             {
                 return await launcher
                     .InstallAndBuildProcessAsync(targetVersion, launchOption, cancellationToken: cts.Token)
-                    .AsTask();
+                    .AsTask().ConfigureAwait(false);
             }
             catch (Exception ex) when (attempt < MaxInstallAttempts && IsRetryableInstallError(ex))
             {
@@ -579,13 +609,16 @@ public class MinecraftService : IMinecraftService
         return $"{expanded} {arguments}";
     }
 
+    #endregion
+
+    #region Resolución de versiones y loaders
 
     public async Task<string> ResolveVersionIdAsync(string versionId)
     {
         if (versionId.ToLower() != "latest") return versionId;
         try
         {
-            var json = await _httpClient.GetStringAsync(VersionManifestUrl);
+            var json = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
             var doc = JsonDocument.Parse(json);
             foreach (var v in doc.RootElement.GetProperty("versions").EnumerateArray())
             {
@@ -601,8 +634,8 @@ public class MinecraftService : IMinecraftService
     {
         try
         {
-            var resolved = versionId.ToLower() == "latest" ? await ResolveVersionIdAsync("latest") : versionId;
-            var versionData = await FetchVersionDataAsync(resolved);
+            var resolved = versionId.ToLower() == "latest" ? await ResolveVersionIdAsync("latest").ConfigureAwait(false) : versionId;
+            var versionData = await FetchVersionDataAsync(resolved).ConfigureAwait(false);
             return versionData?.GetServerUrl();
         }
         catch (Exception ex)
@@ -618,10 +651,10 @@ public class MinecraftService : IMinecraftService
         {
             return loaderType.ToLower() switch
             {
-                "forge" => await ResolveLatestForgeVersionAsync(mcVersion),
-                "neoforge" => await ResolveLatestNeoForgeVersionAsync(mcVersion),
-                "fabric" => await ResolveLatestFabricLoaderVersionAsync(mcVersion),
-                "quilt" => await ResolveLatestQuiltInstallerVersionAsync(mcVersion),
+                "forge" => await ResolveLatestForgeVersionAsync(mcVersion).ConfigureAwait(false),
+                "neoforge" => await ResolveLatestNeoForgeVersionAsync(mcVersion).ConfigureAwait(false),
+                "fabric" => await ResolveLatestFabricLoaderVersionAsync(mcVersion).ConfigureAwait(false),
+                "quilt" => await ResolveLatestQuiltInstallerVersionAsync(mcVersion).ConfigureAwait(false),
                 _ => "latest"
             };
         }
@@ -634,7 +667,7 @@ public class MinecraftService : IMinecraftService
 
     private async Task<string> ResolveLatestForgeVersionAsync(string mcVersion)
     {
-        var json = await _httpClient.GetStringAsync(ForgePromotionsUrl);
+        var json = await _httpClient.GetStringAsync(ForgePromotionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         var promos = doc.RootElement.GetProperty("promos");
 
@@ -650,7 +683,7 @@ public class MinecraftService : IMinecraftService
 
     private async Task<string> ResolveLatestNeoForgeVersionAsync(string mcVersion)
     {
-        var xml = await _httpClient.GetStringAsync(NeoForgeMetadataUrl);
+        var xml = await _httpClient.GetStringAsync(NeoForgeMetadataUrl).ConfigureAwait(false);
         var doc = System.Xml.Linq.XDocument.Parse(xml);
         var versions = doc.Root?
             .Element("versioning")?
@@ -673,34 +706,34 @@ public class MinecraftService : IMinecraftService
 
     private async Task<string> ResolveLatestFabricLoaderVersionAsync(string mcVersion)
     {
-        if (!await FabricSupportsGameVersionAsync(mcVersion))
+        if (!await FabricSupportsGameVersionAsync(mcVersion).ConfigureAwait(false))
             throw new Exception($"Fabric no reporta soporte para Minecraft {mcVersion}.");
 
-        var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl);
+        var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
     private async Task<string> ResolveLatestFabricInstallerVersionAsync()
     {
-        var json = await _httpClient.GetStringAsync(FabricInstallerVersionsUrl);
+        var json = await _httpClient.GetStringAsync(FabricInstallerVersionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
     private async Task<string> ResolveLatestQuiltInstallerVersionAsync(string mcVersion)
     {
-        if (!await QuiltSupportsGameVersionAsync(mcVersion))
+        if (!await QuiltSupportsGameVersionAsync(mcVersion).ConfigureAwait(false))
             throw new Exception($"Quilt no reporta soporte para Minecraft {mcVersion}.");
 
-        var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl);
+        var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
     private async Task<bool> FabricSupportsGameVersionAsync(string mcVersion)
     {
-        var json = await _httpClient.GetStringAsync(FabricGameVersionsUrl);
+        var json = await _httpClient.GetStringAsync(FabricGameVersionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateArray().Any(v =>
             string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
@@ -708,11 +741,15 @@ public class MinecraftService : IMinecraftService
 
     private async Task<bool> QuiltSupportsGameVersionAsync(string mcVersion)
     {
-        var json = await _httpClient.GetStringAsync(QuiltGameVersionsUrl);
+        var json = await _httpClient.GetStringAsync(QuiltGameVersionsUrl).ConfigureAwait(false);
         var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateArray().Any(v =>
             string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
     }
+
+    #endregion
+
+    #region Detalles internos de instalación
 
     private string BuildClassPath(string globalDir, string gameDir, string versionId)
     {
@@ -742,7 +779,7 @@ public class MinecraftService : IMinecraftService
     {
         try
         {
-            var manifestJson = await _httpClient.GetStringAsync(VersionManifestUrl);
+            var manifestJson = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
             var manifest = JsonDocument.Parse(manifestJson);
             string? versionUrl = null;
 
@@ -757,7 +794,7 @@ public class MinecraftService : IMinecraftService
 
             if (versionUrl == null) return null;
 
-            var versionJson = await _httpClient.GetStringAsync(versionUrl);
+            var versionJson = await _httpClient.GetStringAsync(versionUrl).ConfigureAwait(false);
             return new VersionData(versionId, versionUrl, versionJson);
         }
         catch (Exception ex)
@@ -783,7 +820,7 @@ public class MinecraftService : IMinecraftService
             Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
             try
             {
-                await DownloadFileAsync(lib.Url, destPath, null);
+                await DownloadFileAsync(lib.Url, destPath, null).ConfigureAwait(false);
                 count++;
                 progress?.Report((double)(i + 1) / libs.Count * 100);
             }
@@ -805,7 +842,7 @@ public class MinecraftService : IMinecraftService
     }
 
     private async Task DownloadFileAsync(string url, string destinationPath, IProgress<double>? progress)
-        => await _resumableDownloadService.DownloadAsync(url, destinationPath, progress);
+        => await _resumableDownloadService.DownloadAsync(url, destinationPath, progress).ConfigureAwait(false);
 
     private static string GetMinecraftGameDir() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
@@ -832,7 +869,7 @@ public class MinecraftService : IMinecraftService
         {
             try
             {
-                root = JsonNode.Parse(await File.ReadAllTextAsync(profilesPath))?.AsObject() ?? new JsonObject();
+                root = JsonNode.Parse(await File.ReadAllTextAsync(profilesPath).ConfigureAwait(false))?.AsObject() ?? new JsonObject();
             }
             catch
             {
@@ -869,7 +906,7 @@ public class MinecraftService : IMinecraftService
 
         await File.WriteAllTextAsync(
             profilesPath,
-            root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            root.ToJsonString(new JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
     }
 
     private static string SanitizeFolderName(string name)
@@ -901,7 +938,7 @@ public class MinecraftService : IMinecraftService
             if (!File.Exists(destPath))
             {
                 _logger.LogInformation("Downloading native library: {Jar}", jarName);
-                await DownloadFileAsync(native.Url, destPath, null);
+                await DownloadFileAsync(native.Url, destPath, null).ConfigureAwait(false);
             }
 
             _logger.LogDebug("Extracting natives from {Jar}", jarName);
@@ -950,14 +987,14 @@ public class MinecraftService : IMinecraftService
         if (!File.Exists(indexPath))
         {
             _logger.LogInformation("Downloading asset index {AssetIndexId}...", assetIndexId);
-            var indexJson = await _httpClient.GetStringAsync(assetIndexUrl);
-            await File.WriteAllTextAsync(indexPath, indexJson);
+            var indexJson = await _httpClient.GetStringAsync(assetIndexUrl).ConfigureAwait(false);
+            await File.WriteAllTextAsync(indexPath, indexJson).ConfigureAwait(false);
         }
 
         var assetsDir = Path.Combine(gameDir, "assets", "objects");
         Directory.CreateDirectory(assetsDir);
 
-        var indexDoc = JsonDocument.Parse(await File.ReadAllTextAsync(indexPath));
+        var indexDoc = JsonDocument.Parse(await File.ReadAllTextAsync(indexPath).ConfigureAwait(false));
         if (!indexDoc.RootElement.TryGetProperty("objects", out var objects)) return;
 
         var total = objects.EnumerateObject().Count();
@@ -977,7 +1014,7 @@ public class MinecraftService : IMinecraftService
                 var assetUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
                 try
                 {
-                    await DownloadFileAsync(assetUrl, objectPath, null);
+                    await DownloadFileAsync(assetUrl, objectPath, null).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -999,6 +1036,10 @@ public class MinecraftService : IMinecraftService
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "osx";
         return "linux";
     }
+
+    #endregion
+
+    #region Modelo de datos de versión
 
     private class VersionData
     {
@@ -1128,6 +1169,10 @@ public class MinecraftService : IMinecraftService
         }
     }
 
+    #endregion
+
+    #region Actualización de loaders
+
     public async Task<string?> CheckLoaderUpdateAsync(string loaderType, string mcVersion, string currentLoaderVersion)
     {
         if (string.IsNullOrEmpty(currentLoaderVersion) || currentLoaderVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
@@ -1137,10 +1182,10 @@ public class MinecraftService : IMinecraftService
         {
             if (loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase))
             {
-                if (!await FabricSupportsGameVersionAsync(mcVersion))
+                if (!await FabricSupportsGameVersionAsync(mcVersion).ConfigureAwait(false))
                     return null;
 
-                var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl);
+                var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
                 var latest = doc.RootElement[0].GetProperty("version").GetString();
                 if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
@@ -1148,7 +1193,7 @@ public class MinecraftService : IMinecraftService
             }
             else if (loaderType.Equals("quilt", StringComparison.OrdinalIgnoreCase))
             {
-                var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl);
+                var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl).ConfigureAwait(false);
                 var doc = JsonDocument.Parse(json);
                 var latest = doc.RootElement[0].GetProperty("version").GetString();
                 if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
@@ -1163,7 +1208,9 @@ public class MinecraftService : IMinecraftService
     public async Task UpdateLoaderAsync(string mcVersion, string loaderType, string newLoaderVersion, string javaPath, string gameDir, Action<string>? onProgress = null)
     {
         onProgress?.Invoke($"Actualizando {loaderType} a {newLoaderVersion}...");
-        await InstallLoaderAsync(mcVersion, loaderType, newLoaderVersion, javaPath, onProgress: onProgress, gameDir: gameDir);
+        await InstallLoaderAsync(mcVersion, loaderType, newLoaderVersion, javaPath, onProgress: onProgress, gameDir: gameDir).ConfigureAwait(false);
         onProgress?.Invoke($"{loaderType} actualizado a {newLoaderVersion}.");
     }
+
+    #endregion
 }

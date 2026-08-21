@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -29,7 +29,7 @@ public class ResourcePackService : IResourcePackService
     }
 
     public async Task<List<ResourcePack>> GetPacksAsync(int profileId) =>
-        await _repository.GetByProfileIdAsync(profileId);
+        await _repository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
 
     public async Task<ResourcePack> AddPackAsync(int profileId, string sourceFilePath)
     {
@@ -40,7 +40,7 @@ public class ResourcePackService : IResourcePackService
         if (ext != ".zip")
             throw new Exception("Solo se permiten archivos .zip como resource packs.");
 
-        var packsDir = await GetPacksFolderAsync(profileId);
+        var packsDir = await GetPacksFolderAsync(profileId).ConfigureAwait(false);
         Directory.CreateDirectory(packsDir);
 
         var fileName = Path.GetFileName(sourceFilePath);
@@ -65,23 +65,23 @@ public class ResourcePackService : IResourcePackService
             Status = PackStatus.Active
         };
 
-        await _repository.CreateAsync(pack);
+        await _repository.CreateAsync(pack).ConfigureAwait(false);
         _logService.Info("ResourcePackService", "AddPack", $"Resource pack '{pack.Name}' agregado.");
         return pack;
     }
 
     public async Task TogglePackAsync(int packId)
     {
-        var pack = await _repository.GetByIdAsync(packId)
+        var pack = await _repository.GetByIdAsync(packId).ConfigureAwait(false)
             ?? throw new Exception($"Resource pack {packId} not found");
         pack.Status = pack.Status == PackStatus.Active ? PackStatus.Inactive : PackStatus.Active;
-        await _repository.UpdateAsync(pack);
+        await _repository.UpdateAsync(pack).ConfigureAwait(false);
         _logService.Info("ResourcePackService", "TogglePack", $"Resource pack '{pack.Name}' {(pack.Status == PackStatus.Active ? "activado" : "desactivado")}.");
     }
 
     public async Task RemovePackAsync(int packId)
     {
-        var pack = await _repository.GetByIdAsync(packId)
+        var pack = await _repository.GetByIdAsync(packId).ConfigureAwait(false)
             ?? throw new Exception($"Resource pack {packId} not found");
 
         _logService.Info("ResourcePackService", "RemovePack", $"Eliminando resource pack '{pack.Name}'...");
@@ -95,13 +95,13 @@ public class ResourcePackService : IResourcePackService
         }
         catch { }
 
-        await _repository.DeleteAsync(packId);
+        await _repository.DeleteAsync(packId).ConfigureAwait(false);
         _logService.Info("ResourcePackService", "RemovePack", $"Resource pack '{pack.Name}' eliminado.");
     }
 
     public async Task<string> GetPacksFolderAsync(int profileId)
     {
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
             ? _minecraftService.GetDefaultGameDirectory(profile.Name)

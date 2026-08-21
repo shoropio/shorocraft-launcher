@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -27,14 +27,14 @@ public class ScriptService : IScriptService
     }
 
     public async Task<List<Script>> GetScriptsAsync(int profileId) =>
-        await _repository.GetByProfileIdAsync(profileId);
+        await _repository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
 
     public async Task<Script> ImportScriptAsync(int profileId, string sourceFilePath)
     {
         _logger.LogInformation("Importing script from {Source}", sourceFilePath);
         _logService.Info("ScriptService", "ImportScript", $"Importando script {Path.GetFileName(sourceFilePath)}...");
 
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var ext = Path.GetExtension(sourceFilePath).ToLowerInvariant();
@@ -55,7 +55,7 @@ public class ScriptService : IScriptService
 
         if (File.Exists(destPath))
         {
-            var backupPath = await CreateBackupAsync(profileId, destPath);
+            var backupPath = await CreateBackupAsync(profileId, destPath).ConfigureAwait(false);
             _logger.LogInformation("Backup created at {Backup}", backupPath);
             _logService.Info("ScriptService", "ImportScript", $"Backup creado: {backupPath}");
         }
@@ -69,41 +69,41 @@ public class ScriptService : IScriptService
             Name = Path.GetFileNameWithoutExtension(fileName),
             FileName = fileName,
             FilePath = destPath,
-            Content = await File.ReadAllTextAsync(destPath)
+            Content = await File.ReadAllTextAsync(destPath).ConfigureAwait(false)
         };
 
-        await _repository.CreateAsync(script);
+        await _repository.CreateAsync(script).ConfigureAwait(false);
         _logService.Info("ScriptService", "ImportScript", $"Script '{script.Name}' importado.");
         return script;
     }
 
     public async Task<string> ReadScriptContentAsync(int scriptId)
     {
-        var script = await _repository.GetByIdAsync(scriptId)
+        var script = await _repository.GetByIdAsync(scriptId).ConfigureAwait(false)
             ?? throw new Exception($"Script {scriptId} not found");
 
         if (File.Exists(script.FilePath))
-            script.Content = await File.ReadAllTextAsync(script.FilePath);
+            script.Content = await File.ReadAllTextAsync(script.FilePath).ConfigureAwait(false);
 
         return script.Content;
     }
 
     public async Task SaveScriptContentAsync(int scriptId, string content)
     {
-        var script = await _repository.GetByIdAsync(scriptId)
+        var script = await _repository.GetByIdAsync(scriptId).ConfigureAwait(false)
             ?? throw new Exception($"Script {scriptId} not found");
 
         var scriptDir = Path.GetDirectoryName(script.FilePath);
         if (!string.IsNullOrWhiteSpace(scriptDir))
             Directory.CreateDirectory(scriptDir);
 
-        var backupPath = await CreateBackupAsync(script.ProfileId, script.FilePath);
-        await File.WriteAllTextAsync(script.FilePath, content);
+        var backupPath = await CreateBackupAsync(script.ProfileId, script.FilePath).ConfigureAwait(false);
+        await File.WriteAllTextAsync(script.FilePath, content).ConfigureAwait(false);
         script.Content = content;
         if (!string.IsNullOrEmpty(backupPath))
             script.BackupPath = backupPath;
 
-        await _repository.UpdateAsync(script);
+        await _repository.UpdateAsync(script).ConfigureAwait(false);
         _logger.LogInformation("Script {Name} saved. Backup: {BackupPath}", script.Name, backupPath);
 
         var message = string.IsNullOrEmpty(backupPath)
@@ -114,13 +114,13 @@ public class ScriptService : IScriptService
 
     public async Task DeleteScriptAsync(int scriptId)
     {
-        var script = await _repository.GetByIdAsync(scriptId)
+        var script = await _repository.GetByIdAsync(scriptId).ConfigureAwait(false)
             ?? throw new Exception($"Script {scriptId} not found");
 
         try { if (File.Exists(script.FilePath)) File.Delete(script.FilePath); }
         catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete script file"); }
 
-        await _repository.DeleteAsync(scriptId);
+        await _repository.DeleteAsync(scriptId).ConfigureAwait(false);
         _logService.Info("ScriptService", "DeleteScript", $"Script '{script.Name}' eliminado.");
     }
 
@@ -128,7 +128,7 @@ public class ScriptService : IScriptService
     {
         if (!File.Exists(filePath)) return string.Empty;
 
-        var profile = await _profileRepository.GetByIdAsync(profileId)
+        var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
 
         var backupDir = Path.Combine(

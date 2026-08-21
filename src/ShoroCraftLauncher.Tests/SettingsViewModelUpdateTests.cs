@@ -13,6 +13,7 @@ public class SettingsViewModelUpdateTests
     public async Task CheckUpdates_NoUpdateAvailable_SetsNoUpdateMessage()
     {
         var settingsRepo = new Mock<ISettingsRepository>(MockBehavior.Loose);
+        var secretStorage = new Mock<ISecretStorage>(MockBehavior.Loose);
         var logService = new Mock<ILogService>(MockBehavior.Loose);
         var updaterService = new Mock<IUpdaterService>(MockBehavior.Strict);
         updaterService
@@ -21,6 +22,7 @@ public class SettingsViewModelUpdateTests
 
         var vm = new SettingsViewModel(
             settingsRepo.Object,
+            secretStorage.Object,
             Mock.Of<ILogger<SettingsViewModel>>(),
             logService.Object,
             updaterService.Object);
