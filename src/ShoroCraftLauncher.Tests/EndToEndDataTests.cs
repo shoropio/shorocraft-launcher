@@ -129,6 +129,65 @@ public class EndToEndDataTests
     }
 
     [Fact]
+    public async Task DbInitializer_AddsMissingModColumnsToLegacyDatabase()
+    {
+        // Simula una BD creada por una versión anterior a la feature de
+        // actualizaciones por-mod (fe74928), sin las 4 columnas nuevas.
+        using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftE2ELegacy", out _);
+        var dbPath = Path.Combine(TestPaths.CreateTempDir("ShoroCraftE2ELegacyDb"), "launcher.db");
+
+        var factory = CreateFactory(dbPath);
+        new DbInitializer(factory).Initialize();
+
+        await using (var context = factory.CreateDbContext())
+        {
+            var conn = context.Database.GetDbConnection();
+            conn.Open();
+            foreach (var column in new[] { "HasUpdate", "LatestVersion", "UpdateStatusText", "UpdateAvailableText" })
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"ALTER TABLE Mods DROP COLUMN {column}";
+                cmd.ExecuteNonQuery();
+            }
+            conn.Close();
+        }
+
+        // Act: reinicializar debe restaurar las columnas sin perder datos.
+        new DbInitializer(factory).Initialize();
+
+        var profileRepo = new ProfileRepository(factory);
+        var modRepo = new ModRepository(factory);
+        var profileId = await profileRepo.CreateAsync(new Profile
+        {
+            Name = "LegacyProfile",
+            MinecraftVersion = "1.20.1",
+            Type = ProfileType.Vanilla,
+            MinRamMB = 1024,
+            MaxRamMB = 4096,
+            WindowWidth = 854,
+            WindowHeight = 480
+        });
+
+        await modRepo.CreateAsync(new Mod
+        {
+            ProfileId = profileId,
+            Name = "JEI",
+            FileName = "jei.jar",
+            FilePath = Path.Combine(TestPaths.CreateTempDir("ShoroCraftE2ELegacyMods"), "jei.jar"),
+            FileSizeBytes = 1234,
+            MinecraftVersion = "1.20.1",
+            Status = ModStatus.Active
+        });
+
+        // Assert: la proyección completa de la entidad funciona (incluye HasUpdate).
+        var mods = await modRepo.GetByProfileIdAsync(profileId);
+        var mod = Assert.Single(mods);
+        Assert.Equal("jei.jar", mod.FileName);
+        Assert.False(mod.HasUpdate);
+        Assert.Null(mod.LatestVersion);
+    }
+
+    [Fact]
     public async Task FullStack_SecretDelete_RemovesFromSecureStorage()
     {
         using var dataRootScope = TestPaths.UseLauncherDataRoot("ShoroCraftE2ESecret", out _);

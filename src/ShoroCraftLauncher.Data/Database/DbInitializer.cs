@@ -30,49 +30,30 @@ public class DbInitializer
         {
             using var cmd = conn.CreateCommand();
 
-            // Check and add Description column to Mods
-            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='Description'";
-            var hasDesc = (long)(cmd.ExecuteScalar() ?? 0L);
-            if (hasDesc == 0)
+            // Columnas añadidas al modelo Mod después del esquema inicial.
+            // Toda propiedad nueva mapeada de Mod DEBE registrarse aquí.
+            var modColumns = new (string Name, string Ddl)[]
             {
-                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN Description TEXT NULL";
-                cmd.ExecuteNonQuery();
-            }
+                ("Description",         "ALTER TABLE Mods ADD COLUMN Description TEXT NULL"),
+                ("IconPath",            "ALTER TABLE Mods ADD COLUMN IconPath TEXT NULL"),
+                ("SourceProvider",      "ALTER TABLE Mods ADD COLUMN SourceProvider TEXT NULL"),
+                ("RemoteProjectId",     "ALTER TABLE Mods ADD COLUMN RemoteProjectId TEXT NULL"),
+                ("RemoteSlug",          "ALTER TABLE Mods ADD COLUMN RemoteSlug TEXT NULL"),
+                ("LatestVersion",       "ALTER TABLE Mods ADD COLUMN LatestVersion TEXT NULL"),
+                ("HasUpdate",           "ALTER TABLE Mods ADD COLUMN HasUpdate INTEGER NOT NULL DEFAULT 0"),
+                ("UpdateStatusText",    "ALTER TABLE Mods ADD COLUMN UpdateStatusText TEXT NULL"),
+                ("UpdateAvailableText", "ALTER TABLE Mods ADD COLUMN UpdateAvailableText TEXT NULL")
+            };
 
-            // Check and add IconPath column to Mods
-            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='IconPath'";
-            var hasIcon = (long)(cmd.ExecuteScalar() ?? 0L);
-            if (hasIcon == 0)
+            foreach (var (columnName, ddl) in modColumns)
             {
-                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN IconPath TEXT NULL";
-                cmd.ExecuteNonQuery();
-            }
-
-            // Check and add SourceProvider column to Mods (for update tracking)
-            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='SourceProvider'";
-            var hasSource = (long)(cmd.ExecuteScalar() ?? 0L);
-            if (hasSource == 0)
-            {
-                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN SourceProvider TEXT NULL";
-                cmd.ExecuteNonQuery();
-            }
-
-            // Check and add RemoteProjectId column to Mods (for update tracking)
-            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='RemoteProjectId'";
-            var hasRemoteId = (long)(cmd.ExecuteScalar() ?? 0L);
-            if (hasRemoteId == 0)
-            {
-                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN RemoteProjectId TEXT NULL";
-                cmd.ExecuteNonQuery();
-            }
-
-            // Check and add RemoteSlug column to Mods (for update tracking)
-            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='RemoteSlug'";
-            var hasRemoteSlug = (long)(cmd.ExecuteScalar() ?? 0L);
-            if (hasRemoteSlug == 0)
-            {
-                cmd.CommandText = "ALTER TABLE Mods ADD COLUMN RemoteSlug TEXT NULL";
-                cmd.ExecuteNonQuery();
+                cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('Mods') WHERE name='{columnName}'";
+                var hasColumn = (long)(cmd.ExecuteScalar() ?? 0L);
+                if (hasColumn == 0)
+                {
+                    cmd.CommandText = ddl;
+                    cmd.ExecuteNonQuery();
+                }
             }
 
             // Create GameMaps table if it doesn't exist
