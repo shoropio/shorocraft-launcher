@@ -71,18 +71,12 @@ public class WindowsCredentialStorage : ISecretStorage
         DomainExtended = 6
     }
 
-    public async Task<string?> GetSecretAsync(string name)
-    {
-        // Try Credential Locker first
-        if (TryReadFromCredentialLocker(name, out string? secret))
+    public Task<string?> GetSecretAsync(string name) =>
+        Task.Run(() =>
         {
+            TryReadFromCredentialLocker(name, out string? secret);
             return secret;
-        }
-
-        // Fallback: try reading from old DPAPI-encrypted config
-        // This allows migration from existing installations
-        return null;
-    }
+        });
 
     private bool TryReadFromCredentialLocker(string name, out string? secret)
     {
@@ -132,51 +126,35 @@ public class WindowsCredentialStorage : ISecretStorage
         return false;
     }
 
-    public async Task SetSecretAsync(string name, string secret)
-    {
-        var cred = new CREDENTIALW
+    public Task SetSecretAsync(string name, string secret) =>
+        Task.Run(() =>
         {
-            credentialType = CredType.Generic,
-            credentialName = name,
-            password = secret,
-            credentialPersist = 5, // CRED_PER_ROAMING
-            targetName = AppName
-        };
+            var cred = new CREDENTIALW
+            {
+                credentialType = CredType.Generic,
+                credentialName = name,
+                password = secret,
+                credentialPersist = 5, // CRED_PER_ROAMING
+                targetName = AppName
+            };
 
-        int structSize = Marshal.SizeOf(typeof(CREDENTIALW));
-        IntPtr ptr = Marshal.AllocHGlobal(structSize);
-        Marshal.StructureToPtr(cred, ptr, false);
+            int structSize = Marshal.SizeOf(typeof(CREDENTIALW));
+            IntPtr ptr = Marshal.AllocHGlobal(structSize);
+            Marshal.StructureToPtr(cred, ptr, false);
 
-        int result = CredWriteW(in cred, 0);
-        Marshal.FreeHGlobal(ptr);
+            int result = CredWriteW(in cred, 0);
+            Marshal.FreeHGlobal(ptr);
 
-        if (result != 0)
-        {
-            // Successfully stored in Windows Credential Locker
-        }
-        else
-        {
-            throw new Exception("Failed to write credential to Windows Credential Locker");
-        }
-    }
+            if (result == 0)
+            {
+                throw new Exception("Failed to write credential to Windows Credential Locker");
+            }
+        });
 
-    public async Task DeleteSecretAsync(string name)
-    {
-        int result = CredDeleteW(AppName, (uint)CredType.Generic, 0);
-        // result = 0 means not found, which is OK
-    }
+    public Task DeleteSecretAsync(string name) =>
+        Task.Run(() => CredDeleteW(AppName, (uint)CredType.Generic, 0));
 
-    public async Task<bool> HasSecretAsync(string name)
-    {
-        // Try Credential Locker first
-        if (TryReadFromCredentialLocker(name, out _))
-        {
-            return true;
-        }
-
-        // Fallback: check if exists in old DPAPI config
-        // This is handled by the caller (SettingsRepository migration)
-        return false;
-    }
+    public Task<bool> HasSecretAsync(string name) =>
+        Task.Run(() => TryReadFromCredentialLocker(name, out _));
 }
 #nullable disable

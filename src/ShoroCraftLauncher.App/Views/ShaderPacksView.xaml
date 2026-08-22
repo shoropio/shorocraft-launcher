@@ -49,12 +49,11 @@
                         </TextBox.InputBindings>
                     </TextBox>
                     <Button Grid.Column="1" Content="{DynamicResource Sh_Search}" Command="{Binding SearchCommand}"
-                            Style="{StaticResource PrimaryButton}" Padding="16,8"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}" />
+                            Style="{StaticResource PrimaryButton}" Padding="16,8" />
                 </Grid>
             </Border>
 
-            <WrapPanel Grid.Row="1" Margin="0,0,0,12" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+            <WrapPanel Grid.Row="1" Margin="0,0,0,12">
                 <Button Content="{DynamicResource Sh_Installed}" Command="{Binding ShowInstalledCommand}"
                         Margin="0,0,10,10" Padding="14,8">
                     <Button.Style>

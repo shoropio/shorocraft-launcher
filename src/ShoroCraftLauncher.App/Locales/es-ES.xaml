@@ -95,6 +95,7 @@
     <system:String x:Key="Mods_OpenFolder">Abrir carpeta</system:String>
     <system:String x:Key="Mods_Refresh">Actualizar</system:String>
     <system:String x:Key="Mods_CheckUpdates">Buscar actualizaciones</system:String>
+    <system:String x:Key="Mods_Update">Actualizar</system:String>
     <system:String x:Key="Mods_UpdateAll">Actualizar todo</system:String>
     <system:String x:Key="Dash_LoaderUpdate">Actualización de loader disponible</system:String>
     <system:String x:Key="Mods_Delete">Eliminar</system:String>
