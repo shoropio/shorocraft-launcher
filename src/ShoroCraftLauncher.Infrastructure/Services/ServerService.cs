@@ -387,10 +387,28 @@ public class ServerService : IServerService
     {
         lock (_lock)
         {
-            if (_logHistory.TryGetValue(server.Id, out var history))
-                return history.ToList();
+            return _logHistory.TryGetValue(server.Id, out var lines)
+                ? lines.ToList()
+                : new List<string>();
         }
-        return Array.Empty<string>();
+    }
+
+    public async Task<string?> GetPublicIpAddressAsync()
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+            var response = await _httpClient.GetAsync("https://api.ipify.org?format=text").ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+            var ip = (await response.Content.ReadAsStringAsync().ConfigureAwait(false)).Trim();
+            return string.IsNullOrWhiteSpace(ip) ? null : ip;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to resolve public IP address");
+            return null;
+        }
     }
 
     private async Task<string> EnsureServerJarAsync(MinecraftServer server)

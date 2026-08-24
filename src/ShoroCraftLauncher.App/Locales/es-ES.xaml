@@ -133,6 +133,20 @@
     <system:String x:Key="Srv_Send">Enviar</system:String>
     <system:String x:Key="Srv_Name">Nombre</system:String>
     <system:String x:Key="Srv_RamMB">RAM MB</system:String>
+    <system:String x:Key="Srv_ConnectionTitle">Conexión</system:String>
+    <system:String x:Key="Srv_LocalIp">IP local (LAN)</system:String>
+    <system:String x:Key="Srv_PublicIp">IP pública</system:String>
+    <system:String x:Key="Srv_CopyAddress">Copiar dirección</system:String>
+    <system:String x:Key="Srv_ConnectionNote">Comparte la IP pública con jugadores fuera de tu red y la IP local (LAN) con jugadores en la misma red. Para Bedrock (Geyser) usa el puerto de Bedrock si está configurado.</system:String>
+    <system:String x:Key="Srv_PluginsTitle">Plugins</system:String>
+    <system:String x:Key="Srv_PluginsSub">Plugins del servidor (Paper). GeyserMC permite a jugadores de Bedrock unirse a un servidor Java; Floodgate les permite entrar sin una cuenta de Java.</system:String>
+    <system:String x:Key="Srv_PluginDisable">Deshabilitar</system:String>
+    <system:String x:Key="Srv_PluginEnable">Habilitar</system:String>
+    <system:String x:Key="Srv_PluginDelete">Eliminar</system:String>
+    <system:String x:Key="Srv_PluginInstall">Instalar</system:String>
+    <system:String x:Key="Srv_PluginInstalled">Instalado</system:String>
+    <system:String x:Key="Srv_PluginUpdate">Actualizar</system:String>
+    <system:String x:Key="Srv_PluginDisabled"> (deshabilitado)</system:String>
 
     <!-- Settings -->
     <system:String x:Key="Set_Title">Configuración</system:String>

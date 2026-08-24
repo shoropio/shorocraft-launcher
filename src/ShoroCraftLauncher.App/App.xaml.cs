@@ -114,6 +114,7 @@ public partial class App : Application
                 services.AddSingleton<IModpackService, ModpackService>();
                 services.AddSingleton<IProfileService, ProfileService>();
                 services.AddSingleton<IServerService, ServerService>();
+                services.AddSingleton<IServerPluginService, ServerPluginService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IUpdaterService, UpdaterService>();
                 services.AddSingleton<INewsService, NewsService>();

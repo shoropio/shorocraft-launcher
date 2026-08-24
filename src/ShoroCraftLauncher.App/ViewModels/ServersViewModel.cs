@@ -13,6 +13,7 @@ namespace ShoroCraftLauncher.App.ViewModels;
 public class ServersViewModel : BaseViewModel, IDisposable
 {
     private readonly IServerService _serverService;
+    private readonly IServerPluginService _pluginService;
     private readonly ILogger<ServersViewModel> _logger;
 
     private readonly Action _serversChangedHandler;
@@ -22,6 +23,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
 
     public ObservableCollection<MinecraftServer> Servers { get; } = new();
     public ObservableCollection<string> LogLines { get; } = new();
+    public ObservableCollection<ServerPlugin> ServerPlugins { get; } = new();
     public ObservableCollection<ServerType> ServerTypes { get; } = new() { ServerType.Vanilla, ServerType.Paper };
 
     private string _newServerName = string.Empty;
@@ -74,13 +76,70 @@ public class ServersViewModel : BaseViewModel, IDisposable
             LoadServerLogs(value);
             OnPropertyChanged(nameof(IsSelected));
             OnPropertyChanged(nameof(CanControl));
+            OnPropertyChanged(nameof(ShowPlugins));
+            OnPropertyChanged(nameof(LocalAddress));
+            OnPropertyChanged(nameof(PublicAddress));
+            OnPropertyChanged(nameof(ServerAddress));
             CommandManager.InvalidateRequerySuggested();
+            _ = LoadPluginsAsync(value);
+            UpdateConnectionInfo(value);
         }
         }
     }
 
     public bool IsSelected => SelectedServer != null;
     public bool CanControl => SelectedServer != null;
+    public bool ShowPlugins => SelectedServer != null && SelectedServer.Type == ServerType.Paper;
+
+    private string _localIp = string.Empty;
+    public string LocalIp
+    {
+        get => _localIp;
+        set
+        {
+            if (SetProperty(ref _localIp, value))
+                OnPropertyChanged(nameof(LocalAddress));
+        }
+    }
+
+    private string? _publicIp;
+    public string? PublicIp
+    {
+        get => _publicIp;
+        set
+        {
+            if (SetProperty(ref _publicIp, value))
+                OnPropertyChanged(nameof(ServerAddress));
+        }
+    }
+
+    public string ServerAddress
+    {
+        get
+        {
+            if (SelectedServer == null) return string.Empty;
+            var host = !string.IsNullOrEmpty(PublicIp) ? PublicIp! : LocalIp;
+            return string.IsNullOrEmpty(host) ? string.Empty : $"{host}:{SelectedServer.Port}";
+        }
+    }
+
+    public string LocalAddress
+    {
+        get
+        {
+            if (SelectedServer == null) return string.Empty;
+            return string.IsNullOrEmpty(LocalIp) ? string.Empty : $"{LocalIp}:{SelectedServer.Port}";
+        }
+    }
+
+    public string? PublicAddress
+    {
+        get
+        {
+            if (SelectedServer == null || string.IsNullOrEmpty(PublicIp)) return null;
+            return $"{PublicIp}:{SelectedServer.Port}";
+        }
+    }
 
     private string _commandText = string.Empty;
     public string CommandText
@@ -123,10 +182,16 @@ public class ServersViewModel : BaseViewModel, IDisposable
     public ICommand CopyConsoleCommand { get; }
     public ICommand ClearConsoleCommand { get; }
     public ICommand SendCommandCommand { get; }
+    public ICommand InstallPluginCommand { get; }
+    public ICommand TogglePluginCommand { get; }
+    public ICommand DeletePluginCommand { get; }
+    public ICommand RefreshPluginsCommand { get; }
+    public ICommand CopyAddressCommand { get; }
 
-    public ServersViewModel(IServerService serverService, ILogger<ServersViewModel> logger)
+    public ServersViewModel(IServerService serverService, IServerPluginService pluginService, ILogger<ServersViewModel> logger)
     {
         _serverService = serverService;
+        _pluginService = pluginService;
         _logger = logger;
 
         RefreshCommand = new RelayCommand(async _ => await LoadAsync());
@@ -138,6 +203,11 @@ public class ServersViewModel : BaseViewModel, IDisposable
         CopyConsoleCommand = new RelayCommand(_ => CopyConsole(), _ => LogLines.Count > 0);
         ClearConsoleCommand = new RelayCommand(_ => ClearConsole(), _ => LogLines.Count > 0);
         SendCommandCommand = new RelayCommand(async _ => await SendCommand(), _ => IsSelected && !string.IsNullOrWhiteSpace(CommandText));
+        InstallPluginCommand = new RelayCommand(async p => await InstallOrUpdatePlugin(p), _ => IsSelected && !IsBusy);
+        TogglePluginCommand = new RelayCommand(async p => await TogglePlugin(p), _ => IsSelected && !IsBusy);
+        DeletePluginCommand = new RelayCommand(async p => await DeletePlugin(p), _ => IsSelected && !IsBusy);
+        RefreshPluginsCommand = new RelayCommand(async _ => await LoadPluginsAsync(SelectedServer), _ => IsSelected && !IsBusy);
+        CopyAddressCommand = new RelayCommand(_ => CopyServerAddress(), _ => IsSelected && !string.IsNullOrEmpty(ServerAddress));
 
         _serversChangedHandler = () => Dispatcher(() => SyncServers());
         _logOutputHandler = line => Dispatcher(() => AddLogLine(line));
@@ -218,6 +288,151 @@ public class ServersViewModel : BaseViewModel, IDisposable
 
         if (SelectedServer == null && Servers.Count > 0)
             SelectedServer = Servers[0];
+    }
+
+    private async Task LoadPluginsAsync(MinecraftServer? server)
+    {
+        ServerPlugins.Clear();
+        if (server == null || server.Type != ServerType.Paper)
+            return;
+
+        try
+        {
+            var plugins = await _pluginService.GetPluginsAsync(server).ConfigureAwait(false);
+            foreach (var p in plugins)
+                ServerPlugins.Add(p);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load server plugins");
+        }
+    }
+
+    private async Task InstallOrUpdatePlugin(object? parameter)
+    {
+        if (parameter is not ServerPlugin plugin || SelectedServer == null)
+            return;
+
+        IsBusy = true;
+        try
+        {
+            StatusMessage = $"Instalando {plugin.Name}...";
+            await _pluginService.InstallPluginAsync(SelectedServer, plugin).ConfigureAwait(false);
+            await LoadPluginsAsync(SelectedServer);
+            StatusMessage = $"{plugin.Name} instalado correctamente.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install plugin");
+            StatusMessage = $"Error al instalar {plugin.Name}: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task TogglePlugin(object? parameter)
+    {
+        if (parameter is not ServerPlugin plugin || SelectedServer == null)
+            return;
+
+        IsBusy = true;
+        try
+        {
+            await _pluginService.TogglePluginAsync(SelectedServer, plugin).ConfigureAwait(false);
+            await LoadPluginsAsync(SelectedServer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle plugin");
+            StatusMessage = $"Error al cambiar estado de {plugin.Name}: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task DeletePlugin(object? parameter)
+    {
+        if (parameter is not ServerPlugin plugin || SelectedServer == null)
+            return;
+
+        var result = DialogHelper.Confirm(
+            $"¿Eliminar el plugin '{plugin.Name}'?", "Eliminar plugin");
+        if (result != System.Windows.MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        try
+        {
+            await _pluginService.DeletePluginAsync(SelectedServer, plugin).ConfigureAwait(false);
+            await LoadPluginsAsync(SelectedServer);
+            StatusMessage = $"Plugin '{plugin.Name}' eliminado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete plugin");
+            StatusMessage = $"Error al eliminar {plugin.Name}: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void UpdateConnectionInfo(MinecraftServer? server)
+    {
+        if (server == null)
+        {
+            LocalIp = string.Empty;
+            PublicIp = null;
+            OnPropertyChanged(nameof(LocalAddress));
+            OnPropertyChanged(nameof(PublicAddress));
+            OnPropertyChanged(nameof(ServerAddress));
+            return;
+        }
+
+        LocalIp = GetLocalIpAddress();
+        OnPropertyChanged(nameof(ServerAddress));
+        _ = LoadPublicIpAsync();
+    }
+
+    private async Task LoadPublicIpAsync()
+    {
+        try
+        {
+            PublicIp = await _serverService.GetPublicIpAddressAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            PublicIp = null;
+        }
+    }
+
+    private static string GetLocalIpAddress()
+    {
+        try
+        {
+            var host = System.Net.Dns.GetHostName();
+            var addresses = System.Net.Dns.GetHostAddresses(host)
+                .Where(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                .Where(ip => !System.Net.IPAddress.IsLoopback(ip))
+                .ToList();
+            return addresses.Count > 0 ? addresses[0].ToString() : "127.0.0.1";
+        }
+        catch
+        {
+            return "127.0.0.1";
+        }
+    }
+
+    private void CopyServerAddress()
+    {
+        if (string.IsNullOrEmpty(ServerAddress)) return;
+        System.Windows.Clipboard.SetText(ServerAddress);
+        StatusMessage = $"Dirección del servidor copiada: {ServerAddress}";
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void LoadServerLogs(MinecraftServer? server)

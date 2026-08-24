@@ -71,6 +71,8 @@
         <Grid Grid.Column="1" Margin="0,0,18,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -117,7 +119,104 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0">
+            <!-- Server connection info -->
+            <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,0,12"
+                    Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Srv_ConnectionTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+                    <WrapPanel Orientation="Horizontal">
+                        <StackPanel Margin="0,0,24,0">
+                            <TextBlock Text="{DynamicResource Srv_LocalIp}" Style="{StaticResource CardSubtitle}" />
+                            <TextBlock Text="{Binding LocalAddress}" FontSize="14" FontWeight="SemiBold" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,24,0">
+                            <TextBlock Text="{DynamicResource Srv_PublicIp}" Style="{StaticResource CardSubtitle}" />
+                            <TextBlock Text="{Binding PublicAddress, TargetNullValue='—'}" FontSize="14" FontWeight="SemiBold" />
+                        </StackPanel>
+                        <Button Content="{DynamicResource Srv_CopyAddress}" Command="{Binding CopyAddressCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="14,7" FontSize="12"
+                                VerticalAlignment="Bottom" />
+                    </WrapPanel>
+                    <TextBlock Text="{DynamicResource Srv_ConnectionNote}" FontSize="11"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Plugins (Paper only) -->
+            <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,0,12"
+                    Visibility="{Binding ShowPlugins, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Srv_PluginsTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,4" />
+                    <TextBlock Text="{DynamicResource Srv_PluginsSub}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding ServerPlugins}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource FlatCardBorder}" Margin="0,0,0,8" Padding="12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" FontSize="13" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Text="{Binding Version}" />
+                                                <TextBlock FontSize="11" Foreground="{StaticResource WarningBrush}" Text="{DynamicResource Srv_PluginDisabled}" Margin="6,0,0,0"
+                                                           Visibility="{Binding IsDisabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <ToggleButton IsChecked="{Binding IsDisabled, Converter={StaticResource InverseBoolConverter}}"
+                                                          Style="{StaticResource SwitchToggle}" />
+                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                                    Command="{Binding ElementName=root, Path=DataContext.TogglePluginCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                                        <Setter Property="Content" Value="{DynamicResource Srv_PluginDisable}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsDisabled}" Value="True">
+                                                                <Setter Property="Content" Value="{DynamicResource Srv_PluginEnable}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                                    Command="{Binding ElementName=root, Path=DataContext.DeletePluginCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource DangerButton}"
+                                                    Content="{DynamicResource Srv_PluginDelete}" />
+                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                                    Command="{Binding ElementName=root, Path=DataContext.InstallPluginCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                                        <Setter Property="Content" Value="{DynamicResource Srv_PluginInstall}" />
+                                                        <Setter Property="IsEnabled" Value="True" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsInstalled}" Value="True">
+                                                                <Setter Property="Content" Value="{DynamicResource Srv_PluginInstalled}" />
+                                                                <Setter Property="IsEnabled" Value="False" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasUpdate}" Value="True">
+                                                                <Setter Property="Content" Value="{DynamicResource Srv_PluginUpdate}" />
+                                                                <Setter Property="IsEnabled" Value="True" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0">
                 <DockPanel>
                     <Grid DockPanel.Dock="Top" Background="#0D0D18">
                         <StackPanel Orientation="Horizontal" Margin="10,6">

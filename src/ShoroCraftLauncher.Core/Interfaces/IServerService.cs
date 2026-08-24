@@ -29,4 +29,13 @@ public interface IServerService
     Task SendCommandAsync(MinecraftServer server, string command);
     bool IsRunning(MinecraftServer server);
     IReadOnlyList<string> GetLogHistory(MinecraftServer server);
+    Task<string?> GetPublicIpAddressAsync();
+}
+
+public interface IServerPluginService
+{
+    Task<List<ServerPlugin>> GetPluginsAsync(MinecraftServer server);
+    Task InstallPluginAsync(MinecraftServer server, ServerPlugin plugin);
+    Task DeletePluginAsync(MinecraftServer server, ServerPlugin plugin);
+    Task TogglePluginAsync(MinecraftServer server, ServerPlugin plugin);
 }
