@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 using ShoroCraftLauncher.Core.Enums;
 
@@ -16,7 +17,12 @@ public class Mod : INotifyPropertyChanged
     public string MinecraftVersion { get; set; } = string.Empty;
     public string ModVersion { get; set; } = string.Empty;
     public string? LatestVersion { get; set; }
-    public bool HasUpdate { get; set; }
+    private bool _hasUpdate;
+    public bool HasUpdate
+    {
+        get => _hasUpdate;
+        set => SetProperty(ref _hasUpdate, value);
+    }
     public string? UpdateStatusText { get; set; }
     public string? UpdateAvailableText { get; set; }
     public string? Description { get; set; }
@@ -24,6 +30,14 @@ public class Mod : INotifyPropertyChanged
     public string? SourceProvider { get; set; }
     public string? RemoteProjectId { get; set; }
     public string? RemoteSlug { get; set; }
+
+    [NotMapped]
+    private bool _isInstalledInProfile;
+    public bool IsInstalledInProfile
+    {
+        get => _isInstalledInProfile;
+        set => SetProperty(ref _isInstalledInProfile, value);
+    }
 
     private ModStatus _status = ModStatus.Active;
     public ModStatus Status

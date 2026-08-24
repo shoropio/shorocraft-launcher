@@ -196,10 +196,26 @@
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource CardTitle}" />
                                         <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" MaxHeight="30" TextWrapping="Wrap" Margin="0,4,0,0" />
                                     </StackPanel>
-                                    <Button Grid.Column="2" Content="{DynamicResource Mods_Install}" Style="{StaticResource PrimaryButton}"
-                                            Padding="14,7" FontSize="12" VerticalAlignment="Center"
+                                    <Button Grid.Column="2" Padding="14,7" FontSize="12" VerticalAlignment="Center"
                                             Command="{Binding ElementName=root, Path=DataContext.InstallFromSearchCommand}"
-                                            CommandParameter="{Binding}" />
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                                <Setter Property="Content" Value="{DynamicResource Mods_Install}" />
+                                                <Setter Property="IsEnabled" Value="True" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsInstalledInProfile}" Value="True">
+                                                        <Setter Property="Content" Value="{DynamicResource Mods_Installed}" />
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding HasUpdate}" Value="True">
+                                                        <Setter Property="Content" Value="{DynamicResource Mods_Update}" />
+                                                        <Setter Property="IsEnabled" Value="True" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </Grid>
                             </Border>
                         </DataTemplate>

@@ -177,7 +177,9 @@ public class ModsViewModel : BaseViewModel, IDisposable
             SearchResults.Clear();
             foreach (var r in results)
                 SearchResults.Add(r);
-            
+
+            await MarkSearchResultsStateAsync();
+
             StatusMessage = SearchResults.Count > 0
                 ? $"Encontrados {SearchResults.Count} mods en {SelectedProvider}."
                 : $"No se encontraron mods en {SelectedProvider}. Prueba otro término.";
@@ -206,6 +208,7 @@ public class ModsViewModel : BaseViewModel, IDisposable
             var mods = await _modService.GetRecommendedModsAsync();
             SearchResults.Clear();
             foreach (var m in mods) SearchResults.Add(m);
+            await MarkSearchResultsStateAsync();
             ShowSearchResults = true;
             StatusMessage = $"{SearchResults.Count} mods recomendados.";
         }
@@ -217,6 +220,59 @@ public class ModsViewModel : BaseViewModel, IDisposable
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task MarkSearchResultsStateAsync()
+    {
+        if (SelectedProfile == null)
+            return;
+
+        try
+        {
+            var installed = await _modService.GetModsAsync(SelectedProfile.Id);
+            var active = installed
+                .Where(m => m.Status == ShoroCraftLauncher.Core.Enums.ModStatus.Active)
+                .ToList();
+
+            var byProject = new Dictionary<string, Mod>(StringComparer.OrdinalIgnoreCase);
+            var bySlug = new Dictionary<string, Mod>(StringComparer.OrdinalIgnoreCase);
+            foreach (var m in active)
+            {
+                if (!string.IsNullOrEmpty(m.RemoteProjectId))
+                    byProject[m.RemoteProjectId] = m;
+                if (!string.IsNullOrEmpty(m.RemoteSlug))
+                    bySlug[m.RemoteSlug] = m;
+            }
+
+            foreach (var r in SearchResults)
+            {
+                Mod? match = null;
+                if (!string.IsNullOrEmpty(r.FileName) && byProject.TryGetValue(r.FileName, out var byProjectMatch))
+                    match = byProjectMatch;
+                else if (!string.IsNullOrEmpty(r.RemoteSlug) && bySlug.TryGetValue(r.RemoteSlug, out var bySlugMatch))
+                    match = bySlugMatch;
+                else
+                    match = active.FirstOrDefault(m =>
+                        string.Equals(m.Name, r.Name, StringComparison.OrdinalIgnoreCase)
+                        || (!string.IsNullOrEmpty(m.RemoteSlug) && r.Name.Contains(m.RemoteSlug, StringComparison.OrdinalIgnoreCase)));
+
+                if (match != null)
+                {
+                    r.IsInstalledInProfile = true;
+                    r.HasUpdate = !string.IsNullOrEmpty(r.ModVersion)
+                        && !r.ModVersion.Equals(match.ModVersion, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    r.IsInstalledInProfile = false;
+                    r.HasUpdate = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to mark search result install state");
         }
     }
 
