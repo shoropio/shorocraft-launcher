@@ -179,7 +179,7 @@
                                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                   ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                   HorizontalAlignment="Left" VerticalAlignment="Center" />
-                                <ToggleButton x:Name="toggleButton" Grid.Column="1" Width="30"
+                                <ToggleButton x:Name="toggleButton" Grid.Column="0" Grid.ColumnSpan="2"
                                               Background="Transparent" BorderThickness="0"
                                               IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                               Cursor="Hand">
@@ -190,19 +190,17 @@
                                                       Data="M0,0 L6,6 L12,0"
                                                       Stroke="{StaticResource PrimaryBrush}"
                                                       StrokeThickness="2"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
+                                                      HorizontalAlignment="Right"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,12,0" />
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="toggleBorder" Property="Background" Value="{StaticResource HoverBrush}" />
                                                     <Setter TargetName="arrow" Property="Stroke" Value="{StaticResource PrimaryLightBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsPressed" Value="True">
-                                                    <Setter TargetName="toggleBorder" Property="Background" Value="{StaticResource CardBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="toggleBorder" Property="Background" Value="{StaticResource CardBrush}" />
                                                     <Setter TargetName="arrow" Property="Stroke" Value="{StaticResource PrimaryLightBrush}" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
