@@ -28,6 +28,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly ISettingsRepository _settingsRepo;
     private readonly IProfileRepository _profileRepo;
     private readonly INewsService _newsService;
+    private readonly IControllerDetectionService _controllerDetection;
     private readonly ILogger<DashboardViewModel> _logger;
 
     private const string LastNotifiedVersionKey = "last_notified_minecraft_version";
@@ -151,6 +152,33 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public string IrisSodiumButtonText =>
         IsIrisSodiumInstalled ? "Iris + Sodium instalado" : "Instalar Iris + Sodium (Fabric)";
 
+    private bool _isControllerConnected;
+    public bool IsControllerConnected
+    {
+        get => _isControllerConnected;
+        set => SetProperty(ref _isControllerConnected, value);
+    }
+
+    private bool _isControllerModInstalled;
+    public bool IsControllerModInstalled
+    {
+        get => _isControllerModInstalled;
+        set
+        {
+            if (SetProperty(ref _isControllerModInstalled, value))
+            {
+                OnPropertyChanged(nameof(ShowControllerRecommendation));
+                OnPropertyChanged(nameof(ControllerSupportButtonText));
+                System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    public bool ShowControllerRecommendation => IsControllerConnected && !IsControllerModInstalled;
+
+    public string ControllerSupportButtonText =>
+        IsControllerModInstalled ? "Soporte de mando instalado" : "Instalar soporte de mando (Controlify)";
+
     private bool _isJavaReady;
     public bool IsJavaReady
     {
@@ -213,6 +241,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     public ICommand ApplyProfileCommand { get; }
     public ICommand DownloadLauncherUpdateCommand { get; }
     public ICommand InstallIrisCommand { get; }
+    public ICommand InstallControllerSupportCommand { get; }
     public ICommand OptiFineInfoCommand { get; }
     public ICommand RepairProfileCommand { get; }
     public ICommand InstallMinecraftUpdateCommand { get; }
@@ -233,6 +262,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         ISettingsRepository settingsRepo,
         IProfileRepository profileRepo,
         INewsService newsService,
+        IControllerDetectionService controllerDetection,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -245,6 +275,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _settingsRepo = settingsRepo;
         _profileRepo = profileRepo;
         _newsService = newsService;
+        _controllerDetection = controllerDetection;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -256,6 +287,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         DownloadLauncherUpdateCommand = new RelayCommand(async _ => await InstallLauncherUpdateAsync(), _ => !IsBusy);
         
         InstallIrisCommand = new RelayCommand(async _ => await InstallIris(), _ => SelectedProfile != null && SelectedProfile.Type == ShoroCraftLauncher.Core.Enums.ProfileType.Fabric);
+        InstallControllerSupportCommand = new RelayCommand(async _ => await InstallControllerSupportAsync(), _ => SelectedProfile != null && !IsDownloading && ShowControllerRecommendation);
         OptiFineInfoCommand = new RelayCommand(_ => 
         {
             DialogHelper.Show("OptiFine no permite descargas automáticas.\n\nSe abrirá la página oficial. Descarga la versión correspondiente a tu juego, ve a la pestaña de 'Mods' en el Launcher y arrastra el archivo .jar descargado para instalarlo.", "OptiFine", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
@@ -330,6 +362,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     {
         OnPropertyChanged(nameof(SelectedProfile));
         _ = UpdateProfileDetailsAsync();
+        _ = RefreshControllerSupportStateAsync();
     }
 
     public void Dispose()
@@ -353,10 +386,11 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             var versionsTask = LoadVersionsAsync();
             var detailsTask = UpdateProfileDetailsAsync();
             var componentsTask = UpdateComponentInstallStatesAsync();
+            var controllerTask = RefreshControllerSupportStateAsync();
             var updateTask = _updaterService.CheckForUpdatesAsync(currentVersion);
             var newsTask = LoadNewsAsync();
 
-            await Task.WhenAll(versionsTask, detailsTask, componentsTask, updateTask, newsTask);
+            await Task.WhenAll(versionsTask, detailsTask, componentsTask, controllerTask, updateTask, newsTask);
 
             var (isUpdateAvailable, latestVersion, downloadUrl, _) = updateTask.Result;
             if (isUpdateAvailable)
@@ -693,6 +727,102 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private static bool ContainsComponent(IEnumerable<string?> names, string component) =>
         names.Any(name => !string.IsNullOrWhiteSpace(name)
             && name.Contains(component, StringComparison.OrdinalIgnoreCase));
+
+    private async Task RefreshControllerSupportStateAsync()
+    {
+        if (SelectedProfile == null)
+        {
+            IsControllerConnected = false;
+            IsControllerModInstalled = false;
+            return;
+        }
+
+        try
+        {
+            IsControllerConnected = await _controllerDetection.IsAnyControllerConnectedAsync().ConfigureAwait(false);
+            IsControllerModInstalled = await IsControllerModInstalledAsync(SelectedProfile.Id).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to detect controller support state");
+            IsControllerConnected = false;
+            IsControllerModInstalled = false;
+        }
+    }
+
+    private async Task<bool> IsControllerModInstalledAsync(int profileId)
+    {
+        try
+        {
+            var mods = await _modService.GetModsAsync(profileId).ConfigureAwait(false);
+            var knownNames = mods
+                .Where(m => m.Status == ShoroCraftLauncher.Core.Enums.ModStatus.Active)
+                .SelectMany(m => new[] { m.Name, m.FileName, m.ModVersion });
+
+            var modsDir = _minecraftService.GetModsDirectory(GetSelectedProfileGameDirectory());
+            if (Directory.Exists(modsDir))
+            {
+                knownNames = knownNames.Concat(Directory.GetFiles(modsDir, "*.jar")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))!);
+            }
+
+            return ContainsComponent(knownNames, "controlify")
+                || ContainsComponent(knownNames, "controllable");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to detect installed controller mod");
+            return false;
+        }
+    }
+
+    private async Task InstallControllerSupportAsync()
+    {
+        if (SelectedProfile == null || IsControllerModInstalled)
+            return;
+
+        IsDownloading = true;
+        ReadyStatus = "Instalando soporte de mando...";
+        StatusMessage = "Buscando mod de soporte de mando (Controlify)...";
+        try
+        {
+            var loader = SelectedProfile.Type.ToString().ToLowerInvariant();
+            var results = await _modService.SearchModsAsync("modrinth", "Controlify", SelectedProfile.MinecraftVersion, loader);
+            var toInstall = results.FirstOrDefault();
+
+            if (toInstall == null && (loader == "forge" || loader == "neoforge"))
+            {
+                var alt = await _modService.SearchModsAsync("modrinth", "Controllable", SelectedProfile.MinecraftVersion, loader);
+                toInstall = alt.FirstOrDefault();
+            }
+
+            if (toInstall == null)
+            {
+                StatusMessage = "No se encontró un mod de soporte de mando compatible con este perfil.";
+                ReadyStatus = "Error";
+                return;
+            }
+
+            await _modService.InstallFromSearchAsync(SelectedProfile.Id, toInstall, "modrinth");
+
+            StatusMessage = "Soporte de mando instalado correctamente en tu perfil.";
+            ReadyStatus = "Listo";
+            _launcherService.Log("[INFO] Soporte de mando (Controlify) instalado correctamente.");
+            await RefreshControllerSupportStateAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error instalando soporte de mando: {ex.Message}";
+            ReadyStatus = "Error";
+            _logger.LogError(ex, "Error installing controller support mod");
+            _launcherService.Log($"[ERROR] Error instalando soporte de mando: {ex.Message}");
+        }
+        finally
+        {
+            IsDownloading = false;
+        }
+    }
 
     private void MarkInstalledVersions(List<GameVersion> versions)
     {

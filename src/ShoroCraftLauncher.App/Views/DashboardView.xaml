@@ -302,7 +302,23 @@
                                 ToolTip="{DynamicResource Dash_OptiFineTooltip}" />
                     </WrapPanel>
                     <TextBlock Text="{DynamicResource Dash_PerfNote}" 
-                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" />
+                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Controller Support -->
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="20"
+                    Visibility="{Binding ShowControllerRecommendation, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Dash_ControllerTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,14" />
+                    <TextBlock Text="{DynamicResource Dash_ControllerSub}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10" TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Content="{Binding ControllerSupportButtonText}"
+                                Command="{Binding InstallControllerSupportCommand}"
+                                Style="{StaticResource PrimaryButton}" Margin="0,0,10,10" />
+                    </WrapPanel>
+                    <TextBlock Text="{DynamicResource Dash_ControllerNote}"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 

@@ -72,6 +72,9 @@
     <system:String x:Key="Dash_FabricIrisSodium">Fabric + Iris + Sodium</system:String>
     <system:String x:Key="Dash_FabricIrisSodiumInstalled">Iris + Sodium installed</system:String>
     <system:String x:Key="Dash_FabricIrisSodiumTooltip">Creates a Fabric profile with Iris (shaders) and Sodium (performance) pre-installed.</system:String>
+    <system:String x:Key="Dash_ControllerTitle">Controller support</system:String>
+    <system:String x:Key="Dash_ControllerSub">A controller was detected. Minecraft Java Edition has no native controller support; install Controlify to play with a gamepad (Xbox, PlayStation, etc.).</system:String>
+    <system:String x:Key="Dash_ControllerNote">The launcher only installs the mod into the active profile; in-game compatibility is provided by the mod itself.</system:String>
     <system:String x:Key="Dash_OptiFineTooltip">OptiFine is not downloaded automatically; the official page will open.</system:String>
     <system:String x:Key="Dash_PerfNote">Iris+Sodium is only available for Fabric profiles. OptiFine requires manual download.</system:String>
     <system:String x:Key="Dash_NewsTitle">News</system:String>
