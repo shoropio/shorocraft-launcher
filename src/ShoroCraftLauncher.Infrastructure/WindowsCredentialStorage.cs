@@ -11,32 +11,32 @@ public class WindowsCredentialStorage : ISecretStorage
 {
     private const string AppName = "ShoroCraftLauncher";
 
-    [DllImport("secur32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredReadW(
         string targetName,
         uint type,
         uint flags,
         out IntPtr credentials);
 
-    [DllImport("secur32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredWriteW(
         in CREDENTIALW credential,
         uint flags);
 
-    [DllImport("secur32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredDeleteW(
         string targetName,
         uint type,
         uint flags);
 
-    [DllImport("secur32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredEnumerateW(
         string targetName,
         uint flags,
         out int count,
         out IntPtr credentials);
 
-    [DllImport("secur32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredFree(IntPtr ptr);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -86,39 +86,16 @@ public class WindowsCredentialStorage : ISecretStorage
         {
             try
             {
-                // CredReadW returns a linked list - first credential
+                // CredReadW returns a single credential for the given target name.
                 var cred = (CREDENTIALW)Marshal.PtrToStructure(credentials, typeof(CREDENTIALW))!;
 
                 if (string.Equals(cred.credentialName, name, StringComparison.OrdinalIgnoreCase))
                 {
                     secret = cred.password;
-                    CredFree(credentials);
                     return true;
                 }
-
-                // Walk the linked list
-                IntPtr? current = credentials;
-                while (current != IntPtr.Zero)
-                {
-                    cred = (CREDENTIALW)Marshal.PtrToStructure(current!.Value, typeof(CREDENTIALW))!;
-                    if (string.Equals(cred.credentialName, name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        secret = cred.password;
-                        CredFree(credentials);
-                        return true;
-                    }
-
-                    // Next in linked list
-                    int structSize = Marshal.SizeOf(typeof(CREDENTIALW));
-                    IntPtr next = (IntPtr)((long)current.Value + structSize);
-                    // Check if we've reached the end (the last node has linkInfo = 0)
-                    // Actually, the link is embedded in the structure, let's just free and return
-                    current = next;
-                }
-
-                CredFree(credentials);
             }
-            catch
+            finally
             {
                 CredFree(credentials);
             }

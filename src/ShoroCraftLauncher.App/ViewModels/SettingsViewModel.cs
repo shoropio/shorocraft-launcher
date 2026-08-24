@@ -179,9 +179,17 @@ public class SettingsViewModel : BaseViewModel
             GameDir = settings.GetValueOrDefault("game_directory") ?? string.Empty;
             Language = settings.GetValueOrDefault("language") ?? "es";
 
-            // Get CurseForge API key from secure storage (with automatic migration from DPAPI)
-            var apiKey = await GetCurseForgeApiKeyAsync();
-            CurseForgeApiKey = apiKey;
+            // Get CurseForge API key from secure storage (with automatic migration from DPAPI).
+            // Isolate this step: a failure here must not abort the rest of the load (e.g. total size).
+            try
+            {
+                CurseForgeApiKey = await GetCurseForgeApiKeyAsync();
+            }
+            catch (Exception keyEx)
+            {
+                _logger.LogError(keyEx, "Failed to load CurseForge API key; continuing without it.");
+                CurseForgeApiKey = null;
+            }
 
             LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
 
