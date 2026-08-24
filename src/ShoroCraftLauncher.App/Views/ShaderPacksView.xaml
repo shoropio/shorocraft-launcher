@@ -123,7 +123,7 @@
                          Visibility="{Binding ShowSearchResults, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,18,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -155,7 +155,7 @@
                          Visibility="{Binding ShowSearchResults, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14">
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,18,8" Padding="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="50" />
