@@ -151,7 +151,7 @@
     <system:String x:Key="Set_Launcher">Launcher</system:String>
     <system:String x:Key="Set_Version">Versión</system:String>
     <system:String x:Key="Set_TotalSize">Tamaño total</system:String>
-    <system:String x:Key="Set_Copyright">© Copyright 2026. Shoropio Corporation Todos los derechos reservados.</system:String>
+    <system:String x:Key="Set_Copyright">© 2026 Fei Animation ツ and Shoropio Corporation. Todos los derechos reservados.</system:String>
 
     <!-- Shader Packs -->
     <system:String x:Key="Sh_Profiles">Perfiles</system:String>

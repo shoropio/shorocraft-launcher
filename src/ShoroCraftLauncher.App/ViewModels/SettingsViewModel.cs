@@ -417,25 +417,38 @@ public class SettingsViewModel : BaseViewModel
     private Task<long> CalculateTotalSizeAsync() => Task.Run(() =>
     {
         long total = 0;
-        var baseDir = new[]
+        var baseDirs = new[]
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShoroCraftLauncher")
         };
 
-        foreach (var dir in baseDir)
+        foreach (var dir in baseDirs)
         {
-            if (!Directory.Exists(dir)) continue;
-            try
-            {
-                foreach (var file in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
-                {
-                    try { total += new FileInfo(file).Length; } catch { }
-                }
-            }
-            catch { }
+            if (!string.IsNullOrWhiteSpace(dir) && Directory.Exists(dir))
+                AddDirectorySize(dir, ref total);
         }
 
         return total;
     });
+
+    private static void AddDirectorySize(string directory, ref long total)
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(directory))
+            {
+                try { total += new FileInfo(file).Length; } catch { }
+            }
+
+            foreach (var sub in Directory.EnumerateDirectories(directory))
+            {
+                AddDirectorySize(sub, ref total);
+            }
+        }
+        catch
+        {
+            // Ignore directories that cannot be enumerated (permissions, etc.)
+        }
+    }
 }
