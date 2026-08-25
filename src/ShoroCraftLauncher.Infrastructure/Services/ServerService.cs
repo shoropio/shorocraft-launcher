@@ -12,7 +12,8 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ServerService : IServerService
 {
-    private const string PaperApiBaseUrl = "https://api.papermc.io/v2/projects/paper";
+    private const string PaperApiBaseUrl = "https://fill.papermc.io/v3/projects/paper";
+    private const string PaperUserAgent = "ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)";
     private const string ServerJarName = "server.jar";
     private const string ServerPidFileName = "server.pid";
     private const int MaxLogLines = 2000;
@@ -82,14 +83,33 @@ public class ServerService : IServerService
     {
         try
         {
-            var json = await _httpClient.GetStringAsync(PaperApiBaseUrl).ConfigureAwait(false);
-            var doc = JsonDocument.Parse(json);
+            var doc = await GetPaperJsonAsync(PaperApiBaseUrl).ConfigureAwait(false);
             var versions = new List<string>();
+
             if (doc.RootElement.TryGetProperty("versions", out var versionsProp))
             {
-                foreach (var v in versionsProp.EnumerateArray())
-                    versions.Add(v.GetString() ?? string.Empty);
+                if (versionsProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var v in versionsProp.EnumerateArray())
+                    {
+                        var s = v.GetString();
+                        if (!string.IsNullOrEmpty(s)) versions.Add(s);
+                    }
+                }
+                else if (versionsProp.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var group in versionsProp.EnumerateObject())
+                    {
+                        foreach (var v in group.Value.EnumerateArray())
+                        {
+                            var s = v.GetString();
+                            if (!string.IsNullOrEmpty(s)) versions.Add(s);
+                        }
+                    }
+                }
             }
+
+            versions.Sort((a, b) => CompareMinecraftVersions(b, a));
             return versions;
         }
         catch (Exception ex)
@@ -447,20 +467,83 @@ public class ServerService : IServerService
     private async Task<string?> ResolvePaperJarUrlAsync(string minecraftVersion)
     {
         var buildsUrl = $"{PaperApiBaseUrl}/versions/{minecraftVersion}/builds";
-        var json = await _httpClient.GetStringAsync(buildsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        try
+        {
+            var doc = await GetPaperJsonAsync(buildsUrl).ConfigureAwait(false);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
+                return null;
 
-        if (!doc.RootElement.TryGetProperty("builds", out var builds) || builds.GetArrayLength() == 0)
+            JsonElement? chosen = null;
+            foreach (var build in root.EnumerateArray())
+            {
+                if (build.TryGetProperty("channel", out var channel) && channel.GetString() == "STABLE")
+                {
+                    chosen = build;
+                    break;
+                }
+            }
+
+            if (chosen is null)
+                chosen = root[0];
+
+            if (!chosen.Value.TryGetProperty("downloads", out var downloads)
+                || !downloads.TryGetProperty("server:default", out var serverDefault))
+                return null;
+
+            if (!serverDefault.TryGetProperty("url", out var urlProp))
+                return null;
+
+            return urlProp.GetString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve Paper jar URL for {Version}", minecraftVersion);
             return null;
+        }
+    }
 
-        JsonElement latest = builds[builds.GetArrayLength() - 1];
-        var build = latest.GetProperty("build").GetInt32();
+    private async Task<JsonDocument> GetPaperJsonAsync(string url)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd(PaperUserAgent);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        return await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+    }
 
-        if (!latest.TryGetProperty("downloads", out var downloads)
-            || !downloads.TryGetProperty("application", out var application))
-            return null;
-
-        return $"{PaperApiBaseUrl}/versions/{minecraftVersion}/builds/{build}/downloads/paper-{minecraftVersion}-{build}.jar";
+    private static int CompareMinecraftVersions(string a, string b)
+    {
+        var separators = new[] { '.', '-', '_' };
+        var ap = a.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+        var bp = b.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+        var n = Math.Max(ap.Length, bp.Length);
+        for (var i = 0; i < n; i++)
+        {
+            var as_ = i < ap.Length ? ap[i] : "zzz";
+            var bs_ = i < bp.Length ? bp[i] : "zzz";
+            var ai = int.TryParse(as_, out var av);
+            var bi = int.TryParse(bs_, out var bv);
+            if (ai && bi)
+            {
+                if (av != bv) return av.CompareTo(bv);
+            }
+            else if (ai && !bi)
+            {
+                return -1;
+            }
+            else if (!ai && bi)
+            {
+                return 1;
+            }
+            else
+            {
+                var cmp = string.CompareOrdinal(as_, bs_);
+                if (cmp != 0) return cmp;
+            }
+        }
+        return 0;
     }
 
     private void SetStatus(MinecraftServer server, ServerStatus status)

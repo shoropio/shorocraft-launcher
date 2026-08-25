@@ -131,21 +131,24 @@ public class ServerServiceTests
     {
         var json = """
             {
-              "project_id": "paper",
-              "versions": ["1.21.4", "1.21.5", "1.21.3"]
+              "project": { "id": "paper", "name": "Paper" },
+              "versions": {
+                "1.21": ["1.21.5", "1.21.4", "1.21.3"],
+                "1.20": ["1.20.6", "1.20.4"]
+              }
             }
             """;
 
         var handler = new StubHttpMessageHandler(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
         {
-            Content = new StringContent(json)
+            Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         });
         var httpClient = new HttpClient(handler);
 
         var service = CreateService(httpClient: httpClient);
         var versions = await service.GetAvailablePaperVersionsAsync();
 
-        Assert.Equal(new[] { "1.21.4", "1.21.5", "1.21.3" }, versions);
+        Assert.Equal(new[] { "1.21.5", "1.21.4", "1.21.3", "1.20.6", "1.20.4" }, versions);
     }
 
     [Fact]
