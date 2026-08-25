@@ -9,6 +9,7 @@ public class NewsService : INewsService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogService _logService;
+    private static bool _mojangStatusUnavailable;
 
     public NewsService(HttpClient httpClient, ILogService logService)
     {
@@ -47,46 +48,77 @@ public class NewsService : INewsService
     {
         var items = new List<NewsItem>();
 
-        var response = await _httpClient.GetAsync("https://status.mojang.com/api/v2/components").ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        using var doc = JsonDocument.Parse(json);
-
-        if (!doc.RootElement.TryGetProperty("components", out var components))
+        if (_mojangStatusUnavailable)
             return items;
 
-        foreach (var component in components.EnumerateArray())
+        try
         {
-            if (!component.TryGetProperty("name", out var nameProp) ||
-                !component.TryGetProperty("status", out var statusProp))
-                continue;
+            var response = await _httpClient.GetAsync("https://status.mojang.com/api/v2/components").ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
 
-            var name = nameProp.GetString() ?? "";
-            var status = statusProp.GetString() ?? "";
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
 
-            if (status == "none") continue;
+            if (!doc.RootElement.TryGetProperty("components", out var components))
+                return items;
 
-            var statusLabel = status switch
+            foreach (var component in components.EnumerateArray())
             {
-                "minor" => "Degradado",
-                "major" => "Caído",
-                "partial" => "Parcial",
-                "disrupted" => "Interrumpido",
-                _ => status
-            };
+                if (!component.TryGetProperty("name", out var nameProp) ||
+                    !component.TryGetProperty("status", out var statusProp))
+                    continue;
 
-            items.Add(new NewsItem
+                var name = nameProp.GetString() ?? "";
+                var status = statusProp.GetString() ?? "";
+
+                if (status == "none") continue;
+
+                var statusLabel = status switch
+                {
+                    "minor" => "Degradado",
+                    "major" => "Caído",
+                    "partial" => "Parcial",
+                    "disrupted" => "Interrumpido",
+                    _ => status
+                };
+
+                items.Add(new NewsItem
+                {
+                    Title = $"{name}: {statusLabel}",
+                    Summary = $"Estado del servicio de {name}.",
+                    Url = "https://status.mojang.com",
+                    Date = DateTime.UtcNow,
+                    Category = "Servidor"
+                });
+            }
+
+            return items;
+        }
+        catch (Exception ex)
+        {
+            if (IsConnectivityFailure(ex))
             {
-                Title = $"{name}: {statusLabel}",
-                Summary = $"Estado del servicio de {name}.",
-                Url = "https://status.mojang.com",
-                Date = DateTime.UtcNow,
-                Category = "Servidor"
-            });
+                _mojangStatusUnavailable = true;
+                _logService.Debug("NewsService", "GetNews",
+                    "El estado de Mojang no esta disponible: el servicio externo status.mojang.com no responde " +
+                    "(Mojang lo descontinuo). No afecta al funcionamiento del launcher.");
+                return items;
+            }
+
+            _logService.Warning("NewsService", "GetNews", $"Error fetching Mojang status: {ex.Message}");
+            return items;
+        }
+    }
+
+    private static bool IsConnectivityFailure(Exception ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+        {
+            if (e is System.Net.Http.HttpRequestException hre && hre.StatusCode is null)
+                return true;
         }
 
-        return items;
+        return false;
     }
 
     private async Task<List<NewsItem>> FetchVersionNewsAsync()
