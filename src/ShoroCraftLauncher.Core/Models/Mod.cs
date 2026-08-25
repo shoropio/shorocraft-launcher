@@ -31,8 +31,8 @@ public class Mod : INotifyPropertyChanged
     public string? RemoteProjectId { get; set; }
     public string? RemoteSlug { get; set; }
 
-    [NotMapped]
     private bool _isInstalledInProfile;
+    [NotMapped]
     public bool IsInstalledInProfile
     {
         get => _isInstalledInProfile;

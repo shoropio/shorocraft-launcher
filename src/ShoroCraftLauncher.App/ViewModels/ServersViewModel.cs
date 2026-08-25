@@ -292,20 +292,29 @@ public class ServersViewModel : BaseViewModel, IDisposable
 
     private async Task LoadPluginsAsync(MinecraftServer? server)
     {
-        ServerPlugins.Clear();
         if (server == null || server.Type != ServerType.Paper)
+        {
+            Dispatcher(() => ServerPlugins.Clear());
             return;
+        }
 
+        List<ServerPlugin> plugins;
         try
         {
-            var plugins = await _pluginService.GetPluginsAsync(server).ConfigureAwait(false);
-            foreach (var p in plugins)
-                ServerPlugins.Add(p);
+            plugins = await _pluginService.GetPluginsAsync(server).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load server plugins");
+            return;
         }
+
+        Dispatcher(() =>
+        {
+            ServerPlugins.Clear();
+            foreach (var p in plugins)
+                ServerPlugins.Add(p);
+        });
     }
 
     private async Task InstallOrUpdatePlugin(object? parameter)

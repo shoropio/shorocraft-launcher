@@ -11,7 +11,7 @@ public class ServerPluginService : IServerPluginService
     private static readonly string ModrinthApiBaseUrl = "https://api.modrinth.com/v2";
     private static readonly List<(string ProjectId, string DisplayName, string Keyword)> KnownPlugins = new()
     {
-        ("geysermc", "GeyserMC", "geyser"),
+        ("geyser", "GeyserMC", "geyser"),
         ("floodgate", "Floodgate", "floodgate")
     };
 
@@ -144,11 +144,12 @@ public class ServerPluginService : IServerPluginService
 
     private async Task<(string Url, string FileName)> ResolveDownloadAsync(string projectId)
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
         var url = $"{ModrinthApiBaseUrl}/project/{projectId}/version";
         await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-        var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)");
+        var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -178,11 +179,12 @@ public class ServerPluginService : IServerPluginService
     {
         try
         {
-            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
             var url = $"{ModrinthApiBaseUrl}/project/{projectId}/version";
             await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-            var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)");
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

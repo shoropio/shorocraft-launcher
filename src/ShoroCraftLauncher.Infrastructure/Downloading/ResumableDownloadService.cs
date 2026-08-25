@@ -79,7 +79,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (request.Headers.UserAgent.Count == 0)
-            request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0");
+            request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)");
         if (completed > 0)
             request.Headers.Range = new RangeHeaderValue(completed, null);
 
