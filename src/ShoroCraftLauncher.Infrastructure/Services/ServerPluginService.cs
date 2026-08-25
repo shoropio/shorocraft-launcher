@@ -8,11 +8,12 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ServerPluginService : IServerPluginService
 {
-    private static readonly string ModrinthApiBaseUrl = "https://api.modrinth.com/v2";
-    private static readonly List<(string ProjectId, string DisplayName, string Keyword)> KnownPlugins = new()
+    private const string GeyserDownloadBaseUrl = "https://download.geysermc.org/v2/projects";
+    private const string UserAgent = "ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)";
+    private static readonly List<(string ProjectId, string DisplayName, string Keyword, string JarName)> KnownPlugins = new()
     {
-        ("geyser", "GeyserMC", "geyser"),
-        ("floodgate", "Floodgate", "floodgate")
+        ("geyser", "GeyserMC", "geyser", "geyser-spigot.jar"),
+        ("floodgate", "Floodgate", "floodgate", "floodgate-spigot.jar")
     };
 
     private readonly HttpClient _httpClient;
@@ -106,11 +107,27 @@ public class ServerPluginService : IServerPluginService
         if (string.IsNullOrEmpty(plugin.ProjectId))
             throw new InvalidOperationException("El plugin no tiene un origen conocido para instalar.");
 
+        var known = KnownPlugins.FirstOrDefault(k => k.ProjectId == plugin.ProjectId);
+        if (known.ProjectId == null)
+            throw new InvalidOperationException("El plugin no tiene un origen conocido para instalar.");
+
         var pluginsDir = Path.Combine(server.DirectoryPath, "plugins");
         Directory.CreateDirectory(pluginsDir);
 
         var (url, fileName) = await ResolveDownloadAsync(plugin.ProjectId).ConfigureAwait(false);
         var destPath = Path.Combine(pluginsDir, fileName);
+
+        foreach (var existing in Directory.GetFiles(pluginsDir, "*.jar*"))
+        {
+            if (string.Equals(existing, destPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var baseName = Path.GetFileNameWithoutExtension(existing);
+            if (MatchKnownProjectId(baseName) == plugin.ProjectId)
+            {
+                try { File.Delete(existing); }
+                catch (Exception ex) { _logger.LogWarning(ex, "No se pudo eliminar el archivo previo {File}", existing); }
+            }
+        }
 
         _logService?.Info("ServerPlugin", "Install", $"Descargando plugin '{plugin.Name}' ({fileName})...");
         await _resumableDownloadService.DownloadAsync(url, destPath).ConfigureAwait(false);
@@ -144,61 +161,30 @@ public class ServerPluginService : IServerPluginService
 
     private async Task<(string Url, string FileName)> ResolveDownloadAsync(string projectId)
     {
-        var url = $"{ModrinthApiBaseUrl}/project/{projectId}/version";
-        await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
+        var known = KnownPlugins.FirstOrDefault(k => k.ProjectId == projectId);
+        if (known.ProjectId == null)
+            throw new InvalidOperationException($"El plugin '{projectId}' no tiene un origen conocido para instalar.");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)");
-        var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var version = await GetLatestVersionAsync(projectId).ConfigureAwait(false) ?? "latest";
+        var url = $"{GeyserDownloadBaseUrl}/{projectId}/versions/latest/builds/latest/downloads/spigot";
+        var fileName = known.JarName.Replace(".jar", $"-{version}.jar");
 
-        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        using var doc = JsonDocument.Parse(json);
-        var versions = doc.RootElement.EnumerateArray().ToList();
-        if (versions.Count == 0)
-            throw new InvalidOperationException("No se encontraron versiones del plugin.");
-
-        var best = versions.FirstOrDefault(v =>
-            v.TryGetProperty("version_type", out var vt) && vt.GetString() == "release");
-        if (best.ValueKind == JsonValueKind.Undefined)
-            best = versions[0];
-
-        var files = best.GetProperty("files").EnumerateArray().ToList();
-        if (files.Count == 0)
-            throw new InvalidOperationException("El plugin no tiene archivos para descargar.");
-
-        var file = files[0];
-        var downloadUrl = file.GetProperty("url").GetString()
-            ?? throw new InvalidOperationException("URL de descarga no disponible.");
-        var fileName = file.TryGetProperty("filename", out var fn) ? fn.GetString() ?? $"{projectId}.jar" : $"{projectId}.jar";
-
-        return (downloadUrl, fileName);
+        return (url, fileName);
     }
 
     private async Task<string?> GetLatestVersionAsync(string projectId)
     {
         try
         {
-            var url = $"{ModrinthApiBaseUrl}/project/{projectId}/version";
-            await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{GeyserDownloadBaseUrl}/{projectId}/versions/latest");
+            request.Headers.UserAgent.ParseAdd(UserAgent);
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
-            var versions = doc.RootElement.EnumerateArray().ToList();
-            if (versions.Count == 0) return null;
-
-            var best = versions.FirstOrDefault(v =>
-                v.TryGetProperty("version_type", out var vt) && vt.GetString() == "release");
-            if (best.ValueKind == JsonValueKind.Undefined)
-                best = versions[0];
-
-            if (best.TryGetProperty("version_number", out var vn))
-                return vn.GetString();
+            if (doc.RootElement.TryGetProperty("version", out var v))
+                return v.GetString();
         }
         catch
         {
