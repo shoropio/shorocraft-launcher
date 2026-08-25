@@ -68,7 +68,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Column="1" Margin="0,0,18,0">
+        <Grid Grid.Column="1" Margin="0,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -77,46 +77,38 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,0,12">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="{DynamicResource Srv_NewServer}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
-                        <WrapPanel>
-                            <TextBox Text="{Binding NewServerName, UpdateSourceTrigger=PropertyChanged}"
-                                     MinWidth="180" Margin="0,0,8,8" Tag="{DynamicResource Srv_Name}" />
-                            <ComboBox ItemsSource="{Binding ServerTypes}"
-                                      SelectedItem="{Binding SelectedServerType}"
-                                      MinWidth="120" Margin="0,0,8,8"
-                                      Style="{StaticResource DarkComboBox}"
-                                      ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
-                            <ComboBox ItemsSource="{Binding AvailableVersions}"
-                                      SelectedItem="{Binding SelectedVersion}"
-                                      MinWidth="130" Margin="0,0,8,8"
-                                      Style="{StaticResource DarkComboBox}"
-                                      ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
-                            <TextBox Text="{Binding MaxRamMB}" MinWidth="90" Margin="0,0,8,8" Tag="{DynamicResource Srv_RamMB}" />
-                            <Button Content="{DynamicResource Srv_Create}" Command="{Binding CreateServerCommand}"
-                                    Style="{StaticResource PrimaryButton}" Padding="20,10" Margin="0,0,0,8" />
-                        </WrapPanel>
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}" />
-                    </StackPanel>
-
-                    <Border Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Srv_NewServer}" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+                    <WrapPanel>
+                        <TextBox Text="{Binding NewServerName, UpdateSourceTrigger=PropertyChanged}"
+                                 MinWidth="180" Margin="0,0,8,8" Tag="{DynamicResource Srv_Name}" />
+                        <ComboBox ItemsSource="{Binding ServerTypes}"
+                                  SelectedItem="{Binding SelectedServerType}"
+                                  MinWidth="120" Margin="0,0,8,8"
+                                  Style="{StaticResource DarkComboBox}"
+                                  ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
+                        <ComboBox ItemsSource="{Binding AvailableVersions}"
+                                  SelectedItem="{Binding SelectedVersion}"
+                                  MinWidth="130" Margin="0,0,8,8"
+                                  Style="{StaticResource DarkComboBox}"
+                                  ItemContainerStyle="{StaticResource DarkComboBoxItem}" />
+                        <TextBox Text="{Binding MaxRamMB}" MinWidth="90" Margin="0,0,8,8" Tag="{DynamicResource Srv_RamMB}" />
+                        <Button Content="{DynamicResource Srv_Create}" Command="{Binding CreateServerCommand}"
+                                Style="{StaticResource PrimaryButton}" Padding="20,10" Margin="0,0,0,8" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                    <Border Margin="0,8,0,0"
                             Background="#22FFFFFF" CornerRadius="6" Padding="12,8"
                             Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel>
-                            <ProgressBar Width="160" Height="6" Value="{Binding DownloadProgress}"
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ProgressBar Width="200" Height="6" Value="{Binding DownloadProgress}"
                                          Style="{StaticResource AccentProgressBar}" />
-                            <TextBlock Text="{Binding DownloadStatus}" FontSize="11" Margin="0,6,0,0"
-                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding DownloadStatus}" FontSize="11" Margin="10,0,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
-                </Grid>
+                </StackPanel>
             </Border>
 
             <!-- Server connection info -->
@@ -165,10 +157,10 @@
                                                            Visibility="{Binding IsDisabled, Converter={StaticResource BoolToVisibilityConverter}}" />
                                             </StackPanel>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <ToggleButton IsChecked="{Binding IsDisabled, Converter={StaticResource InverseBoolConverter}}"
                                                           Style="{StaticResource SwitchToggle}" />
-                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                            <Button Padding="12,6" FontSize="12" Margin="6,0,0,0"
                                                     Command="{Binding ElementName=root, Path=DataContext.TogglePluginCommand}"
                                                     CommandParameter="{Binding}">
                                                 <Button.Style>
@@ -182,12 +174,12 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                            <Button Padding="12,6" FontSize="12" Margin="6,0,0,0"
                                                     Command="{Binding ElementName=root, Path=DataContext.DeletePluginCommand}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource DangerButton}"
                                                     Content="{DynamicResource Srv_PluginDelete}" />
-                                            <Button Padding="12,6" FontSize="12" Margin="8,0,0,0"
+                                            <Button Padding="12,6" FontSize="12" Margin="6,0,0,0"
                                                     Command="{Binding ElementName=root, Path=DataContext.InstallPluginCommand}"
                                                     CommandParameter="{Binding}">
                                                 <Button.Style>
@@ -226,18 +218,19 @@
                                     Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" />
                         </StackPanel>
                     </Grid>
-                    <Grid DockPanel.Dock="Bottom" Background="#0A0A14" Margin="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource ConsoleTextBox}" IsReadOnly="False"
-                                 BorderThickness="0,1,0,0" BorderBrush="#222233" Padding="12,10"
-                                 KeyDown="CommandBox_KeyDown"
-                                 VerticalScrollBarVisibility="Disabled" />
-                        <Button Grid.Column="1" Content="{DynamicResource Srv_Send}" Command="{Binding SendCommandCommand}"
-                                Style="{StaticResource PrimaryButton}" Margin="10" Padding="16,8" FontSize="12" />
+                        <Grid DockPanel.Dock="Bottom" Background="#0A0A14" Margin="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ConsoleTextBox}" IsReadOnly="False"
+                                     BorderThickness="0,1,0,0" BorderBrush="#222233" Padding="12,10"
+                                     KeyDown="CommandBox_KeyDown"
+                                     VerticalScrollBarVisibility="Disabled" />
+                            <Button Grid.Column="1" Content="{DynamicResource Srv_Send}" Command="{Binding SendCommandCommand}"
+                                    Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Padding="16,8" FontSize="12"
+                                    VerticalAlignment="Stretch" />
                     </Grid>
                     <ListBox x:Name="ServerConsole"
                              ItemsSource="{Binding LogLines}"
