@@ -392,18 +392,19 @@ public class ServerService : IServerService
 
     public async Task StopAllAsync()
     {
-        MinecraftServer[] running;
+        MinecraftServer[] all;
         lock (_lock)
         {
-            running = _servers
-                .Where(s => _processes.TryGetValue(s.Id, out var p) && p is { HasExited: false })
-                .ToArray();
+            all = _servers.ToArray();
         }
 
-        if (running.Length == 0) return;
+        if (all.Length == 0) return;
 
-        _logService?.Info("ServerService", "StopAll", $"Deteniendo {running.Length} servidor(es) en ejecución...");
-        var tasks = running.Select(s => Task.Run(() => StopAsync(s)));
+        _logService?.Info("ServerService", "StopAll", $"Deteniendo {all.Length} servidor(es)...");
+        // Se detiene tambien a los servidores iniciados en sesiones previas (su
+        // proceso no esta en _processes de esta sesion): StopAsync ahora mata el
+        // huérfano referenciado por el pid file.
+        var tasks = all.Select(s => Task.Run(() => StopAsync(s))).ToArray();
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 

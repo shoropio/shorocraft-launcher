@@ -213,7 +213,13 @@ public partial class App : Application
             {
                 var serverService = _host.Services.GetService<IServerService>();
                 if (serverService != null)
-                    await serverService.StopAllAsync();
+                {
+                    // Bloquear hasta detener los servidores (o 20s) para no dejar
+                    // procesos Java huérfanos al cerrar el launcher. StopAllAsync
+                    // tambien mata servidores iniciados en sesiones previas via pid file.
+                    var stopTask = serverService.StopAllAsync();
+                    Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(20))).GetAwaiter().GetResult();
+                }
             }
             catch (Exception ex)
             {

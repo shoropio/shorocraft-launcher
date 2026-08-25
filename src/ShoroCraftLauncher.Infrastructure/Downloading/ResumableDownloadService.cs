@@ -38,7 +38,34 @@ public sealed class ResumableDownloadService : IResumableDownloadService
             Directory.CreateDirectory(directory);
 
         var partPath = destinationPath + ".part";
-        var completed = File.Exists(partPath) ? new FileInfo(partPath).Length : 0;
+        var metaPath = destinationPath + ".part.meta";
+
+        // Reanudar solo si el .part corresponde a esta misma descarga. Un .part de
+        // otra URL (p.ej. otra version del server) corruptiria la reanudacion por
+        // Range; en ese caso se descarta y se empieza de nuevo.
+        long completed = 0;
+        var (storedUrl, storedTotal) = ReadMeta(metaPath);
+        if (File.Exists(partPath))
+        {
+            var len = new FileInfo(partPath).Length;
+            if (storedUrl == null)
+            {
+                // Sin meta: reanudar por tamano (best-effort), igual que antes.
+                // La meta se escribe tras la primera respuesta para validar los
+                // siguientes reintentos y evitar corromper la reanudacion si la
+                // URL cambio (p.ej. otra version del server).
+                completed = len;
+            }
+            else if (storedUrl == url && (storedTotal <= 0 || len <= storedTotal))
+            {
+                completed = len;
+            }
+            else
+            {
+                TryDelete(partPath);
+                TryDelete(metaPath);
+            }
+        }
 
         Exception? lastError = null;
 
@@ -55,7 +82,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
 
             try
             {
-                completed = await DownloadCoreAsync(url, partPath, completed, progress, cancellationToken).ConfigureAwait(false);
+                completed = await DownloadCoreAsync(url, partPath, metaPath, completed, progress, cancellationToken).ConfigureAwait(false);
                 Finalize(partPath, destinationPath, expectedSha1, expectedSize);
                 return;
             }
@@ -75,7 +102,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
             lastError);
     }
 
-    private async Task<long> DownloadCoreAsync(string url, string partPath, long completed, IProgress<double>? progress, CancellationToken cancellationToken)
+    private async Task<long> DownloadCoreAsync(string url, string partPath, string metaPath, long completed, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (request.Headers.UserAgent.Count == 0)
@@ -88,12 +115,14 @@ public sealed class ResumableDownloadService : IResumableDownloadService
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             File.Delete(partPath);
-            return await DownloadCoreAsync(url, partPath, 0, progress, cancellationToken).ConfigureAwait(false);
+            TryDelete(metaPath);
+            return await DownloadCoreAsync(url, partPath, metaPath, 0, progress, cancellationToken).ConfigureAwait(false);
         }
 
         if (response.StatusCode == HttpStatusCode.OK)
         {
             File.Delete(partPath);
+            TryDelete(metaPath);
             completed = 0;
         }
         else if (response.StatusCode != HttpStatusCode.PartialContent)
@@ -102,6 +131,7 @@ public sealed class ResumableDownloadService : IResumableDownloadService
         }
 
         var totalBytes = GetTotalBytes(response, completed);
+        WriteMeta(metaPath, url, totalBytes > 0 ? totalBytes : 0);
         using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
 
         await using (var fileStream = new FileStream(partPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read))
@@ -172,6 +202,35 @@ public sealed class ResumableDownloadService : IResumableDownloadService
         }
 
         File.Move(partPath, destinationPath, true);
+        TryDelete(destinationPath + ".part.meta");
+    }
+
+    private static (string? Url, long Total) ReadMeta(string metaPath)
+    {
+        if (!File.Exists(metaPath)) return (null, 0);
+        try
+        {
+            var lines = File.ReadAllLines(metaPath);
+            var url = lines.Length > 0 ? lines[0] : null;
+            var total = lines.Length > 1 && long.TryParse(lines[1], out var t) ? t : 0;
+            return (url, total);
+        }
+        catch
+        {
+            return (null, 0);
+        }
+    }
+
+    private static void WriteMeta(string metaPath, string url, long total)
+    {
+        try { File.WriteAllLines(metaPath, new[] { url, total.ToString() }); }
+        catch { }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { }
     }
 }
 
