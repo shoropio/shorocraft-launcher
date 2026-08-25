@@ -159,14 +159,42 @@ public class ServerService : IServerService
 
         _logService?.Info("ServerService", "Delete", $"Eliminando servidor '{server.Name}'...");
 
-        try
+        if (Directory.Exists(server.DirectoryPath))
         {
-            if (Directory.Exists(server.DirectoryPath))
-                Directory.Delete(server.DirectoryPath, true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete server directory");
+            const int maxAttempts = 6;
+            var deleted = false;
+            Exception? lastError = null;
+
+            for (var attempt = 1; attempt <= maxAttempts && !deleted; attempt++)
+            {
+                try
+                {
+                    Directory.Delete(server.DirectoryPath, true);
+                    deleted = true;
+                }
+                catch (System.IO.IOException ex)
+                {
+                    lastError = ex;
+                    if (attempt < maxAttempts)
+                        await Task.Delay(400).ConfigureAwait(false);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    lastError = ex;
+                    if (attempt < maxAttempts)
+                        await Task.Delay(400).ConfigureAwait(false);
+                }
+            }
+
+            if (!deleted)
+            {
+                _logService?.Warning("ServerService", "Delete",
+                    $"No se pudo eliminar la carpeta del servidor porque sigue en uso: {server.DirectoryPath}. " +
+                    "Cierra cualquier proceso de Java que la bloquee e intenta de nuevo.");
+                throw new InvalidOperationException(
+                    "No se pudo eliminar la carpeta del servidor porque está en uso por otro proceso. " +
+                    $"Cierra el proceso de Java y vuelve a intentarlo. Ruta: {server.DirectoryPath}", lastError);
+            }
         }
 
         await _repository.DeleteAsync(server.Id).ConfigureAwait(false);
@@ -311,6 +339,17 @@ public class ServerService : IServerService
     }
 
     public async Task StopAsync(MinecraftServer server)
+    {
+        await StopTrackedProcessAsync(server).ConfigureAwait(false);
+
+        // Red de seguridad: un servidor iniciado en una sesion previa del launcher
+        // puede seguir en ejecucion (su proceso no esta en el diccionario _processes
+        // de esta sesion). Matar el huérfano referenciado por el pid file libera el
+        // puerto y desbloquea la carpeta al eliminar el servidor.
+        await KillOrphanProcessAsync(server.DirectoryPath).ConfigureAwait(false);
+    }
+
+    private async Task StopTrackedProcessAsync(MinecraftServer server)
     {
         Process? process;
         lock (_lock)
