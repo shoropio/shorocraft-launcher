@@ -207,12 +207,16 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _loaderUpdateVersion, value);
     }
 
-    private bool _hasLoaderUpdate;
+        private bool _hasLoaderUpdate;
     public bool HasLoaderUpdate
     {
         get => _hasLoaderUpdate;
         set => SetProperty(ref _hasLoaderUpdate, value);
     }
+
+    private string? _loaderUpdateCacheKey;
+    private string? _loaderUpdateCacheVersion;
+    private readonly System.Threading.SemaphoreSlim _loaderUpdateLock = new(1, 1);
 
     private string _loaderUpdateMessage = string.Empty;
     public string LoaderUpdateMessage
@@ -1236,25 +1240,70 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 IsLoaderReady = match != null;
             }
 
-            // 4b. Loader update check
-            HasLoaderUpdate = false;
-            LoaderUpdateVersion = null;
-            LoaderUpdateMessage = string.Empty;
-            if (IsLoaderReady && SelectedProfile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla
-                && !string.IsNullOrEmpty(SelectedProfile.LoaderVersion))
+            // 4b. Loader update check (cached to avoid flicker from repeated validations)
+            var profile = SelectedProfile;
+            if (profile != null && IsLoaderReady
+                && profile.Type != ShoroCraftLauncher.Core.Enums.ProfileType.Vanilla
+                && !string.IsNullOrEmpty(profile.LoaderVersion))
             {
-                try
+                var updateKey = $"{profile.Id}|{targetVersion}|{profile.Type}|{profile.LoaderVersion}";
+                if (updateKey != _loaderUpdateCacheKey)
                 {
-                    var latestLoader = await _minecraftService.CheckLoaderUpdateAsync(
-                        SelectedProfile.Type.ToString(), targetVersion, SelectedProfile.LoaderVersion);
-                    if (!string.IsNullOrEmpty(latestLoader))
+                    await _loaderUpdateLock.WaitAsync().ConfigureAwait(false);
+                    try
                     {
-                        HasLoaderUpdate = true;
-                        LoaderUpdateVersion = latestLoader;
-                        LoaderUpdateMessage = $"{SelectedProfile.Type} {SelectedProfile.LoaderVersion} → {latestLoader}";
+                        if (updateKey != _loaderUpdateCacheKey)
+                        {
+                            string? latestLoader = null;
+                            var ok = false;
+                            try
+                            {
+                                latestLoader = await _minecraftService.CheckLoaderUpdateAsync(
+                                    profile.Type.ToString(), targetVersion, profile.LoaderVersion).ConfigureAwait(false);
+                                ok = true;
+                            }
+                            catch
+                            {
+                                // Transient network failure: keep previous visible state to avoid flicker
+                            }
+
+                            if (ok)
+                            {
+                                _loaderUpdateCacheKey = updateKey;
+                                _loaderUpdateCacheVersion = latestLoader;
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        _loaderUpdateLock.Release();
                     }
                 }
-                catch { }
+
+                if (_loaderUpdateCacheKey == updateKey)
+                {
+                    if (!string.IsNullOrEmpty(_loaderUpdateCacheVersion))
+                    {
+                        HasLoaderUpdate = true;
+                        LoaderUpdateVersion = _loaderUpdateCacheVersion;
+                        LoaderUpdateMessage = $"{profile.Type} {profile.LoaderVersion} → {_loaderUpdateCacheVersion}";
+                    }
+                    else
+                    {
+                        HasLoaderUpdate = false;
+                        LoaderUpdateVersion = null;
+                        LoaderUpdateMessage = string.Empty;
+                    }
+                }
+                // else: check failed and not yet cached -> preserve previous state (no flicker)
+            }
+            else
+            {
+                HasLoaderUpdate = false;
+                LoaderUpdateVersion = null;
+                LoaderUpdateMessage = string.Empty;
+                _loaderUpdateCacheKey = null;
+                _loaderUpdateCacheVersion = null;
             }
 
             if (IsJavaReady && IsVersionReady && IsLoaderReady && IsRamReady)
