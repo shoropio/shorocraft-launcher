@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Moq;
+using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.App.ViewModels;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -56,6 +57,7 @@ public class DashboardViewModelUpdateNotificationTests
             Mock.Of<IProfileRepository>(),
             Mock.Of<INewsService>(),
             Mock.Of<IControllerDetectionService>(),
+            Mock.Of<IToastService>(),
             Mock.Of<ILogger<DashboardViewModel>>());
     }
 

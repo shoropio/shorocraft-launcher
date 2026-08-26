@@ -119,6 +119,7 @@ public partial class App : Application
                 services.AddSingleton<IUpdaterService, UpdaterService>();
                 services.AddSingleton<INewsService, NewsService>();
                 services.AddSingleton<IControllerDetectionService, ControllerDetectionService>();
+                services.AddSingleton<IToastService, ToastService>();
 
                 services.AddTransient<DashboardViewModel>();
                 services.AddTransient<ProfilesViewModel>();

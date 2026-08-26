@@ -20,5 +20,6 @@ public interface IMinecraftService
     string GetShaderPacksDirectory(string gameDir);
     string GetSavesDirectory(string gameDir);
     Task<string?> CheckLoaderUpdateAsync(string loaderType, string mcVersion, string currentLoaderVersion);
+    Task PreDownloadLoaderInstallerAsync(string versionId, string loaderType, string loaderVersion, string gameDir, IProgress<double>? progress = null);
     Task UpdateLoaderAsync(string mcVersion, string loaderType, string newLoaderVersion, string javaPath, string gameDir, Action<string>? onProgress = null);
 }

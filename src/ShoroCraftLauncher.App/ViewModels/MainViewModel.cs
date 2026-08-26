@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Models;
 using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -18,8 +19,9 @@ public class MainViewModel : BaseViewModel, IDisposable
     private readonly IAuthenticationService _authService;
     private readonly IProfileService _profileService;
     private readonly IMinecraftService _minecraftService;
-    private readonly IModService _modService;
-    private readonly Action _selectedProfileChangedHandler;
+        private readonly IModService _modService;
+        private readonly IToastService _toastService;
+        private readonly Action _selectedProfileChangedHandler;
     private readonly Action<int> _gameExitedHandler;
     private readonly Action<double, string> _progressChangedHandler;
     private readonly Dictionary<string, BaseViewModel> _viewCache = new();
@@ -177,13 +179,16 @@ public class MainViewModel : BaseViewModel, IDisposable
     public ICommand LoginOfflineCommand { get; }
     public ICommand LogoutCommand { get; }
 
+    public ObservableCollection<ToastItem> Toasts { get; }
+
     public MainViewModel(
         IServiceProvider serviceProvider,
         ILauncherService launcherService,
         IAuthenticationService authService,
         IProfileService profileService,
         IMinecraftService minecraftService,
-        IModService modService)
+        IModService modService,
+        IToastService toastService)
     {
         _serviceProvider = serviceProvider;
         _launcherService = launcherService;
@@ -191,6 +196,8 @@ public class MainViewModel : BaseViewModel, IDisposable
         _profileService = profileService;
         _minecraftService = minecraftService;
         _modService = modService;
+        _toastService = toastService;
+        Toasts = toastService.Toasts;
 
         _selectedProfileChangedHandler = () =>
         {

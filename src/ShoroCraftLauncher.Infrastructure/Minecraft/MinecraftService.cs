@@ -197,21 +197,8 @@ public class MinecraftService : IMinecraftService
 
         await EnsureLauncherProfileAsync(gameDir, versionId).ConfigureAwait(false);
 
-        var installerVersion = loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase)
-            ? await ResolveLatestFabricInstallerVersionAsync().ConfigureAwait(false)
-            : loaderVersion;
+        var (installerVersion, installerUrl, installerPath) = await ResolveLoaderInstallerInfoAsync(versionId, loaderType, loaderVersion, gameDir).ConfigureAwait(false);
 
-        var installerUrl = loaderType.ToLower() switch
-        {
-            "forge" => $"https://maven.minecraftforge.net/net/minecraftforge/forge/{versionId}-{loaderVersion}/forge-{versionId}-{loaderVersion}-installer.jar",
-            "neoforge" => $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{versionId}-{loaderVersion}/neoforge-{versionId}-{loaderVersion}-installer.jar",
-            "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{installerVersion}/fabric-installer-{installerVersion}.jar",
-            "quilt" => $"https://maven.quiltmc.net/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
-            _ => throw new Exception($"Unknown loader: {loaderType}")
-        };
-
-        var installerPath = Path.Combine(gameDir, "cache", $"{loaderType}-installer-{versionId}-{installerVersion}.jar");
-        
         if (!File.Exists(installerPath))
         {
             _logService?.Info("LoaderInstall", "InstallerDownloadStarted", "Descargando instalador de loader.", new { loaderType, installerUrl });
@@ -370,6 +357,34 @@ public class MinecraftService : IMinecraftService
             || text.StartsWith("Target Directory", StringComparison.OrdinalIgnoreCase)
             || text.StartsWith("Installing", StringComparison.OrdinalIgnoreCase)
             || text.StartsWith("Building", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<(string installerVersion, string installerUrl, string installerPath)> ResolveLoaderInstallerInfoAsync(
+        string versionId, string loaderType, string loaderVersion, string gameDir)
+    {
+        gameDir = ResolveGameDirectory(gameDir);
+        var installerVersion = loaderType.Equals("fabric", StringComparison.OrdinalIgnoreCase)
+            ? await ResolveLatestFabricInstallerVersionAsync().ConfigureAwait(false)
+            : loaderVersion;
+
+        var installerUrl = loaderType.ToLower() switch
+        {
+            "forge" => $"https://maven.minecraftforge.net/net/minecraftforge/forge/{versionId}-{loaderVersion}/forge-{versionId}-{loaderVersion}-installer.jar",
+            "neoforge" => $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{versionId}-{loaderVersion}/neoforge-{versionId}-{loaderVersion}-installer.jar",
+            "fabric" => $"https://maven.fabricmc.net/net/fabricmc/fabric-installer/{installerVersion}/fabric-installer-{installerVersion}.jar",
+            "quilt" => $"https://maven.quiltmc.net/release/org/quiltmc/quilt-installer/{loaderVersion}/quilt-installer-{loaderVersion}.jar",
+            _ => throw new Exception($"Unknown loader: {loaderType}")
+        };
+
+        var installerPath = Path.Combine(gameDir, "cache", $"{loaderType}-installer-{versionId}-{installerVersion}.jar");
+        return (installerVersion, installerUrl, installerPath);
+    }
+
+    public async Task PreDownloadLoaderInstallerAsync(string versionId, string loaderType, string loaderVersion, string gameDir, IProgress<double>? progress = null)
+    {
+        var (_, installerUrl, installerPath) = await ResolveLoaderInstallerInfoAsync(versionId, loaderType, loaderVersion, gameDir).ConfigureAwait(false);
+        if (!File.Exists(installerPath))
+            await DownloadFileAsync(installerUrl, installerPath, progress).ConfigureAwait(false);
     }
 
     #endregion

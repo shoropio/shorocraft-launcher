@@ -2,6 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:ShoroCraftLauncher.App.ViewModels"
+        xmlns:views="clr-namespace:ShoroCraftLauncher.App.Views"
+        xmlns:models="clr-namespace:ShoroCraftLauncher.App.Models"
         Title="{DynamicResource Main_Title}"
         Icon="/Assets/icon.png"
         Width="1100" Height="700"
@@ -257,5 +259,22 @@
                 </Border>
             </Grid>
         </Border>
+
+        <!-- Toast host -->
+        <ItemsControl Grid.ColumnSpan="2"
+                      ItemsSource="{Binding Toasts}"
+                      VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                      Margin="0,0,18,18">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="models:ToastItem">
+                    <views:ToastControl />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </Window>

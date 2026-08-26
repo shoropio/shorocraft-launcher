@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.App.Commands;
+using ShoroCraftLauncher.App.Models;
 using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -29,6 +30,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private readonly IProfileRepository _profileRepo;
     private readonly INewsService _newsService;
     private readonly IControllerDetectionService _controllerDetection;
+    private readonly IToastService _toastService;
     private readonly ILogger<DashboardViewModel> _logger;
 
     private const string LastNotifiedVersionKey = "last_notified_minecraft_version";
@@ -217,6 +219,8 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private string? _loaderUpdateCacheKey;
     private string? _loaderUpdateCacheVersion;
     private readonly System.Threading.SemaphoreSlim _loaderUpdateLock = new(1, 1);
+    private string? _loaderToastKey;
+    private readonly object _loaderToastLock = new();
 
     private string _loaderUpdateMessage = string.Empty;
     public string LoaderUpdateMessage
@@ -267,6 +271,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IProfileRepository profileRepo,
         INewsService newsService,
         IControllerDetectionService controllerDetection,
+        IToastService toastService,
         ILogger<DashboardViewModel> logger)
     {
         _profileService = profileService;
@@ -280,6 +285,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         _profileRepo = profileRepo;
         _newsService = newsService;
         _controllerDetection = controllerDetection;
+        _toastService = toastService;
         _logger = logger;
 
         _profileService.SelectedProfileChanged += OnSelectedProfileChanged;
@@ -1287,12 +1293,14 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                         HasLoaderUpdate = true;
                         LoaderUpdateVersion = _loaderUpdateCacheVersion;
                         LoaderUpdateMessage = $"{profile.Type} {profile.LoaderVersion} → {_loaderUpdateCacheVersion}";
+                        NotifyLoaderUpdateAvailable(profile, _loaderUpdateCacheVersion, targetVersion);
                     }
                     else
                     {
                         HasLoaderUpdate = false;
                         LoaderUpdateVersion = null;
                         LoaderUpdateMessage = string.Empty;
+                        _loaderToastKey = null;
                     }
                 }
                 // else: check failed and not yet cached -> preserve previous state (no flicker)
@@ -1304,6 +1312,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
                 LoaderUpdateMessage = string.Empty;
                 _loaderUpdateCacheKey = null;
                 _loaderUpdateCacheVersion = null;
+                _loaderToastKey = null;
             }
 
             if (IsJavaReady && IsVersionReady && IsLoaderReady && IsRamReady)
@@ -1330,20 +1339,25 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     private async Task UpdateLoader()
     {
         if (SelectedProfile == null || !HasLoaderUpdate || string.IsNullOrEmpty(LoaderUpdateVersion)) return;
+        await UpdateLoaderForAsync(SelectedProfile, LoaderUpdateVersion, SelectedProfile.MinecraftVersion);
+    }
+
+    private async Task UpdateLoaderForAsync(Profile profile, string newVersion, string mcVersion)
+    {
+        if (profile == null || string.IsNullOrEmpty(newVersion)) return;
         IsBusy = true;
         IsDownloading = true;
-        ReadyStatus = $"Actualizando {SelectedProfile.Type}...";
+        ReadyStatus = $"Actualizando {profile.Type}...";
 
         try
         {
             var gameDir = GetSelectedProfileGameDirectory();
-            var targetVersion = SelectedProfile.MinecraftVersion;
-            if (targetVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
-                targetVersion = await _minecraftService.ResolveVersionIdAsync("latest");
+            if (mcVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
+                mcVersion = await _minecraftService.ResolveVersionIdAsync("latest");
 
-            var javaPath = SelectedProfile.JavaPath;
+            var javaPath = profile.JavaPath;
             if (string.IsNullOrEmpty(javaPath))
-                javaPath = await _javaService.GetRecommendedJavaPathAsync(targetVersion);
+                javaPath = await _javaService.GetRecommendedJavaPathAsync(mcVersion);
 
             if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
             {
@@ -1352,16 +1366,17 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             }
 
             await _minecraftService.UpdateLoaderAsync(
-                targetVersion, SelectedProfile.Type.ToString(), LoaderUpdateVersion,
+                mcVersion, profile.Type.ToString(), newVersion,
                 javaPath, gameDir, msg => LogStatus(msg));
 
-            SelectedProfile.LoaderVersion = LoaderUpdateVersion;
-            await _profileService.UpdateProfileAsync(SelectedProfile);
+            profile.LoaderVersion = newVersion;
+            await _profileService.UpdateProfileAsync(profile);
 
-            ReadyStatus = $"{SelectedProfile.Type} actualizado a {LoaderUpdateVersion}.";
+            ReadyStatus = $"{profile.Type} actualizado a {newVersion}.";
             HasLoaderUpdate = false;
             LoaderUpdateVersion = null;
             LoaderUpdateMessage = string.Empty;
+            _loaderToastKey = null;
 
             await ValidateProfileChecklistAsync();
         }
@@ -1375,6 +1390,53 @@ public class DashboardViewModel : BaseViewModel, IDisposable
             IsBusy = false;
             IsDownloading = false;
         }
+    }
+
+    private void NotifyLoaderUpdateAvailable(Profile profile, string newVersion, string mcVersion)
+    {
+        var key = $"{profile.Id}|{newVersion}";
+        bool shouldNotify;
+        lock (_loaderToastLock)
+        {
+            shouldNotify = _loaderToastKey != key;
+            if (shouldNotify) _loaderToastKey = key;
+        }
+        if (!shouldNotify) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var gameDir = GetSelectedProfileGameDirectory();
+                var javaPath = profile.JavaPath;
+                if (string.IsNullOrEmpty(javaPath))
+                    javaPath = await _javaService.GetRecommendedJavaPathAsync(mcVersion).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(javaPath))
+                {
+                    await _minecraftService.PreDownloadLoaderInstallerAsync(mcVersion, profile.Type.ToString(), newVersion, gameDir).ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                // La pre-descarga es best-effort; el aviso se muestra igualmente.
+            }
+
+            var toast = new ToastItem(
+                "Actualización del cargador disponible",
+                $"{profile.Type} {profile.LoaderVersion} → {newVersion} para el perfil '{profile.Name}'. ¿Instalar ahora?",
+                ToastSeverity.Warning,
+                duration: null);
+            toast.Actions = new List<ToastAction>
+            {
+                new ToastAction("Instalar", new RelayCommand(_ =>
+                {
+                    _toastService.Dismiss(toast.Id);
+                    _ = UpdateLoaderForAsync(profile, newVersion, mcVersion);
+                })),
+                new ToastAction("Después", new RelayCommand(_ => _toastService.Dismiss(toast.Id)))
+            };
+            _toastService.ShowToast(toast);
+        });
     }
 
     private async Task RepairProfile()
