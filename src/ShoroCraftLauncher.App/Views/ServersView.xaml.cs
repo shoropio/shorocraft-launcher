@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using ShoroCraftLauncher.App.ViewModels;
 
 namespace ShoroCraftLauncher.App.Views;
@@ -18,7 +19,7 @@ public partial class ServersView : UserControl
         if (DataContext is not ServersViewModel vm) return;
         vm.LogLines.CollectionChanged += LogLines_CollectionChanged;
         if (vm.LogLines.Count > 0)
-            ServerConsole.ScrollIntoView(vm.LogLines[^1]);
+            ScrollToBottom();
     }
 
     private void LogLines_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -26,10 +27,19 @@ public partial class ServersView : UserControl
         if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null || e.NewItems.Count == 0)
             return;
 
-        Dispatcher.BeginInvoke(() =>
+        Dispatcher.BeginInvoke(ScrollToBottom);
+    }
+
+    private void ScrollToBottom()
+    {
+        if (VisualTreeHelper.GetChild(ServerConsole, 0) is Border border && border.Child is ScrollViewer sv)
         {
-            ServerConsole.ScrollIntoView(e.NewItems[e.NewItems.Count - 1]);
-        });
+            sv.ScrollToBottom();
+            return;
+        }
+
+        if (ServerConsole.Items.Count > 0)
+            ServerConsole.ScrollIntoView(ServerConsole.Items[^1]);
     }
 
     private void CommandBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

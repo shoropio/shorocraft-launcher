@@ -208,7 +208,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0">
+            <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0" MinHeight="240">
                 <DockPanel>
                     <Grid DockPanel.Dock="Top" Background="#0D0D18">
                         <StackPanel Orientation="Horizontal" Margin="10,6">

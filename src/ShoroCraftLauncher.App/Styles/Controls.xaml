@@ -123,7 +123,7 @@
         <Setter Property="Background" Value="#0A0A14" />
         <Setter Property="Foreground" Value="#00FF88" />
         <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="IsReadOnly" Value="True" />
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -151,7 +151,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="Foreground" Value="{Binding Converter={StaticResource LogLevelColorConverter}}" />
                     <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
-                    <Setter Property="FontSize" Value="12" />
+                    <Setter Property="FontSize" Value="13" />
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Template">
                         <Setter.Value>
