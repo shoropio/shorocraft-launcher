@@ -129,7 +129,7 @@
                         <TextBlock Text="{Binding ChecklistMessage}" FontSize="14" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,14" />
                         
                         <!-- Loader update notification -->
-                        <Border Background="#33FF9800" CornerRadius="8" Padding="10,7" Margin="0,0,0,10"
+                        <Border Background="#33FF9800" CornerRadius="0" Padding="10,7" Margin="0,0,0,10"
                                 HorizontalAlignment="Left"
                                 Visibility="{Binding HasLoaderUpdate, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
