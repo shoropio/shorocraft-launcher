@@ -8,6 +8,8 @@ namespace ShoroCraftLauncher.App.Views;
 
 public partial class ServersView : UserControl
 {
+    private bool _scrollAttached;
+
     public ServersView()
     {
         InitializeComponent();
@@ -17,9 +19,11 @@ public partial class ServersView : UserControl
     private void AttachLogScroll()
     {
         if (DataContext is not ServersViewModel vm) return;
+        if (_scrollAttached) return;
+        _scrollAttached = true;
         vm.LogLines.CollectionChanged += LogLines_CollectionChanged;
         if (vm.LogLines.Count > 0)
-            ScrollToBottom();
+            Dispatcher.BeginInvoke(ScrollToBottom);
     }
 
     private void LogLines_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -32,14 +36,32 @@ public partial class ServersView : UserControl
 
     private void ScrollToBottom()
     {
-        if (VisualTreeHelper.GetChild(ServerConsole, 0) is Border border && border.Child is ScrollViewer sv)
+        try
         {
-            sv.ScrollToBottom();
-            return;
+            if (VisualTreeHelper.GetChildrenCount(ServerConsole) == 0)
+                return;
+
+            if (VisualTreeHelper.GetChild(ServerConsole, 0) is Border border && border.Child is ScrollViewer sv)
+            {
+                sv.ScrollToBottom();
+                return;
+            }
+        }
+        catch
+        {
+            // La plantilla del ListBox todavia no se ha materializado; se reintentara en el proximo evento.
         }
 
         if (ServerConsole.Items.Count > 0)
-            ServerConsole.ScrollIntoView(ServerConsole.Items[^1]);
+        {
+            try
+            {
+                ServerConsole.ScrollIntoView(ServerConsole.Items[^1]);
+            }
+            catch
+            {
+            }
+        }
     }
 
     private void CommandBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
