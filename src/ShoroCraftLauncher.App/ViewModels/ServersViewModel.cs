@@ -65,6 +65,27 @@ public class ServersViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _maxRamMB, value);
     }
 
+    private bool _newServerOnlineMode = true;
+    public bool NewServerOnlineMode
+    {
+        get => _newServerOnlineMode;
+        set => SetProperty(ref _newServerOnlineMode, value);
+    }
+
+    private bool _onlineMode = true;
+    public bool OnlineMode
+    {
+        get => _onlineMode;
+        set => SetProperty(ref _onlineMode, value);
+    }
+
+    private string _serverPropertiesText = string.Empty;
+    public string ServerPropertiesText
+    {
+        get => _serverPropertiesText;
+        set => SetProperty(ref _serverPropertiesText, value);
+    }
+
     private MinecraftServer? _selectedServer;
     public MinecraftServer? SelectedServer
     {
@@ -82,6 +103,8 @@ public class ServersViewModel : BaseViewModel, IDisposable
             OnPropertyChanged(nameof(ServerAddress));
             CommandManager.InvalidateRequerySuggested();
             _ = LoadPluginsAsync(value);
+            _ = LoadOnlineModeAsync(value);
+            _ = LoadServerPropertiesAsync(value);
             UpdateConnectionInfo(value);
         }
         }
@@ -186,7 +209,9 @@ public class ServersViewModel : BaseViewModel, IDisposable
     public ICommand TogglePluginCommand { get; }
     public ICommand DeletePluginCommand { get; }
     public ICommand RefreshPluginsCommand { get; }
-    public ICommand CopyAddressCommand { get; }
+        public ICommand CopyAddressCommand { get; }
+        public ICommand ApplyOnlineModeCommand { get; }
+        public ICommand SaveServerPropertiesCommand { get; }
 
     public ServersViewModel(IServerService serverService, IServerPluginService pluginService, ILogger<ServersViewModel> logger)
     {
@@ -208,6 +233,8 @@ public class ServersViewModel : BaseViewModel, IDisposable
         DeletePluginCommand = new RelayCommand(async p => await DeletePlugin(p), _ => IsSelected && !IsBusy);
         RefreshPluginsCommand = new RelayCommand(async _ => await LoadPluginsAsync(SelectedServer), _ => IsSelected && !IsBusy);
         CopyAddressCommand = new RelayCommand(_ => CopyServerAddress(), _ => IsSelected && !string.IsNullOrEmpty(ServerAddress));
+        ApplyOnlineModeCommand = new RelayCommand(async _ => await ApplyOnlineMode(), _ => IsSelected);
+        SaveServerPropertiesCommand = new RelayCommand(async _ => await SaveServerProperties(), _ => IsSelected);
 
         _serversChangedHandler = () => Dispatcher(() => SyncServers());
         _logOutputHandler = line => Dispatcher(() => AddLogLine(line));
@@ -407,6 +434,61 @@ public class ServersViewModel : BaseViewModel, IDisposable
         _ = LoadPublicIpAsync();
     }
 
+    private async Task LoadOnlineModeAsync(MinecraftServer? server)
+    {
+        if (server == null)
+        {
+            OnlineMode = true;
+            return;
+        }
+        OnlineMode = await _serverService.GetOnlineModeAsync(server).ConfigureAwait(false);
+    }
+
+    private async Task ApplyOnlineMode()
+    {
+        if (SelectedServer == null) return;
+        try
+        {
+            await _serverService.SetOnlineModeAsync(SelectedServer, OnlineMode).ConfigureAwait(false);
+            StatusMessage = SelectedServer.Status == ServerStatus.Running
+                ? "Modo de verificación de cuentas actualizado; se aplicará al reiniciar el servidor."
+                : "Modo de verificación de cuentas actualizado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply online-mode");
+            StatusMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task LoadServerPropertiesAsync(MinecraftServer? server)
+    {
+        if (server == null)
+        {
+            ServerPropertiesText = string.Empty;
+            return;
+        }
+        var content = await _serverService.GetServerPropertiesAsync(server).ConfigureAwait(false);
+        ServerPropertiesText = content ?? string.Empty;
+    }
+
+    private async Task SaveServerProperties()
+    {
+        if (SelectedServer == null) return;
+        try
+        {
+            await _serverService.SaveServerPropertiesAsync(SelectedServer, ServerPropertiesText).ConfigureAwait(false);
+            StatusMessage = SelectedServer.Status == ServerStatus.Running
+                ? "server.properties guardado; se aplicará al reiniciar el servidor."
+                : "server.properties guardado.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save server.properties");
+            StatusMessage = $"Error: {ex.Message}";
+        }
+    }
+
     private async Task LoadPublicIpAsync()
     {
         try
@@ -484,7 +566,8 @@ public class ServersViewModel : BaseViewModel, IDisposable
                 NewServerName.Trim(),
                 SelectedServerType,
                 SelectedVersion,
-                MaxRamMB);
+                MaxRamMB,
+                onlineMode: NewServerOnlineMode);
 
             SelectedServer = server;
             NewServerName = string.Empty;

@@ -119,7 +119,7 @@ public class ServerService : IServerService
         }
     }
 
-    public async Task<MinecraftServer> CreateServerAsync(string name, ServerType type, string minecraftVersion, int maxRamMB, string? worldName = null)
+    public async Task<MinecraftServer> CreateServerAsync(string name, ServerType type, string minecraftVersion, int maxRamMB, string? worldName = null, bool onlineMode = true)
     {
         _logService?.Info("ServerService", "Create", $"Creando servidor '{name}' ({type} {minecraftVersion})...");
 
@@ -128,7 +128,7 @@ public class ServerService : IServerService
 
         Directory.CreateDirectory(directoryPath);
         WriteEula(directoryPath);
-        WriteServerProperties(directoryPath, worldName);
+        WriteServerProperties(directoryPath, worldName, onlineMode);
 
         var server = new MinecraftServer
         {
@@ -750,7 +750,7 @@ public class ServerService : IServerService
         await File.AppendAllTextAsync(propsPath, "pause-when-empty-seconds=0\n").ConfigureAwait(false);
     }
 
-    private static void WriteServerProperties(string directoryPath, string? worldName)
+    private static void WriteServerProperties(string directoryPath, string? worldName, bool onlineMode = true)
     {
         var levelName = string.IsNullOrWhiteSpace(worldName) ? "world" : worldName;
         File.WriteAllText(Path.Combine(directoryPath, "server.properties"),
@@ -758,10 +758,104 @@ public class ServerService : IServerService
             + "server-port=25565\n"
             + $"level-name={levelName}\n"
             + "motd=A ShoroCraft server\n"
-            + "online-mode=true\n"
+            + $"online-mode={onlineMode.ToString().ToLowerInvariant()}\n"
             + "max-players=20\n"
             + "view-distance=10\n"
             + "pause-when-empty-seconds=0\n");
+    }
+
+    public Task<bool> GetOnlineModeAsync(MinecraftServer server)
+    {
+        try
+        {
+            var propsPath = Path.Combine(server.DirectoryPath, "server.properties");
+            if (!File.Exists(propsPath)) return Task.FromResult(true);
+            foreach (var line in File.ReadLines(propsPath))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("online-mode", StringComparison.OrdinalIgnoreCase))
+                {
+                    var value = trimmed[(trimmed.IndexOf('=', StringComparison.Ordinal) + 1)..].Trim();
+                    return Task.FromResult(!value.Equals("false", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task SetOnlineModeAsync(MinecraftServer server, bool onlineMode)
+    {
+        try
+        {
+            var propsPath = Path.Combine(server.DirectoryPath, "server.properties");
+            if (!File.Exists(propsPath))
+            {
+                WriteServerProperties(server.DirectoryPath, server.WorldName, onlineMode);
+                return Task.CompletedTask;
+            }
+
+            var lines = File.ReadAllLines(propsPath);
+            var replaced = false;
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Trim().StartsWith("online-mode", StringComparison.OrdinalIgnoreCase))
+                {
+                    lines[i] = $"online-mode={onlineMode.ToString().ToLowerInvariant()}";
+                    replaced = true;
+                    break;
+                }
+            }
+
+            if (!replaced)
+            {
+                var list = lines.ToList();
+                list.Add($"online-mode={onlineMode.ToString().ToLowerInvariant()}");
+                lines = list.ToArray();
+            }
+
+            File.WriteAllLines(propsPath, lines);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update online-mode for server {Server}", server.Name);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<string?> GetServerPropertiesAsync(MinecraftServer server)
+    {
+        try
+        {
+            var propsPath = Path.Combine(server.DirectoryPath, "server.properties");
+            if (!File.Exists(propsPath)) return Task.FromResult<string?>(null);
+            return Task.FromResult<string?>(File.ReadAllText(propsPath));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read server.properties for {Server}", server.Name);
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    public Task SaveServerPropertiesAsync(MinecraftServer server, string content)
+    {
+        try
+        {
+            var propsPath = Path.Combine(server.DirectoryPath, "server.properties");
+            Directory.CreateDirectory(server.DirectoryPath);
+            File.WriteAllText(propsPath, content ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write server.properties for {Server}", server.Name);
+        }
+
+        return Task.CompletedTask;
     }
 
     private static string SanitizeFolderName(string name)

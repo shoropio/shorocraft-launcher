@@ -21,7 +21,11 @@ public interface IServerService
     Task LoadAsync();
     Task<List<string>> GetAvailableVanillaVersionsAsync();
     Task<List<string>> GetAvailablePaperVersionsAsync();
-    Task<MinecraftServer> CreateServerAsync(string name, ServerType type, string minecraftVersion, int maxRamMB, string? worldName = null);
+    Task<MinecraftServer> CreateServerAsync(string name, ServerType type, string minecraftVersion, int maxRamMB, string? worldName = null, bool onlineMode = true);
+    Task<bool> GetOnlineModeAsync(MinecraftServer server);
+    Task SetOnlineModeAsync(MinecraftServer server, bool onlineMode);
+    Task<string?> GetServerPropertiesAsync(MinecraftServer server);
+    Task SaveServerPropertiesAsync(MinecraftServer server, string content);
     Task DeleteServerAsync(MinecraftServer server);
     Task<ServerLaunchResult> StartAsync(MinecraftServer server);
     Task StopAsync(MinecraftServer server);
