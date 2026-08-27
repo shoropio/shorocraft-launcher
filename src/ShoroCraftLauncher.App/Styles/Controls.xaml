@@ -127,8 +127,18 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="IsReadOnly" Value="True" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="VerticalScrollBarVisibility" Value="Visible" />
-        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="SelectionBrush" Value="#00FF8855" />
+        <Setter Property="ContextMenu">
+            <Setter.Value>
+                <ContextMenu>
+                    <MenuItem Command="ApplicationCommands.Copy" Header="{DynamicResource Con_Copy}" />
+                    <MenuItem Command="ApplicationCommands.SelectAll" Header="Seleccionar todo" />
+                </ContextMenu>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="ConsoleListBox" TargetType="ListBox">
