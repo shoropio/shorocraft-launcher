@@ -86,6 +86,10 @@ public class ServersViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _serverPropertiesText, value);
     }
 
+    public string ServerActionLabel => SelectedServer?.Status == ServerStatus.Running ? "Detener" : "Iniciar";
+
+    public string ServerConsoleText => string.Join(Environment.NewLine, LogLines);
+
     private MinecraftServer? _selectedServer;
     public MinecraftServer? SelectedServer
     {
@@ -101,6 +105,8 @@ public class ServersViewModel : BaseViewModel, IDisposable
             OnPropertyChanged(nameof(LocalAddress));
             OnPropertyChanged(nameof(PublicAddress));
             OnPropertyChanged(nameof(ServerAddress));
+            OnPropertyChanged(nameof(ServerActionLabel));
+            OnPropertyChanged(nameof(ServerConsoleText));
             CommandManager.InvalidateRequerySuggested();
             _ = LoadPluginsAsync(value);
             _ = LoadOnlineModeAsync(value);
@@ -199,9 +205,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
     public ICommand RefreshCommand { get; }
     public ICommand CreateServerCommand { get; }
     public ICommand DeleteServerCommand { get; }
-    public ICommand StartServerCommand { get; }
-    public ICommand StopServerCommand { get; }
-    public ICommand WakeServerCommand { get; }
+    public ICommand ToggleServerCommand { get; }
     public ICommand CopyConsoleCommand { get; }
     public ICommand ClearConsoleCommand { get; }
     public ICommand SendCommandCommand { get; }
@@ -222,9 +226,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         RefreshCommand = new RelayCommand(async _ => await LoadAsync());
         CreateServerCommand = new RelayCommand(async _ => await CreateServer());
         DeleteServerCommand = new RelayCommand(async p => await DeleteServer(p), _ => IsSelected);
-        StartServerCommand = new RelayCommand(async p => await StartServer(p), _ => IsSelected);
-        StopServerCommand = new RelayCommand(async p => await StopServer(p), _ => IsSelected);
-        WakeServerCommand = new RelayCommand(async _ => await WakeServer(), _ => IsSelected);
+        ToggleServerCommand = new RelayCommand(async p => await ToggleServer(p), _ => IsSelected);
         CopyConsoleCommand = new RelayCommand(_ => CopyConsole(), _ => LogLines.Count > 0);
         ClearConsoleCommand = new RelayCommand(_ => ClearConsole(), _ => LogLines.Count > 0);
         SendCommandCommand = new RelayCommand(async _ => await SendCommand(), _ => IsSelected && !string.IsNullOrWhiteSpace(CommandText));
@@ -242,6 +244,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         {
             OnPropertyChanged(nameof(IsSelected));
             OnPropertyChanged(nameof(CanControl));
+            OnPropertyChanged(nameof(ServerActionLabel));
         });
         _progressChangedHandler = (pct, msg) => Dispatcher(() =>
         {
@@ -450,6 +453,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         try
         {
             await _serverService.SetOnlineModeAsync(SelectedServer, OnlineMode).ConfigureAwait(false);
+            await RefreshServerPropertiesAsync(SelectedServer);
             StatusMessage = SelectedServer.Status == ServerStatus.Running
                 ? "Modo de verificación de cuentas actualizado; se aplicará al reiniciar el servidor."
                 : "Modo de verificación de cuentas actualizado.";
@@ -466,10 +470,36 @@ public class ServersViewModel : BaseViewModel, IDisposable
         if (server == null)
         {
             ServerPropertiesText = string.Empty;
+            OnlineMode = true;
             return;
         }
+        await RefreshServerPropertiesAsync(server);
+    }
+
+    private async Task RefreshServerPropertiesAsync(MinecraftServer server)
+    {
         var content = await _serverService.GetServerPropertiesAsync(server).ConfigureAwait(false);
-        ServerPropertiesText = content ?? string.Empty;
+        content ??= string.Empty;
+        ServerPropertiesText = content;
+        OnlineMode = ParseOnlineMode(content);
+    }
+
+    private static bool ParseOnlineMode(string text)
+    {
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith("online-mode", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var eq = line.IndexOf('=');
+            if (eq < 0) continue;
+
+            var value = line[(eq + 1)..].Trim();
+            return value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return true;
     }
 
     private async Task SaveServerProperties()
@@ -478,6 +508,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         try
         {
             await _serverService.SaveServerPropertiesAsync(SelectedServer, ServerPropertiesText).ConfigureAwait(false);
+            OnlineMode = ParseOnlineMode(ServerPropertiesText);
             StatusMessage = SelectedServer.Status == ServerStatus.Running
                 ? "server.properties guardado; se aplicará al reiniciar el servidor."
                 : "server.properties guardado.";
@@ -534,7 +565,10 @@ public class ServersViewModel : BaseViewModel, IDisposable
             LogLines.Add(line);
 
         if (LogLines.Count > 0)
+        {
             OnPropertyChanged(nameof(LogLines));
+            OnPropertyChanged(nameof(ServerConsoleText));
+        }
     }
 
     private void AddLogLine(string line)
@@ -543,6 +577,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         LogLines.Add(line);
         if (LogLines.Count > 2000)
             LogLines.RemoveAt(0);
+        OnPropertyChanged(nameof(ServerConsoleText));
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -655,17 +690,22 @@ public class ServersViewModel : BaseViewModel, IDisposable
 
         var command = CommandText.Trim();
         LogLines.Add($"> {command}");
+        OnPropertyChanged(nameof(ServerConsoleText));
         await _serverService.SendCommandAsync(SelectedServer, command);
         CommandText = string.Empty;
     }
 
-    private async Task WakeServer()
+    private async Task ToggleServer(object? param)
     {
-        if (SelectedServer == null) return;
+        var server = param as MinecraftServer ?? SelectedServer;
+        if (server == null) return;
 
-        LogLines.Add("> list");
-        await _serverService.SendCommandAsync(SelectedServer, "list");
-        StatusMessage = "Comando 'list' enviado para despertar el servidor.";
+        if (server.Status == ServerStatus.Running || server.Status == ServerStatus.Starting)
+            await StopServer(server);
+        else
+            await StartServer(server);
+
+        OnPropertyChanged(nameof(ServerActionLabel));
     }
 
     private void CopyConsole()
@@ -680,6 +720,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
     private void ClearConsole()
     {
         LogLines.Clear();
+        OnPropertyChanged(nameof(ServerConsoleText));
         StatusMessage = "Consola limpiada.";
         CommandManager.InvalidateRequerySuggested();
     }

@@ -53,15 +53,10 @@
                 </ListBox>
 
                 <StackPanel Grid.Row="2" Margin="0,12,0,0">
-                    <Button Content="{DynamicResource Srv_Start}" Command="{Binding StartServerCommand}"
+                    <Button Content="{Binding ServerActionLabel}"
+                            Command="{Binding ToggleServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" />
-                    <Button Content="{DynamicResource Srv_Stop}" Command="{Binding StopServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
-                    <Button Content="{DynamicResource Srv_Wake}" Command="{Binding WakeServerCommand}"
-                            CommandParameter="{Binding SelectedServer}"
-                            Style="{StaticResource SecondaryButton}" Margin="0,0,0,8" />
                     <Button Content="{DynamicResource Srv_Delete}" Command="{Binding DeleteServerCommand}"
                             CommandParameter="{Binding SelectedServer}"
                             Style="{StaticResource DangerButton}" />
@@ -259,11 +254,15 @@
                                     Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Padding="16,8" FontSize="12"
                                     VerticalAlignment="Stretch" />
                     </Grid>
-                    <ListBox x:Name="ServerConsole"
-                             ItemsSource="{Binding LogLines}"
-                             Style="{StaticResource ConsoleListBox}"
-                             VirtualizingStackPanel.IsVirtualizing="True"
-                             VirtualizingStackPanel.VirtualizationMode="Recycling" />
+                    <TextBox x:Name="ServerConsole"
+                             Style="{StaticResource ConsoleTextBox}"
+                             Text="{Binding ServerConsoleText, Mode=OneWay}"
+                             behaviors:ConsoleAutoScrollBehavior.Enabled="True"
+                             IsReadOnly="True"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.CanContentScroll="True"
+                             MinHeight="160" />
                 </DockPanel>
             </Border>
             </StackPanel>
