@@ -406,6 +406,8 @@ public class MainViewModel : BaseViewModel, IDisposable
             AuthStatus = $"Offline: {_currentAuth.Username}";
         }
 
+        var launchedOffline = _currentAuth.IsOffline;
+
         IsBusy = true;
         try
         {
@@ -440,6 +442,14 @@ public class MainViewModel : BaseViewModel, IDisposable
                 IsDownloading = false;
                 DownloadProgress = 0;
                 DownloadStatus = string.Empty;
+
+                if (launchedOffline)
+                {
+                    _toastService.ShowWarning(
+                        "Modo offline",
+                        "Se inició el juego en modo offline. No podrás entrar a servidores en línea (online-mode). Usa una cuenta de Microsoft verificada o un servidor con online-mode=false.",
+                        duration: null);
+                }
             }
             else
             {
