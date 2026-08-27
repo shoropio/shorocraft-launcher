@@ -355,6 +355,45 @@ public class MainViewModel : BaseViewModel, IDisposable
     {
         if (SelectedProfile == null || IsGameRunning) return;
 
+        // Para sesiones de Microsoft, validar y refrescar el token antes de lanzar.
+        // Un token expirado provoca que el juego falle al entrar a servidores en linea
+        // con el mensaje "Sesion no valida".
+        if (_currentAuth != null && _currentAuth.Success && !_currentAuth.IsOffline)
+        {
+            var ensured = await _authService.ValidateAndRefreshAsync(_currentAuth);
+            if (ensured.Success && !ensured.IsOffline)
+            {
+                if (!ReferenceEquals(ensured, _currentAuth))
+                {
+                    _currentAuth = ensured;
+                    Username = ensured.Username ?? Username;
+                    SkinUrl = ensured.SkinUrl;
+                    IsAuthenticated = true;
+                    AuthStatus = $"Microsoft: {ensured.Username}";
+                }
+            }
+            else
+            {
+                StatusMessage = "Sesión expirada. Abriendo inicio de sesión de Microsoft...";
+                var interactive = await _authService.AuthenticateAsync();
+                if (interactive.Success && !interactive.IsOffline)
+                {
+                    _currentAuth = interactive;
+                    Username = interactive.Username ?? Username;
+                    SkinUrl = interactive.SkinUrl;
+                    IsAuthenticated = true;
+                    AuthStatus = $"Microsoft: {interactive.Username}";
+                }
+                else
+                {
+                    _currentAuth = _authService.AuthenticateOfflineAsync(Username);
+                    IsAuthenticated = true;
+                    AuthStatus = $"Offline: {_currentAuth.Username}";
+                    StatusMessage = "No se pudo renovar la sesión; iniciando en modo offline (no podrás entrar a servidores en línea).";
+                }
+            }
+        }
+
         if (_currentAuth == null || !_currentAuth.Success || (_currentAuth.IsOffline && _currentAuth.Username != Username))
         {
             _currentAuth = _authService.AuthenticateOfflineAsync(Username);

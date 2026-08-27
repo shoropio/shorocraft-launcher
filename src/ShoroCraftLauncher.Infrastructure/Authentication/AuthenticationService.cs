@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 
@@ -7,10 +9,12 @@ namespace ShoroCraftLauncher.Infrastructure.Authentication;
 public class AuthenticationService : IAuthenticationService
 {
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly HttpClient _httpClient;
 
-    public AuthenticationService(ILogger<AuthenticationService> logger)
+    public AuthenticationService(ILogger<AuthenticationService> logger, HttpClient httpClient)
     {
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     public async Task<AuthResult> AuthenticateAsync()
@@ -172,15 +176,44 @@ public class AuthenticationService : IAuthenticationService
 
     public Task<bool> ValidateTokenAsync(string accessToken)
     {
+        return ValidateTokenInternalAsync(accessToken);
+    }
+
+    private async Task<bool> ValidateTokenInternalAsync(string accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken) || accessToken.Equals("offline", StringComparison.OrdinalIgnoreCase))
+            return false;
+
         try
         {
-            var parts = accessToken.Split('|');
-            return Task.FromResult(parts.Length > 0 && !string.IsNullOrEmpty(parts[0]));
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
         }
         catch
         {
-            return Task.FromResult(false);
+            // No se pudo verificar (sin red, etc.). No bloqueamos el arranque asumiendo
+            // que el token sigue valido; el refresco silencioso lo corregira si hace falta.
+            return true;
         }
+    }
+
+    public async Task<AuthResult> ValidateAndRefreshAsync(AuthResult current)
+    {
+        if (current == null || !current.Success || current.IsOffline)
+            return current;
+
+        var valid = await ValidateTokenInternalAsync(current.AccessToken ?? string.Empty).ConfigureAwait(false);
+        if (valid)
+            return current;
+
+        _logger.LogInformation("Microsoft access token expirado; intentando refresco silencioso");
+        var refreshed = await AuthenticateSilentlyAsync().ConfigureAwait(false);
+        if (refreshed.Success && !refreshed.IsOffline)
+            return refreshed;
+
+        return new AuthResult { Success = false, ErrorMessage = "Sesión expirada. Inicia sesión de nuevo." };
     }
 
     public async Task LogoutAsync()

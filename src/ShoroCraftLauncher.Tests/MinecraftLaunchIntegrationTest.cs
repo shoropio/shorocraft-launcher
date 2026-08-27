@@ -85,7 +85,7 @@ public class MinecraftLaunchIntegrationTest
     public async Task LaunchBuild_RunsWithoutCrashing()
     {
         var java = new JavaService(_javaLogger, _httpClient);
-        var auth = new AuthenticationService(Mock.Of<ILogger<AuthenticationService>>());
+        var auth = new AuthenticationService(Mock.Of<ILogger<AuthenticationService>>(), _httpClient);
         var mc = new MinecraftService(_logger, _httpClient);
         var launcher = new LauncherService(mc, java, auth, Mock.Of<ILogger<LauncherService>>());
 

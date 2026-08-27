@@ -98,7 +98,7 @@ public class AuthenticationServiceTests
     [Fact]
     public void Constructor_WithLogger_DoesNotThrow()
     {
-        var service = new AuthenticationService(Mock.Of<ILogger<AuthenticationService>>());
+        var service = new AuthenticationService(Mock.Of<ILogger<AuthenticationService>>(), new HttpClient());
         Assert.NotNull(service);
     }
 }
