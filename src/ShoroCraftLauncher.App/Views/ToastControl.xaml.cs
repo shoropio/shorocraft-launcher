@@ -34,7 +34,7 @@ public partial class ToastControl : UserControl
         var fade = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(220)));
         Storyboard.SetTarget(fade, Root);
         Storyboard.SetTargetProperty(fade, new PropertyPath(UIElement.OpacityProperty));
-        var slide = new DoubleAnimation(40, 0, new Duration(TimeSpan.FromMilliseconds(260)))
+        var slide = new DoubleAnimation(-40, 0, new Duration(TimeSpan.FromMilliseconds(260)))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };

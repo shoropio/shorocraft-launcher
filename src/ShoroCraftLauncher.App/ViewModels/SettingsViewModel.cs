@@ -113,7 +113,7 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
-    private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+    private string _launcherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0";
     public string LauncherVersion
     {
         get => _launcherVersion;
@@ -191,7 +191,7 @@ public class SettingsViewModel : BaseViewModel
                 CurseForgeApiKey = null;
             }
 
-            LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+            LauncherVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0";
 
             _totalSizeBytes = await CalculateTotalSizeAsync();
             OnPropertyChanged(nameof(TotalSizeFormatted));
