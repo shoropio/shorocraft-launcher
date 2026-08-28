@@ -10,4 +10,5 @@
     <c:ImageSourceConverter x:Key="ImageSourceConverter" />
     <c:ModUpdateHasUpdateConverter x:Key="ModUpdateHasUpdateConverter" />
     <c:ModUpdateLatestVersionConverter x:Key="ModUpdateLatestVersionConverter" />
+    <c:SidebarWidthToVisibilityConverter x:Key="SidebarWidthToVisibilityConverter" />
 </ResourceDictionary>
