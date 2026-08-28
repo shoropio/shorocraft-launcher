@@ -86,7 +86,16 @@ public class ServersViewModel : BaseViewModel, IDisposable
         set => SetProperty(ref _serverPropertiesText, value);
     }
 
-    public string ServerActionLabel => SelectedServer?.Status == ServerStatus.Running ? "Detener" : "Iniciar";
+    public string ServerActionLabel => SelectedServer?.Status switch
+    {
+        ServerStatus.Running => "Detener",
+        ServerStatus.Starting => "Iniciando…",
+        ServerStatus.Stopping => "Deteniendo…",
+        _ => "Iniciar"
+    };
+
+    public bool CanToggleServer =>
+        IsSelected && SelectedServer is { Status: ServerStatus.Stopped or ServerStatus.Running or ServerStatus.Error };
 
     public string ServerConsoleText => string.Join(Environment.NewLine, LogLines);
 
@@ -226,7 +235,7 @@ public class ServersViewModel : BaseViewModel, IDisposable
         RefreshCommand = new RelayCommand(async _ => await LoadAsync());
         CreateServerCommand = new RelayCommand(async _ => await CreateServer());
         DeleteServerCommand = new RelayCommand(async p => await DeleteServer(p), _ => IsSelected);
-        ToggleServerCommand = new RelayCommand(async p => await ToggleServer(p), _ => IsSelected);
+        ToggleServerCommand = new RelayCommand(async p => await ToggleServer(p), _ => CanToggleServer);
         CopyConsoleCommand = new RelayCommand(_ => CopyConsole(), _ => LogLines.Count > 0);
         ClearConsoleCommand = new RelayCommand(_ => ClearConsole(), _ => LogLines.Count > 0);
         SendCommandCommand = new RelayCommand(async _ => await SendCommand(), _ => IsSelected && !string.IsNullOrWhiteSpace(CommandText));
@@ -245,6 +254,8 @@ public class ServersViewModel : BaseViewModel, IDisposable
             OnPropertyChanged(nameof(IsSelected));
             OnPropertyChanged(nameof(CanControl));
             OnPropertyChanged(nameof(ServerActionLabel));
+            OnPropertyChanged(nameof(CanToggleServer));
+            CommandManager.InvalidateRequerySuggested();
         });
         _progressChangedHandler = (pct, msg) => Dispatcher(() =>
         {
@@ -702,10 +713,11 @@ public class ServersViewModel : BaseViewModel, IDisposable
 
         if (server.Status == ServerStatus.Running || server.Status == ServerStatus.Starting)
             await StopServer(server);
-        else
+        else if (server.Status == ServerStatus.Stopped || server.Status == ServerStatus.Error)
             await StartServer(server);
 
         OnPropertyChanged(nameof(ServerActionLabel));
+        OnPropertyChanged(nameof(CanToggleServer));
     }
 
     private void CopyConsole()
