@@ -69,6 +69,7 @@
         </Border>
 
         <ScrollViewer Grid.Column="1"
+                      Margin="0,0,8,0"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       behaviors:ScrollViewerWheelBehavior.BubbleWheel="True">
@@ -266,7 +267,7 @@
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Auto"
                              ScrollViewer.CanContentScroll="True"
-                             MinHeight="160" />
+                             MinHeight="120" MaxHeight="360" />
                 </DockPanel>
             </Border>
             </StackPanel>
