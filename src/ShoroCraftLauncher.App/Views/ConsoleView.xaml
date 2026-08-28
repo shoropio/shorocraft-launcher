@@ -94,15 +94,22 @@
         <TextBlock Grid.Row="2" Text="{Binding StatusMessage}"
                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
 
-        <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="0" CornerRadius="0">
-            <TextBox x:Name="ConsoleBox"
-                     Style="{StaticResource ConsoleTextBox}"
-                     Text="{Binding FullLogText, Mode=OneWay}"
-                     behaviors:ConsoleAutoScrollBehavior.Enabled="True"
-                     IsReadOnly="True"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.CanContentScroll="True" />
+        <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="{DynamicResource Con_Title}" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                <TextBox Grid.Row="1" x:Name="ConsoleBox"
+                         Style="{StaticResource ConsoleTextBox}"
+                         Text="{Binding FullLogText, Mode=OneWay}"
+                         behaviors:ConsoleAutoScrollBehavior.Enabled="True"
+                         IsReadOnly="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.CanContentScroll="True" />
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

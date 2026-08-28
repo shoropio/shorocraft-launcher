@@ -219,7 +219,7 @@
                                  Height="180" Margin="0,0,0,16">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="10" Background="#101012" CornerRadius="6">
+                                    <Border Padding="10" Background="#101012" CornerRadius="0">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DisplayName}" Foreground="White" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding FilePath}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />

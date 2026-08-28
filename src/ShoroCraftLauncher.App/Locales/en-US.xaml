@@ -37,6 +37,7 @@
     <system:String x:Key="Con_CopyErrors">Copy errors</system:String>
     <system:String x:Key="Con_Search">Search log...</system:String>
     <system:String x:Key="Con_Stopped">Stopped</system:String>
+    <system:String x:Key="Con_Title">Console</system:String>
     <system:String x:Key="Con_Running">Running</system:String>
 
     <!-- Dashboard -->
@@ -131,6 +132,7 @@
     <system:String x:Key="Srv_CopyConsole">Copy console</system:String>
     <system:String x:Key="Srv_ClearConsole">Clear</system:String>
     <system:String x:Key="Srv_Send">Send</system:String>
+    <system:String x:Key="Srv_Console">Console</system:String>
     <system:String x:Key="Srv_Name">Name</system:String>
     <system:String x:Key="Srv_RamMB">RAM MB</system:String>
     <system:String x:Key="Srv_ConnectionTitle">Connection</system:String>

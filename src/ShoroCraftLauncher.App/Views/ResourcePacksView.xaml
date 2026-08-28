@@ -47,11 +47,15 @@
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
 
             <ListBox Grid.Row="2" ItemsSource="{Binding Packs}"
-                     Background="Transparent" BorderThickness="0"
-                     ItemContainerStyle="{StaticResource FlushListBoxItem}">
+                     Background="Transparent" BorderThickness="0">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource FlushListBoxItem}">
+                                <Setter Property="Margin" Value="0,0,18,8" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource CardBorder}" Margin="0,0,18,8" Padding="14">
+                        <Border Style="{StaticResource CardBorder}" Padding="14">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="48" />

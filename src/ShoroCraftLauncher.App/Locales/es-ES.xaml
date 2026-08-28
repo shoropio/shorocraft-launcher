@@ -37,6 +37,7 @@
     <system:String x:Key="Con_CopyErrors">Copiar errores</system:String>
     <system:String x:Key="Con_Search">Buscar en el log...</system:String>
     <system:String x:Key="Con_Stopped">Detenido</system:String>
+    <system:String x:Key="Con_Title">Consola</system:String>
     <system:String x:Key="Con_Running">En ejecución</system:String>
 
     <!-- Dashboard -->
@@ -131,6 +132,7 @@
     <system:String x:Key="Srv_CopyConsole">Copiar consola</system:String>
     <system:String x:Key="Srv_ClearConsole">Limpiar</system:String>
     <system:String x:Key="Srv_Send">Enviar</system:String>
+    <system:String x:Key="Srv_Console">Consola</system:String>
     <system:String x:Key="Srv_Name">Nombre</system:String>
     <system:String x:Key="Srv_RamMB">RAM MB</system:String>
     <system:String x:Key="Srv_ConnectionTitle">Conexión</system:String>

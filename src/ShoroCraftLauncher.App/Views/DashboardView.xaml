@@ -338,7 +338,7 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Width="4" Height="40" CornerRadius="2"
+                                        <Border Grid.Column="0" Width="4" Height="40" CornerRadius="0"
                                                 VerticalAlignment="Top" Margin="0,2,12,0">
                                             <Border.Style>
                                                 <Style TargetType="Border">

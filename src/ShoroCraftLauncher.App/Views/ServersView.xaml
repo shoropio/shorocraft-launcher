@@ -26,11 +26,15 @@
                          Grid.Row="1"
                          ItemsSource="{Binding Servers}"
                          SelectedItem="{Binding SelectedServer}"
-                         Background="Transparent" BorderThickness="0"
-                         ItemContainerStyle="{StaticResource FlushListBoxItem}">
+                          Background="Transparent" BorderThickness="0">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource FlushListBoxItem}">
+                                <Setter Property="Margin" Value="0,0,0,8" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="14" BorderBrush="#33FFFFFF">
+                            <Border Style="{StaticResource CardBorder}" Padding="14" BorderBrush="#33FFFFFF">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -46,7 +50,7 @@
                                         </StackPanel>
                                     </StackPanel>
                                     <Border Grid.Column="1" VerticalAlignment="Top"
-                                            Background="#22FFFFFF" CornerRadius="4" Padding="8,4">
+                                            Background="#22FFFFFF" CornerRadius="0" Padding="8,4">
                                         <TextBlock Text="{Binding StatusText}" FontSize="11"
                                                    Foreground="{StaticResource TextSecondaryBrush}" />
                                     </Border>
@@ -98,7 +102,7 @@
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0" />
                     <Border Margin="0,8,0,0"
-                            Background="#22FFFFFF" CornerRadius="6" Padding="12,8"
+                             Background="#22FFFFFF" CornerRadius="0" Padding="12,8"
                             Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ProgressBar Width="200" Height="6" Value="{Binding DownloadProgress}"
@@ -235,30 +239,11 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorder}" Padding="0" CornerRadius="8" Height="320">
-                <DockPanel>
-                    <Grid DockPanel.Dock="Top" Background="#0D0D18">
-                        <StackPanel Orientation="Horizontal" Margin="10,6">
-                            <Button Content="{DynamicResource Srv_CopyConsole}" Command="{Binding CopyConsoleCommand}"
-                                    Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" Margin="0,0,8,0" />
-                            <Button Content="{DynamicResource Srv_ClearConsole}" Command="{Binding ClearConsoleCommand}"
-                                    Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" />
-                        </StackPanel>
-                    </Grid>
-                        <Grid DockPanel.Dock="Bottom" Background="#0A0A14" Margin="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource ConsoleTextBox}" IsReadOnly="False"
-                                     BorderThickness="0,1,0,0" BorderBrush="#222233" Padding="12,10"
-                                     KeyDown="CommandBox_KeyDown"
-                                     VerticalScrollBarVisibility="Disabled" />
-                            <Button Grid.Column="1" Content="{DynamicResource Srv_Send}" Command="{Binding SendCommandCommand}"
-                                    Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Padding="16,8" FontSize="12"
-                                    VerticalAlignment="Stretch" />
-                    </Grid>
+            <Border Style="{StaticResource CardBorder}" Padding="16" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Srv_Console}" Style="{StaticResource CardTitle}" Margin="0,0,0,4" />
+                    <TextBlock Text="Consola en vivo del servidor. Escribe un comando abajo y pulsa Enviar (ej. list, op, gamemode) para enviarlo al servidor."
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap" />
                     <TextBox x:Name="ServerConsole"
                              Style="{StaticResource ConsoleTextBox}"
                              Text="{Binding ServerConsoleText, Mode=OneWay}"
@@ -267,8 +252,28 @@
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Auto"
                              ScrollViewer.CanContentScroll="True"
-                             MinHeight="120" MaxHeight="360" />
-                </DockPanel>
+                             MinHeight="160" MaxHeight="360" Margin="0,0,0,8" />
+                    <Grid Margin="0,0,0,8" IsEnabled="{Binding IsSelected}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding CommandText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ConsoleTextBox}" IsReadOnly="False"
+                                 BorderThickness="1" BorderBrush="#222233" Padding="10"
+                                 KeyDown="CommandBox_KeyDown"
+                                 VerticalScrollBarVisibility="Disabled" />
+                        <Button Grid.Column="1" Content="{DynamicResource Srv_Send}" Command="{Binding SendCommandCommand}"
+                                Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Padding="16,8" FontSize="12"
+                                VerticalAlignment="Stretch" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="{DynamicResource Srv_CopyConsole}" Command="{Binding CopyConsoleCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" Margin="0,0,8,0" />
+                        <Button Content="{DynamicResource Srv_ClearConsole}" Command="{Binding ClearConsoleCommand}"
+                                Style="{StaticResource SecondaryButton}" Padding="12,5" FontSize="12" />
+                    </StackPanel>
+                </StackPanel>
             </Border>
             </StackPanel>
         </ScrollViewer>
