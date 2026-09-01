@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -14,7 +13,7 @@ public class LauncherService : ILauncherService
     private readonly ILogService? _logService;
     private readonly List<string> _logHistory = new();
     private readonly object _logLock = new();
-    private Process? _gameProcess;
+    private IGameProcess? _gameProcess;
 
     public event Action<string>? LogOutput;
     public event Action<double, string>? ProgressChanged;
@@ -116,52 +115,47 @@ public class LauncherService : ILauncherService
                     ProgressChanged?.Invoke(pct, msg);
                 }).ConfigureAwait(false);
 
-            process.OutputDataReceived += (_, e) =>
+            process.OutputLineReceived += line =>
             {
-                if (e.Data != null)
+                if (line != null)
                 {
-                    _logger.LogDebug("Minecraft: {Line}", e.Data);
-                    _logService?.MinecraftStdout(e.Data);
+                    _logger.LogDebug("Minecraft: {Line}", line);
+                    _logService?.MinecraftStdout(line);
                 }
             };
 
-            process.ErrorDataReceived += (_, e) =>
+            process.ErrorLineReceived += line =>
             {
-                if (!string.IsNullOrWhiteSpace(e.Data))
+                if (!string.IsNullOrWhiteSpace(line))
                 {
-                    if (IsMinecraftStderrWarning(e.Data))
+                    if (IsMinecraftStderrWarning(line))
                     {
-                        _logger.LogWarning("Minecraft: {Line}", e.Data);
-                        _logService?.Warning("Minecraft", "StderrWarning", e.Data);
-                        Log($"[WARN] {e.Data}");
+                        _logger.LogWarning("Minecraft: {Line}", line);
+                        _logService?.Warning("Minecraft", "StderrWarning", line);
+                        Log($"[WARN] {line}");
                     }
                     else
                     {
-                        _logger.LogError("Minecraft: {Line}", e.Data);
-                        _logService?.MinecraftStderr(e.Data);
-                        Log($"[ERROR] {e.Data}");
+                        _logger.LogError("Minecraft: {Line}", line);
+                        _logService?.MinecraftStderr(line);
+                        Log($"[ERROR] {line}");
                     }
                 }
             };
 
-            process.EnableRaisingEvents = true;
-            process.Exited += (s, _) =>
+            process.Exited += exitCode =>
             {
-                var p = (Process)s!;
-                _logger.LogInformation("Minecraft process exited with code {ExitCode}", p.ExitCode);
-                _logService?.Info("Launch", "ProcessExited", "Proceso de Minecraft terminado.", new { p.ExitCode });
-                Log($"Proceso terminado con código {p.ExitCode}");
+                _logger.LogInformation("Minecraft process exited with code {ExitCode}", exitCode);
+                _logService?.Info("Launch", "ProcessExited", "Proceso de Minecraft terminado.", new { ExitCode = exitCode });
+                Log($"Proceso terminado con código {exitCode}");
                 _gameProcess = null;
-                p.Dispose();
-                GameExited?.Invoke(p.ExitCode);
+                GameExited?.Invoke(exitCode);
             };
 
-            var sanitizedArgs = LogService.Sanitize(process.StartInfo.Arguments);
-            _logger.LogDebug("Starting process: {FileName} {Arguments}", process.StartInfo.FileName, sanitizedArgs);
-            _logService?.Info("Launch", "ProcessStarting", "Iniciando proceso de Minecraft.", new { process.StartInfo.FileName, Arguments = sanitizedArgs });
+            var sanitizedArgs = LogService.Sanitize(process.Arguments);
+            _logger.LogDebug("Starting process: {FileName} {Arguments}", process.FileName, sanitizedArgs);
+            _logService?.Info("Launch", "ProcessStarting", "Iniciando proceso de Minecraft.", new { process.FileName, Arguments = sanitizedArgs });
             process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
 
             _gameProcess = process;
 
@@ -232,7 +226,7 @@ public class LauncherService : ILauncherService
         {
             _logger.LogInformation("Stopping game process");
             _logService?.Warning("Launch", "StopRequested", "Deteniendo Minecraft por solicitud del usuario.");
-            _gameProcess.Kill(entireProcessTree: true);
+            _gameProcess.Kill();
             try { await _gameProcess.WaitForExitAsync().ConfigureAwait(false); } catch { }
             var proc = _gameProcess;
             _gameProcess = null;

@@ -460,7 +460,7 @@ public class MinecraftService : IMinecraftService
 
     #region Lanzamiento del juego
 
-    public async Task<Process> LaunchGameAsync(Profile profile, string gameDir, string javaPath, string accessToken, string uuid, string username, Action<double, string>? onProgress = null)
+    public async Task<IGameProcess> LaunchGameAsync(Profile profile, string gameDir, string javaPath, string accessToken, string uuid, string username, Action<double, string>? onProgress = null)
     {
         _logger.LogInformation("Launching: profile={Profile}, version={Version}", profile.Name, profile.MinecraftVersion);
 
@@ -528,7 +528,7 @@ public class MinecraftService : IMinecraftService
         process.StartInfo.Arguments = EnsureNativeAccessModules(process.StartInfo.Arguments);
 
         _logger.LogInformation("Launch duration: {Duration}s", (DateTime.UtcNow - launchStartTime).TotalSeconds);
-        return process;
+        return new GameProcess(process);
     }
 
     #endregion
