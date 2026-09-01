@@ -11,6 +11,7 @@ using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Infrastructure;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -552,7 +553,7 @@ public class ProfileService : IProfileService
 
         try
         {
-            ZipFile.ExtractToDirectory(importZipPath, tempRoot);
+            DownloadPathGuard.ExtractZipToDirectorySafe(importZipPath, tempRoot);
 
             var jsonPath = Path.Combine(tempRoot, "profile.json");
             if (!File.Exists(jsonPath))
@@ -747,7 +748,7 @@ public class ProfileService : IProfileService
 
         try
         {
-            ZipFile.ExtractToDirectory(backupZipPath, tempDir);
+            DownloadPathGuard.ExtractZipToDirectorySafe(backupZipPath, tempDir);
 
             void CopyDirectory(string source, string dest)
             {

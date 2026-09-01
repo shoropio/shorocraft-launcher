@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using ShoroCraftLauncher.Core;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -33,18 +34,19 @@ public class ModSearchService
 
     public async Task<List<Mod>> SearchModrinthAsync(string query, string minecraftVersion, string loaderType)
     {
-        var modrinthVersion = ToModrinthVersion(minecraftVersion);
+        var modrinthVersion = MinecraftVersions.ToModrinthVersion(minecraftVersion);
         _logger.LogInformation("Searching Modrinth: {Query} for MC {Version} (Modrinth: {ModrinthVersion}) on {Loader}", query, minecraftVersion, modrinthVersion, loaderType);
         _logService.Info("ModSearch", "SearchModrinth", $"Buscando '{query}' en Modrinth para MC {minecraftVersion} ({loaderType})...");
 
         try
         {
             var url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets=[[\"versions:{modrinthVersion}\"],[\"categories:{loaderType.ToLower()}\"]]";
-            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
 
             await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-            var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -92,7 +94,7 @@ public class ModSearchService
             + "?gameId=432"
             + "&classId=6"
             + $"&searchFilter={Uri.EscapeDataString(query)}"
-            + $"&gameVersion={Uri.EscapeDataString(minecraftVersion)}"
+            + $"&gameVersion={Uri.EscapeDataString(MinecraftVersions.ToModrinthVersion(minecraftVersion))}"
             + $"&modLoaderType={loaderTypeId}"
             + "&sortField=2"
             + "&sortOrder=desc"
@@ -134,20 +136,5 @@ public class ModSearchService
         }
 
         return results;
-    }
-
-    private static string ToModrinthVersion(string mcVersion)
-    {
-        if (string.IsNullOrWhiteSpace(mcVersion)) return mcVersion;
-        var trimmed = mcVersion.Trim();
-        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = trimmed.Split('.');
-            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
-            {
-                return $"1.21.{minor}";
-            }
-        }
-        return trimmed;
     }
 }

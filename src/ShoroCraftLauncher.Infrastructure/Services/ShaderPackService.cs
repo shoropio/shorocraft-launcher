@@ -206,6 +206,7 @@ public class ShaderPackService : IShaderPackService
 
         var (downloadUrl, fileName, version, size) =
             await ResolveShaderVersionAsync(searchResult.ProjectId, profile.MinecraftVersion).ConfigureAwait(false);
+        fileName = DownloadPathGuard.SafeFileName(fileName);
 
         var destPath = Path.Combine(packsDir, fileName);
         var tempPath = destPath + ".tmp";

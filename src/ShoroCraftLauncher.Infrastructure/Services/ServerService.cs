@@ -12,7 +12,7 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ServerService : IServerService
 {
-    private const string PaperApiBaseUrl = "https://fill.papermc.io/v3/projects/paper";
+    private const string PaperApiBaseUrl = "https://api.papermc.io/v3/projects/paper";
     private const string PaperUserAgent = "ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)";
     private const string ServerJarName = "server.jar";
     private const string ServerPidFileName = "server.pid";
@@ -374,14 +374,14 @@ public class ServerService : IServerService
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("Server {ServerName} did not stop gracefully; killing process", server.Name);
-                try { process.Kill(entireProcessTree: true); } catch { }
-                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch { }
+                try { process.Kill(entireProcessTree: true); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to kill process tree for {ServerName}", server.Name); }
+                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to wait for process exit for {ServerName}", server.Name); }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to stop server gracefully, killing process");
-                try { process.Kill(entireProcessTree: true); } catch { }
-                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch { }
+                try { process.Kill(entireProcessTree: true); } catch (Exception ex2) { _logger.LogWarning(ex2, "Failed to kill process tree for {ServerName}", server.Name); }
+                try { await process.WaitForExitAsync().ConfigureAwait(false); } catch (Exception ex2) { _logger.LogWarning(ex2, "Failed to wait for process exit for {ServerName}", server.Name); }
             }
 
             CleanupProcess(server);
@@ -457,9 +457,9 @@ public class ServerService : IServerService
     {
         try
         {
-            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
-            var response = await _httpClient.GetAsync("https://api.ipify.org?format=text").ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ipify.org?format=text");
+            request.Headers.UserAgent.ParseAdd(PaperUserAgent);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) return null;
             var ip = (await response.Content.ReadAsStringAsync().ConfigureAwait(false)).Trim();
             return string.IsNullOrWhiteSpace(ip) ? null : ip;
@@ -601,10 +601,13 @@ public class ServerService : IServerService
 
     private void CleanupProcess(MinecraftServer server)
     {
+        Process? process;
         lock (_lock)
         {
+            _processes.TryGetValue(server.Id, out process);
             _processes.Remove(server.Id);
         }
+        process?.Dispose();
         TryDelete(GetServerPidPath(server.DirectoryPath));
     }
 
@@ -752,7 +755,7 @@ public class ServerService : IServerService
 
     private static void WriteServerProperties(string directoryPath, string? worldName, bool onlineMode = true)
     {
-        var levelName = string.IsNullOrWhiteSpace(worldName) ? "world" : worldName;
+        var levelName = SanitizeFolderName(string.IsNullOrWhiteSpace(worldName) ? "world" : worldName);
         File.WriteAllText(Path.Combine(directoryPath, "server.properties"),
             "#Minecraft server properties\n"
             + "server-port=25565\n"
@@ -842,13 +845,21 @@ public class ServerService : IServerService
         }
     }
 
+    private static readonly string[] BlockedPropertyKeys = new[]
+    {
+        "rcon.port", "rcon.password", "enable-rcon",
+        "enable-command-block", "op-permission-level", "enable-query",
+        "enforce-secure-profile"
+    };
+
     public Task SaveServerPropertiesAsync(MinecraftServer server, string content)
     {
         try
         {
+            var sanitized = SanitizeServerProperties(content);
             var propsPath = Path.Combine(server.DirectoryPath, "server.properties");
             Directory.CreateDirectory(server.DirectoryPath);
-            File.WriteAllText(propsPath, content ?? string.Empty);
+            File.WriteAllText(propsPath, sanitized);
         }
         catch (Exception ex)
         {
@@ -856,6 +867,46 @@ public class ServerService : IServerService
         }
 
         return Task.CompletedTask;
+    }
+
+    private string SanitizeServerProperties(string content)
+    {
+        if (string.IsNullOrEmpty(content)) return string.Empty;
+
+        var lines = content.Split('\n');
+        var result = new StringBuilder(content.Length + 64);
+        bool first = true;
+
+        foreach (var rawLine in lines)
+        {
+            if (!first) result.Append('\n');
+            first = false;
+
+            var trimmed = rawLine.Trim();
+            if (trimmed.Length == 0 || trimmed.StartsWith("#"))
+            {
+                result.Append(rawLine);
+                continue;
+            }
+
+            var equalsIndex = trimmed.IndexOf('=');
+            if (equalsIndex <= 0)
+            {
+                result.Append(rawLine);
+                continue;
+            }
+
+            var key = trimmed[..equalsIndex].Trim().ToLowerInvariant();
+            if (BlockedPropertyKeys.Contains(key))
+            {
+                _logger.LogWarning("Blocked dangerous server property '{Key}' from being written", key);
+                continue;
+            }
+
+            result.Append(rawLine);
+        }
+
+        return result.ToString();
     }
 
     private static string SanitizeFolderName(string name)

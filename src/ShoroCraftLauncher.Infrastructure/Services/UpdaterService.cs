@@ -61,6 +61,12 @@ public class UpdaterService : IUpdaterService
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(expectedSha256))
+            {
+                _logger.LogError("Refusing to download update without a SHA-256 digest");
+                return null;
+            }
+
             var updatesDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ShoroCraftLauncher", "updates");
@@ -101,7 +107,7 @@ public class UpdaterService : IUpdaterService
 
     private static bool MatchesExpectedHash(string filePath, string? expectedSha256)
     {
-        if (string.IsNullOrWhiteSpace(expectedSha256)) return true;
+        if (string.IsNullOrWhiteSpace(expectedSha256)) return false;
 
         using var stream = File.OpenRead(filePath);
         var actual = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();

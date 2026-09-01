@@ -144,20 +144,20 @@ public class JavaService : IJavaService
 
     private async Task<JavaInfo?> GetJavaInfoAsync(string javaPath)
     {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = "-version",
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            }
+        };
+
         try
         {
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = javaPath,
-                    Arguments = "-version",
-                    UseShellExecute = false,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-
             process.Start();
             var output = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
             await process.WaitForExitAsync().ConfigureAwait(false);
@@ -169,6 +169,7 @@ public class JavaService : IJavaService
 
             var versionStr = match.Groups[1].Value;
             var majorVersion = ParseVersion(versionStr);
+            process.Dispose();
 
             return new JavaInfo
             {
@@ -179,6 +180,7 @@ public class JavaService : IJavaService
         }
         catch
         {
+            process.Dispose();
             return null;
         }
     }

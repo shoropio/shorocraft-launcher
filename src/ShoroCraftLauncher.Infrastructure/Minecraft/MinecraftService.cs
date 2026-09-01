@@ -74,7 +74,7 @@ public class MinecraftService : IMinecraftService
         {
             _logger.LogInformation("Fetching Minecraft version manifest...");
             var json = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             var versions = new List<GameVersion>();
 
             foreach (var v in doc.RootElement.GetProperty("versions").EnumerateArray())
@@ -106,7 +106,7 @@ public class MinecraftService : IMinecraftService
         using var operation = _logService?.BeginOperation("MinecraftInstall", "InstallVersion", new { versionId, gameDir });
         _logger.LogInformation("Installing Minecraft version {Version}", versionId);
         _logService?.Info("MinecraftInstall", "Started", "Instalando versión de Minecraft.", new { versionId });
-        var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
+        using var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
         if (versionData == null)
             throw new Exception($"Version {versionId} not found");
 
@@ -424,11 +424,11 @@ public class MinecraftService : IMinecraftService
 
             try
             {
-                var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
+                using var versionData = await FetchVersionDataAsync(versionId).ConfigureAwait(false);
                 if (versionData == null)
                 {
                     _logService?.Warning("MinecraftRepair", "VersionDataMissing",
-                        "No se pudo obtener datos de la versión para reparar.", new { versionId });
+                        "No se pudo obtener datos de la versi�n para reparar.", new { versionId });
                     continue;
                 }
 
@@ -634,7 +634,7 @@ public class MinecraftService : IMinecraftService
         try
         {
             var json = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             foreach (var v in doc.RootElement.GetProperty("versions").EnumerateArray())
             {
                 if (v.GetProperty("type").GetString() == "release")
@@ -650,7 +650,7 @@ public class MinecraftService : IMinecraftService
         try
         {
             var resolved = versionId.ToLower() == "latest" ? await ResolveVersionIdAsync("latest").ConfigureAwait(false) : versionId;
-            var versionData = await FetchVersionDataAsync(resolved).ConfigureAwait(false);
+            using var versionData = await FetchVersionDataAsync(resolved).ConfigureAwait(false);
             return versionData?.GetServerUrl();
         }
         catch (Exception ex)
@@ -683,7 +683,7 @@ public class MinecraftService : IMinecraftService
     private async Task<string> ResolveLatestForgeVersionAsync(string mcVersion)
     {
         var json = await _httpClient.GetStringAsync(ForgePromotionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         var promos = doc.RootElement.GetProperty("promos");
 
         if (promos.TryGetProperty($"{mcVersion}-recommended", out var rec))
@@ -725,14 +725,14 @@ public class MinecraftService : IMinecraftService
             throw new Exception($"Fabric no reporta soporte para Minecraft {mcVersion}.");
 
         var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
     private async Task<string> ResolveLatestFabricInstallerVersionAsync()
     {
         var json = await _httpClient.GetStringAsync(FabricInstallerVersionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
@@ -742,14 +742,14 @@ public class MinecraftService : IMinecraftService
             throw new Exception($"Quilt no reporta soporte para Minecraft {mcVersion}.");
 
         var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement[0].GetProperty("version").GetString() ?? "latest";
     }
 
     private async Task<bool> FabricSupportsGameVersionAsync(string mcVersion)
     {
         var json = await _httpClient.GetStringAsync(FabricGameVersionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateArray().Any(v =>
             string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
     }
@@ -757,7 +757,7 @@ public class MinecraftService : IMinecraftService
     private async Task<bool> QuiltSupportsGameVersionAsync(string mcVersion)
     {
         var json = await _httpClient.GetStringAsync(QuiltGameVersionsUrl).ConfigureAwait(false);
-        var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateArray().Any(v =>
             string.Equals(v.GetProperty("version").GetString(), mcVersion, StringComparison.OrdinalIgnoreCase));
     }
@@ -795,7 +795,7 @@ public class MinecraftService : IMinecraftService
         try
         {
             var manifestJson = await _httpClient.GetStringAsync(VersionManifestUrl).ConfigureAwait(false);
-            var manifest = JsonDocument.Parse(manifestJson);
+            using var manifest = JsonDocument.Parse(manifestJson);
             string? versionUrl = null;
 
             foreach (var v in manifest.RootElement.GetProperty("versions").EnumerateArray())
@@ -1009,7 +1009,7 @@ public class MinecraftService : IMinecraftService
         var assetsDir = Path.Combine(gameDir, "assets", "objects");
         Directory.CreateDirectory(assetsDir);
 
-        var indexDoc = JsonDocument.Parse(await File.ReadAllTextAsync(indexPath).ConfigureAwait(false));
+        using var indexDoc = JsonDocument.Parse(await File.ReadAllTextAsync(indexPath).ConfigureAwait(false));
         if (!indexDoc.RootElement.TryGetProperty("objects", out var objects)) return;
 
         var total = objects.EnumerateObject().Count();
@@ -1056,7 +1056,7 @@ public class MinecraftService : IMinecraftService
 
     #region Modelo de datos de versión
 
-    private class VersionData
+    private class VersionData : IDisposable
     {
         private readonly JsonDocument _doc;
         public string Id { get; }
@@ -1068,6 +1068,8 @@ public class MinecraftService : IMinecraftService
             Url = url;
             _doc = JsonDocument.Parse(json);
         }
+
+        public void Dispose() => _doc.Dispose();
 
         public string? GetClientUrl()
         {
@@ -1201,7 +1203,7 @@ public class MinecraftService : IMinecraftService
                     return null;
 
                 var json = await _httpClient.GetStringAsync(FabricLoaderVersionsUrl).ConfigureAwait(false);
-                var doc = JsonDocument.Parse(json);
+                using var doc = JsonDocument.Parse(json);
                 var latest = doc.RootElement[0].GetProperty("version").GetString();
                 if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
                     return latest;
@@ -1209,7 +1211,7 @@ public class MinecraftService : IMinecraftService
             else if (loaderType.Equals("quilt", StringComparison.OrdinalIgnoreCase))
             {
                 var json = await _httpClient.GetStringAsync(QuiltInstallerVersionsUrl).ConfigureAwait(false);
-                var doc = JsonDocument.Parse(json);
+                using var doc = JsonDocument.Parse(json);
                 var latest = doc.RootElement[0].GetProperty("version").GetString();
                 if (!string.IsNullOrEmpty(latest) && !latest.Equals(currentLoaderVersion, StringComparison.OrdinalIgnoreCase))
                     return latest;

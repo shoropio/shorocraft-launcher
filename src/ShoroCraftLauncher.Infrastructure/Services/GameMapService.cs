@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure.Downloading;
 
 namespace ShoroCraftLauncher.Infrastructure.Services;
 
@@ -107,7 +108,14 @@ public class GameMapService : IGameMapService
                 if (worldFolder.Contains('\\') || string.IsNullOrEmpty(worldFolder))
                     throw new Exception("El archivo no contiene una estructura de mundo válida.");
 
-                destDir = Path.Combine(mapsDir, worldFolder);
+                var safeWorldFolder = DownloadPathGuard.SafeRelativePath(worldFolder);
+                if (safeWorldFolder.Contains(Path.DirectorySeparatorChar))
+                    throw new Exception("El archivo no contiene una estructura de mundo válida.");
+
+                destDir = Path.Combine(mapsDir, safeWorldFolder);
+                if (!DownloadPathGuard.IsInsideDirectory(mapsDir, destDir))
+                    throw new Exception("El archivo contiene rutas no válidas.");
+
                 EnsureNotExists(destDir);
                 ExtractZipSafe(archive, destDir, worldFolder + "/");
             }
@@ -176,31 +184,13 @@ public class GameMapService : IGameMapService
 
     private static void ExtractZipSafe(ZipArchive archive, string destDir, string rootPrefix)
     {
-        Directory.CreateDirectory(destDir);
-        var destRoot = Path.GetFullPath(destDir).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
-
-        foreach (var entry in archive.Entries)
-        {
-            if (entry.FullName.EndsWith('/')) continue;
-
-            var name = entry.FullName;
-            if (!string.IsNullOrEmpty(rootPrefix))
-            {
-                if (!name.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)) continue;
-                name = name.Substring(rootPrefix.Length);
-            }
-            if (string.IsNullOrEmpty(name)) continue;
-            if (name.StartsWith(".previews/", StringComparison.OrdinalIgnoreCase)) continue;
-
-            var target = Path.GetFullPath(Path.Combine(destDir, name));
-            if (!target.StartsWith(destRoot, StringComparison.OrdinalIgnoreCase))
-                throw new Exception("El archivo contiene rutas no válidas.");
-
-            var parent = Path.GetDirectoryName(target);
-            if (parent != null) Directory.CreateDirectory(parent);
-
-            entry.ExtractToFile(target, true);
-        }
+        DownloadPathGuard.ExtractZipToDirectorySafe(
+            archive,
+            destDir,
+            rootPrefix,
+            overwrite: true,
+            shouldSkipRelativePath: p => p.Split(Path.DirectorySeparatorChar)[0]
+                .Equals(".previews", StringComparison.OrdinalIgnoreCase));
     }
 
     private string ExtractWorldIcon(string worldDir, string mapsDir, string worldName)

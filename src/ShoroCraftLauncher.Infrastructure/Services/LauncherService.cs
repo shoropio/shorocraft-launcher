@@ -152,6 +152,7 @@ public class LauncherService : ILauncherService
                 _logService?.Info("Launch", "ProcessExited", "Proceso de Minecraft terminado.", new { p.ExitCode });
                 Log($"Proceso terminado con código {p.ExitCode}");
                 _gameProcess = null;
+                p.Dispose();
                 GameExited?.Invoke(p.ExitCode);
             };
 
@@ -233,7 +234,9 @@ public class LauncherService : ILauncherService
             _logService?.Warning("Launch", "StopRequested", "Deteniendo Minecraft por solicitud del usuario.");
             _gameProcess.Kill(entireProcessTree: true);
             try { await _gameProcess.WaitForExitAsync().ConfigureAwait(false); } catch { }
+            var proc = _gameProcess;
             _gameProcess = null;
+            proc.Dispose();
             Log("Juego detenido por el usuario.");
         }
     }

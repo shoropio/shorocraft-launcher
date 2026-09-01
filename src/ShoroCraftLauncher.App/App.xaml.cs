@@ -53,7 +53,7 @@ public partial class App : Application
         catch { }
         
         Log.CloseAndFlush();
-        Environment.Exit(1);
+        Shutdown(1);
     }
 
     private static IHost CreateHostBuilder()
@@ -156,7 +156,6 @@ public partial class App : Application
 
             TaskScheduler.UnobservedTaskException += (_, args) =>
             {
-                // Las tareas en segundo plano no deben tumbar la aplicación: se registran y se marcan como observadas.
                 _logService?.Error("App", "UnobservedTaskException",
                     "Excepción no controlada en una tarea en segundo plano.", args.Exception);
                 Log.Error(args.Exception, "Unobserved task exception");
@@ -181,6 +180,7 @@ public partial class App : Application
         {
             _logService?.Critical("App", "StartupFailed", "Falló el arranque de la aplicación.", ex);
             Log.Fatal(ex, "Application start-up failed");
+            try { await _host.StopAsync(); } catch { }
             System.Windows.MessageBox.Show($"Critical error during startup:\n{ex.Message}\n\nCheck logs for details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
@@ -210,22 +210,19 @@ public partial class App : Application
         try
         {
             _logService?.Info("App", "Shutdown", "ShoroCraft Launcher cerrando.");
-            try
+        try
+        {
+            var serverService = _host.Services.GetService<IServerService>();
+            if (serverService != null)
             {
-                var serverService = _host.Services.GetService<IServerService>();
-                if (serverService != null)
-                {
-                    // Bloquear hasta detener los servidores (o 20s) para no dejar
-                    // procesos Java huérfanos al cerrar el launcher. StopAllAsync
-                    // tambien mata servidores iniciados en sesiones previas via pid file.
-                    var stopTask = serverService.StopAllAsync();
-                    Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(20))).GetAwaiter().GetResult();
-                }
+                var stopTask = serverService.StopAllAsync();
+                await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(20))).ConfigureAwait(false);
             }
-            catch (Exception ex)
-            {
-                _logService?.Error("App", "Shutdown", "Error deteniendo servidores durante el cierre.", ex);
-            }
+        }
+        catch (Exception ex)
+        {
+            _logService?.Error("App", "Shutdown", "Error deteniendo servidores durante el cierre.", ex);
+        }
             if (_logService != null)
                 await _logService.FlushAsync();
         }

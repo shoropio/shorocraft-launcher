@@ -72,7 +72,7 @@ public class ModpackService : IModpackService
         try
         {
             _logService.Info("ModpackService", "Import", $"Extrayendo modpack {Path.GetFileName(mrpackPath)}...");
-            ZipFile.ExtractToDirectory(mrpackPath, tempDir);
+            DownloadPathGuard.ExtractZipToDirectorySafe(mrpackPath, tempDir);
 
             var indexPath = Path.Combine(tempDir, "modrinth.index.json");
             if (!File.Exists(indexPath))
@@ -105,11 +105,20 @@ public class ModpackService : IModpackService
                 if (string.IsNullOrEmpty(file.Path)) continue;
                 if (file.Downloads.Count == 0) continue;
 
-                var safePath = file.Path.Replace('\\', '/').TrimStart('/');
+                string safePath;
+                try
+                {
+                    safePath = DownloadPathGuard.SafeRelativePath(file.Path);
+                }
+                catch
+                {
+                    result.Warnings.Add($"Archivo ignorado por ruta no válida: {file.Path}");
+                    continue;
+                }
                 var targetPath = Path.Combine(gameDir, safePath);
                 var fullGameDir = Path.GetFullPath(gameDir);
                 var fullTarget = Path.GetFullPath(targetPath);
-                var isInsideGameDir = !Path.GetRelativePath(fullGameDir, fullTarget).StartsWith("..", StringComparison.Ordinal);
+                var isInsideGameDir = DownloadPathGuard.IsInsideDirectory(fullGameDir, fullTarget);
                 if (!isInsideGameDir)
                 {
                     result.Warnings.Add($"Archivo ignorado por ruta no válida: {file.Path}");
@@ -124,7 +133,7 @@ public class ModpackService : IModpackService
                     Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
                     await DownloadWithHashCheckAsync(file.Downloads[0], targetPath, file.Hashes?.Sha1, file.FileSize).ConfigureAwait(false);
 
-                    if (safePath.StartsWith("mods/") && fileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+                    if (IsInTopLevelFolder(safePath, "mods") && fileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
                     {
                         var existing = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
                         var alreadyInstalled = existing.Any(m =>
@@ -190,5 +199,11 @@ public class ModpackService : IModpackService
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, true);
         }
+    }
+
+    private static bool IsInTopLevelFolder(string relativePath, string folderName)
+    {
+        var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
+        return firstSegment.Equals(folderName, StringComparison.OrdinalIgnoreCase);
     }
 }

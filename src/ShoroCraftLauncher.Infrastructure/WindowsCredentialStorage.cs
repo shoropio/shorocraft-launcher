@@ -30,13 +30,6 @@ public class WindowsCredentialStorage : ISecretStorage
         uint flags);
 
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern int CredEnumerateW(
-        string targetName,
-        uint flags,
-        out int count,
-        out IntPtr credentials);
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CredFree(IntPtr ptr);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -71,6 +64,9 @@ public class WindowsCredentialStorage : ISecretStorage
         DomainExtended = 6
     }
 
+    private static string GetTargetName(string name)
+        => $"{AppName}_{name}";
+
     public Task<string?> GetSecretAsync(string name) =>
         Task.Run(() =>
         {
@@ -81,12 +77,12 @@ public class WindowsCredentialStorage : ISecretStorage
     private bool TryReadFromCredentialLocker(string name, out string? secret)
     {
         secret = null;
-        int result = CredReadW(AppName, (uint)CredType.Generic, 0, out IntPtr credentials);
+        string targetName = GetTargetName(name);
+        int result = CredReadW(targetName, (uint)CredType.Generic, 0, out IntPtr credentials);
         if (result != 0 && credentials != IntPtr.Zero)
         {
             try
             {
-                // CredReadW returns a single credential for the given target name.
                 var cred = (CREDENTIALW)Marshal.PtrToStructure(credentials, typeof(CREDENTIALW))!;
 
                 if (string.Equals(cred.credentialName, name, StringComparison.OrdinalIgnoreCase))
@@ -112,15 +108,10 @@ public class WindowsCredentialStorage : ISecretStorage
                 credentialName = name,
                 password = secret,
                 credentialPersist = 5, // CRED_PER_ROAMING
-                targetName = AppName
+                targetName = GetTargetName(name)
             };
 
-            int structSize = Marshal.SizeOf(typeof(CREDENTIALW));
-            IntPtr ptr = Marshal.AllocHGlobal(structSize);
-            Marshal.StructureToPtr(cred, ptr, false);
-
             int result = CredWriteW(in cred, 0);
-            Marshal.FreeHGlobal(ptr);
 
             if (result == 0)
             {
@@ -129,7 +120,7 @@ public class WindowsCredentialStorage : ISecretStorage
         });
 
     public Task DeleteSecretAsync(string name) =>
-        Task.Run(() => CredDeleteW(AppName, (uint)CredType.Generic, 0));
+        Task.Run(() => CredDeleteW(GetTargetName(name), (uint)CredType.Generic, 0));
 
     public Task<bool> HasSecretAsync(string name) =>
         Task.Run(() => TryReadFromCredentialLocker(name, out _));

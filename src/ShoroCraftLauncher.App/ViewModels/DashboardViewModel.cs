@@ -129,6 +129,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
     }
 
     private string? _launcherUpdateUrl;
+    private string? _launcherUpdateSha256;
     private string? _latestVersion;
     private bool _isInstallingUpdate;
     public bool IsInstallingUpdate
@@ -402,13 +403,14 @@ public class DashboardViewModel : BaseViewModel, IDisposable
 
             await Task.WhenAll(versionsTask, detailsTask, componentsTask, controllerTask, updateTask, newsTask);
 
-            var (isUpdateAvailable, latestVersion, downloadUrl, _) = updateTask.Result;
+            var (isUpdateAvailable, latestVersion, downloadUrl, sha256) = updateTask.Result;
             if (isUpdateAvailable)
             {
                 HasLauncherUpdate = true;
                 _latestVersion = latestVersion;
                 LauncherUpdateMessage = $"¡ShoroCraft Launcher {latestVersion} disponible!";
                 _launcherUpdateUrl = downloadUrl;
+                _launcherUpdateSha256 = sha256;
             }
 
             ReadyStatus = "Listo";
@@ -452,7 +454,7 @@ public class DashboardViewModel : BaseViewModel, IDisposable
         IsInstallingUpdate = true;
         try
         {
-            var installerPath = await _updaterService.DownloadUpdateAsync(_launcherUpdateUrl, _latestVersion ?? "latest");
+            var installerPath = await _updaterService.DownloadUpdateAsync(_launcherUpdateUrl, _latestVersion ?? "latest", _launcherUpdateSha256);
             if (installerPath == null)
             {
                 DialogHelper.Show("No se pudo descargar el instalador. Revisa tu conexión e inténtalo de nuevo.",

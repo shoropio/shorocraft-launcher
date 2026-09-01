@@ -27,7 +27,7 @@ public class SettingsViewModel : BaseViewModel
         set
         {
             SetProperty(ref _closeOnLaunch, value);
-            _ = _settingsRepo.SetAsync("close_launcher_on_launch", value.ToString());
+            _ = PersistSettingAsync("close_launcher_on_launch", value.ToString());
         }
     }
 
@@ -38,7 +38,7 @@ public class SettingsViewModel : BaseViewModel
         set
         {
             SetProperty(ref _keepOpen, value);
-            _ = _settingsRepo.SetAsync("keep_launcher_open", value.ToString());
+            _ = PersistSettingAsync("keep_launcher_open", value.ToString());
         }
     }
 
@@ -75,9 +75,21 @@ public class SettingsViewModel : BaseViewModel
         {
             if (SetProperty(ref _language, value))
             {
-                _ = _settingsRepo.SetAsync("language", value);
+                _ = PersistSettingAsync("language", value);
                 ApplyLanguage(value);
             }
+        }
+    }
+
+    private async Task PersistSettingAsync(string key, string value)
+    {
+        try
+        {
+            await _settingsRepo.SetAsync(key, value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to persist setting {Key}", key);
         }
     }
 
@@ -103,13 +115,22 @@ public class SettingsViewModel : BaseViewModel
         }
     }
 
-    public void SetCurseForgeApiKeyFromUi(string key)
+    public async void SetCurseForgeApiKeyFromUi(string key)
     {
         if (SetProperty(ref _curseForgeApiKey, key))
         {
             CurseForgeApiKeyChanged?.Invoke(this, key);
             // Store API key securely in Windows Credential Locker
-            _ = _secretStorage.SetSecretAsync("curseforge_api_key", key);
+            try
+            {
+                await _secretStorage.SetSecretAsync("curseforge_api_key", key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to store CurseForge API key");
+                _logService.Error("Settings", "SecretStoreFailed", "No se pudo guardar la API key de CurseForge.", ex);
+                StatusMessage = "No se pudo guardar la API key de CurseForge.";
+            }
         }
     }
 
@@ -321,7 +342,7 @@ public class SettingsViewModel : BaseViewModel
         try
         {
             var currentVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
-            var (isUpdateAvailable, latestVersion, downloadUrl, _) = await _updaterService.CheckForUpdatesAsync(currentVersion);
+            var (isUpdateAvailable, latestVersion, downloadUrl, sha256) = await _updaterService.CheckForUpdatesAsync(currentVersion);
 
             if (isUpdateAvailable && !string.IsNullOrEmpty(downloadUrl))
             {
@@ -332,7 +353,7 @@ public class SettingsViewModel : BaseViewModel
                     System.Windows.MessageBoxImage.Information);
                 if (result == System.Windows.MessageBoxResult.Yes)
                 {
-                    await InstallUpdateAsync(downloadUrl, latestVersion ?? string.Empty);
+                    await InstallUpdateAsync(downloadUrl, latestVersion ?? string.Empty, sha256);
                     return;
                 }
             }
@@ -350,12 +371,12 @@ public class SettingsViewModel : BaseViewModel
         IsBusy = false;
     }
 
-    private async Task InstallUpdateAsync(string downloadUrl, string version)
+    private async Task InstallUpdateAsync(string downloadUrl, string version, string? expectedSha256)
     {
         StatusMessage = "Descargando actualización...";
         try
         {
-            var installerPath = await _updaterService.DownloadUpdateAsync(downloadUrl, version);
+            var installerPath = await _updaterService.DownloadUpdateAsync(downloadUrl, version, expectedSha256);
             if (installerPath == null)
             {
                 StatusMessage = "No se pudo descargar el instalador. Revisa tu conexión.";

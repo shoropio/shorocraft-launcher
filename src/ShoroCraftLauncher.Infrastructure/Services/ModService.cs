@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using ShoroCraftLauncher.Core;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -11,6 +12,7 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ModService : IModService
 {
+    private const string UserAgent = "ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)";
     private readonly IModRepository _modRepository;
     private readonly IProfileRepository _profileRepository;
     private readonly ISettingsRepository _settingsRepository;
@@ -31,7 +33,6 @@ public class ModService : IModService
         ILogService logService,
         HttpClient httpClient,
         IResumableDownloadService? resumableDownloadService = null)
-        : base()
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
@@ -173,10 +174,10 @@ public class ModService : IModService
     {
         var projectId = searchResult.FileName;
         var projectSlug = await GetProjectSlugAsync(projectId).ConfigureAwait(false);
-        EnsureUserAgent();
 
+        using var request = CreateModrinthRequest($"https://api.modrinth.com/v2/project/{projectId}/version");
         await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version").ConfigureAwait(false);
+        var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -331,9 +332,9 @@ public class ModService : IModService
     {
         try
         {
-            EnsureUserAgent();
+            using var request = CreateModrinthRequest($"https://api.modrinth.com/v2/project/{projectId}");
             await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-            var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}").ConfigureAwait(false);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             var root = doc.RootElement;
@@ -342,16 +343,18 @@ public class ModService : IModService
             var icon = root.TryGetProperty("icon_url", out var i) ? i.GetString() ?? string.Empty : string.Empty;
             return (slug, title, icon);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to fetch project info for {ProjectId}", projectId);
             return (projectId, projectId, string.Empty);
         }
     }
 
-    private void EnsureUserAgent()
+    private HttpRequestMessage CreateModrinthRequest(string url)
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.0.0");
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd(UserAgent);
+        return request;
     }
 
     private async Task InstallRequiredDependenciesAsync(int profileId, string modsDir, Profile profile, IReadOnlyList<ModrinthDependency> dependencies)
@@ -437,9 +440,9 @@ public class ModService : IModService
 
     private async Task<ModrinthVersionInfo?> ResolveDependencyVersionAsync(string projectId, string versionId, Profile profile)
     {
-        EnsureUserAgent();
+        using var request = CreateModrinthRequest($"https://api.modrinth.com/v2/project/{projectId}/version");
         await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-        var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}/version").ConfigureAwait(false);
+        var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) return null;
 
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -505,13 +508,16 @@ public class ModService : IModService
             _ => 0
         };
 
+        var curseForgeVersion = MinecraftVersions.ToModrinthVersion(profile.MinecraftVersion);
+
         foreach (var file in doc.RootElement.GetProperty("data").EnumerateArray())
         {
             var gameVersions = file.GetProperty("gameVersions");
             bool matchesMc = false;
             foreach (var gv in gameVersions.EnumerateArray())
             {
-                if (gv.GetString() == profile.MinecraftVersion) { matchesMc = true; break; }
+                if (gv.GetString() == profile.MinecraftVersion
+                    || gv.GetString() == curseForgeVersion) { matchesMc = true; break; }
             }
             if (!matchesMc && profile.MinecraftVersion.Equals("latest", StringComparison.OrdinalIgnoreCase))
                 matchesMc = true;
@@ -550,9 +556,9 @@ public class ModService : IModService
         {
             try
             {
-                EnsureUserAgent();
+                using var request = CreateModrinthRequest($"https://api.modrinth.com/v2/project/{projectId}");
                 await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-                var response = await _httpClient.GetAsync($"https://api.modrinth.com/v2/project/{projectId}").ConfigureAwait(false);
+                var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
@@ -774,19 +780,7 @@ public class ModService : IModService
     }
 
     private static string ToModrinthVersion(string mcVersion)
-    {
-        if (string.IsNullOrWhiteSpace(mcVersion)) return mcVersion;
-        var trimmed = mcVersion.Trim();
-        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = trimmed.Split('.');
-            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
-            {
-                return $"1.21.{minor}";
-            }
-        }
-        return trimmed;
-    }
+        => MinecraftVersions.ToModrinthVersion(mcVersion);
 
     public async Task<ModCompatibilityResult> CheckAndDisableIncompatibleModsAsync(int profileId, string targetMcVersion)
     {
@@ -846,29 +840,27 @@ public class ModService : IModService
 
     public async Task<List<ModUpdateInfo>> CheckForUpdatesAsync(int profileId, string mcVersion)
     {
-        var mods = await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false);
-        // Reset update status for all mods
+        var mods = (await _modRepository.GetByProfileIdAsync(profileId).ConfigureAwait(false))
+            .Where(m => m.Status == ModStatus.Active && !string.IsNullOrEmpty(m.RemoteProjectId))
+            .ToList();
+        // Reset update status for all mods in a single pass (evita N+1)
         foreach (var mod in mods)
         {
             mod.LatestVersion = null;
             mod.HasUpdate = false;
-        }
-        foreach (var mod in mods)
-        {
             await _modRepository.UpdateAsync(mod).ConfigureAwait(false);
         }
-        var modrinthVersion = ToModrinthVersion(mcVersion);
+        var modrinthVersion = MinecraftVersions.ToModrinthVersion(mcVersion);
         var updates = new List<ModUpdateInfo>();
 
-        foreach (var mod in mods.Where(m => m.Status == ModStatus.Active && !string.IsNullOrEmpty(m.RemoteProjectId)))
+        foreach (var mod in mods)
         {
             try
             {
-                _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-                _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ShoroCraftLauncher/1.5");
                 var url = $"https://api.modrinth.com/v2/project/{mod.RemoteProjectId}/version?game_versions=%5B%22{modrinthVersion}%22%5D&loaders=%5B%22fabric%22%5D";
+                using var request = CreateModrinthRequest(url);
                 await ModrinthApiRateLimiter.WaitAsync().ConfigureAwait(false);
-                var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+                var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) continue;
 
                 var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -897,9 +889,9 @@ public class ModService : IModService
                         mod.SourceProvider ?? "modrinth", mod.RemoteProjectId, mod.RemoteSlug));
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Skip mods that fail update check
+                _logger.LogWarning(ex, "Failed to check update for mod {Mod}", mod.Name);
             }
         }
 
@@ -1033,17 +1025,6 @@ public class ModService : IModService
     private static string NormalizeVersion(string version)
     {
         if (string.IsNullOrEmpty(version)) return version;
-        
-        var trimmed = version.Trim();
-        // Handle "26.X" or "26.X.Y" format - convert to Modrinth format for comparison
-        if (trimmed.StartsWith("26.", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = trimmed.Split('.');
-            if (parts.Length >= 2 && int.TryParse(parts[1], out var minor))
-            {
-                return $"1.21.{minor}";
-            }
-        }
-        return trimmed;
+        return MinecraftVersions.ToModrinthVersion(version);
     }
 }

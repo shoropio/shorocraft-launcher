@@ -43,6 +43,15 @@ internal static class LauncherPaths
                 return DefaultRoot;
 
             var full = Path.GetFullPath(overridePath);
+
+            // Permitir solo rutas bajo el directorio de datos por defecto
+            // o bajo el directorio del ejecutable (escenarios de desarrollo/test).
+            var allowedBase = Path.GetFullPath(DefaultRoot);
+            var executingDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+
+            if (!IsSubPathOf(full, allowedBase) && !IsSubPathOf(full, executingDir))
+                return DefaultRoot;
+
             Directory.CreateDirectory(full);
             var probe = Path.Combine(full, ".shorocraft_access_test");
             using (File.Create(probe, 1, FileOptions.DeleteOnClose)) { }
@@ -52,5 +61,12 @@ internal static class LauncherPaths
         {
             return DefaultRoot;
         }
+    }
+
+    private static bool IsSubPathOf(string path, string basePath)
+    {
+        var pathFull = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var baseFull = Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return pathFull.StartsWith(baseFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 }
