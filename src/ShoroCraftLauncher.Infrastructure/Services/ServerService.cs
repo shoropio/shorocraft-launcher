@@ -12,7 +12,8 @@ namespace ShoroCraftLauncher.Infrastructure.Services;
 
 public class ServerService : IServerService
 {
-    private const string PaperApiBaseUrl = "https://api.papermc.io/v3/projects/paper";
+    // La API v3 de Paper migró de api.papermc.io a fill.papermc.io (la antigua responde 403).
+    private const string PaperApiBaseUrl = "https://fill.papermc.io/v3/projects/paper";
     private const string PaperUserAgent = "ShoroCraftLauncher/1.6.5 (https://github.com/Shoropio/shorocraft-launcher)";
     private const string ServerJarName = "server.jar";
     private const string ServerPidFileName = "server.pid";
@@ -115,6 +116,8 @@ public class ServerService : IServerService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch Paper versions");
+            _logService?.Error("ServerService", "PaperVersionsFailed",
+                $"No se pudieron obtener las versiones de Paper: {ex.Message}", ex);
             return new List<string>();
         }
     }
@@ -215,6 +218,7 @@ public class ServerService : IServerService
 
         try
         {
+            LogServer(server.Id, "[INFO] Preparando el servidor...");
             await KillOrphanProcessAsync(server.DirectoryPath).ConfigureAwait(false);
             Directory.CreateDirectory(server.DirectoryPath);
             if (!File.Exists(Path.Combine(server.DirectoryPath, "eula.txt")))
@@ -222,7 +226,9 @@ public class ServerService : IServerService
 
             await EnsurePauseDisabledAsync(server.DirectoryPath).ConfigureAwait(false);
 
+            LogServer(server.Id, $"[INFO] Verificando el jar del servidor ({server.Type} {server.MinecraftVersion})...");
             var jarPath = await EnsureServerJarAsync(server).ConfigureAwait(false);
+            LogServer(server.Id, "[INFO] Jar del servidor listo.");
 
             var javaPath = server.JavaPath;
             if (string.IsNullOrEmpty(javaPath))
@@ -271,7 +277,8 @@ public class ServerService : IServerService
             startInfo.ArgumentList.Add("nogui");
 
             _logger.LogInformation("Starting server {ServerName} with Java {JavaPath}", server.Name, javaPath);
-            LogServer(server.Id, $"[INFO] Iniciando servidor '{server.Name}'...");
+            LogServer(server.Id, $"[INFO] Iniciando servidor '{server.Name}' con Java: {javaPath}");
+            LogServer(server.Id, $"[INFO] RAM asignada: {server.MinRamMB} MB – {server.MaxRamMB} MB, puerto {server.Port}.");
 
             var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 
@@ -539,6 +546,8 @@ public class ServerService : IServerService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to resolve Paper jar URL for {Version}", minecraftVersion);
+            _logService?.Error("ServerService", "PaperJarUrlFailed",
+                $"No se pudo resolver la URL de descarga de Paper {minecraftVersion}: {ex.Message}", ex);
             return null;
         }
     }
