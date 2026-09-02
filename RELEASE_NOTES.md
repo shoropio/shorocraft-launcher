@@ -1,5 +1,15 @@
 # Release Notes
 
+## 2026-09-02 — Release v1.6.7
+
+- Corregido `NullReferenceException` en `StopGameAsync` al detener el juego justo cuando el proceso terminaba por su cuenta (race condition con el evento `Exited`).
+- Migrada la API de Paper a `fill.papermc.io` (la antigua `api.papermc.io` responde 403 desde su migración); restaurada la lista de versiones y la descarga del jar.
+- Consola y barra de progreso más informativas durante el lanzamiento de perfiles (fases: validación, reparación, Java, verificación de archivos, inicio del proceso) y al arrancar servidores (Preparación, jar, Java, RAM/puerto).
+- Errores de la API de Paper ahora visibles en la consola con el mensaje real en lugar de fallar en silencio.
+- Añadido harness de integración en vivo (`TestCml`) que valida el flujo completo: creación e instalación de perfil Fabric, lanzamiento de Minecraft en sesión offline, y creación/arranque/comando/parada de un servidor Paper.
+
+Nota: Ejecuta `dotnet test` para validar la suite de pruebas. Las pruebas de integración largas están marcadas como omitidas por defecto.
+
 ## 2026-05-21 — Perfil: Export/Import & Backups
 
 - Añadido soporte para exportar e importar perfiles como paquete `.zip`.

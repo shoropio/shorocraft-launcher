@@ -6,6 +6,22 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.6.7] - 2026-09-02
+
+### 🐛 Correcciones
+- **Race condition en `StopGameAsync`**: detener el juego justo cuando el proceso terminaba por su cuenta causaba `NullReferenceException`; ahora la referencia del proceso se captura antes de detenerlo.
+- **API de Paper rota**: `api.papermc.io` devuelve 403; la API v3 migró a `fill.papermc.io` y el launcher ya no puede listar versiones ni descargar el jar sin este cambio. URLs actualizadas.
+- Los errores al obtener versiones o la URL de descarga de Paper ahora aparecen en la consola con el mensaje real en lugar de fallar silenciosamente.
+
+### ✨ Mejoras
+- Consola y barra de progreso del lanzamiento más informativas: se reportan todas las fases (inicio del perfil, verificación de la instalación, Java seleccionado, preparación de archivos, verificación completada e inicio del proceso).
+- Consola del servidor más informativa al arrancar: preparación, verificación del jar, Java utilizado y RAM/puerto asignados.
+
+### 🧪 Tests
+- Harness de integración en vivo en `TestCml`: crea e instala un perfil Fabric, lanza Minecraft con sesión offline, crea un servidor Paper, lo inicia hasta `Done`, ejecuta un comando y lo detiene limpiamente.
+
+---
+
 ## [1.4.1] - 2026-08-17
 
 ### ✨ Nuevo
