@@ -5,10 +5,18 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>TestCml</RootNamespace>
+    <AssemblyName>TestCml</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CmlLib.Core" Version="4.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShoroCraftLauncher.Core\ShoroCraftLauncher.Core.csproj" />
+    <ProjectReference Include="..\ShoroCraftLauncher.Data\ShoroCraftLauncher.Data.csproj" />
+    <ProjectReference Include="..\ShoroCraftLauncher.Infrastructure\ShoroCraftLauncher.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
