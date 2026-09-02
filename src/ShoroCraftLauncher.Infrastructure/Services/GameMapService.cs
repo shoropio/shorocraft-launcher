@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -11,20 +11,20 @@ public class GameMapService : IGameMapService
 {
     private readonly IGameMapRepository _repository;
     private readonly IProfileRepository _profileRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogger<GameMapService> _logger;
     private readonly ILogService _logService;
 
     public GameMapService(
         IGameMapRepository repository,
         IProfileRepository profileRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogger<GameMapService> logger,
         ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logger = logger;
         _logService = logService;
     }
@@ -171,9 +171,9 @@ public class GameMapService : IGameMapService
         var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        return _minecraftService.GetSavesDirectory(gameDir);
+        return _gameDirectories.GetSavesDirectory(gameDir);
     }
 
     private static void EnsureNotExists(string path)

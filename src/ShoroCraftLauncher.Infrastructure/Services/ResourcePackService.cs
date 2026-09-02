@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
@@ -10,20 +10,20 @@ public class ResourcePackService : IResourcePackService
 {
     private readonly IResourcePackRepository _repository;
     private readonly IProfileRepository _profileRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogger<ResourcePackService> _logger;
     private readonly ILogService _logService;
 
     public ResourcePackService(
         IResourcePackRepository repository,
         IProfileRepository profileRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogger<ResourcePackService> logger,
         ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logger = logger;
         _logService = logService;
     }
@@ -104,9 +104,9 @@ public class ResourcePackService : IResourcePackService
         var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        return _minecraftService.GetResourcePacksDirectory(gameDir);
+        return _gameDirectories.GetResourcePacksDirectory(gameDir);
     }
 
     private string ExtractPreviewImageAsync(string zipPath, string packsDir)

@@ -101,7 +101,13 @@ public partial class App : Application
 
                 services.AddSingleton<ISecretStorage, WindowsCredentialStorage>();
                 services.AddSingleton<ILogService, LogService>();
-                services.AddSingleton<IMinecraftService, MinecraftService>();
+                services.AddSingleton<MinecraftService>();
+services.AddSingleton<IMinecraftService>(sp => sp.GetRequiredService<MinecraftService>());
+services.AddSingleton<IGameDirectories>(sp => sp.GetRequiredService<MinecraftService>());
+services.AddSingleton<IGameVersionCatalog>(sp => sp.GetRequiredService<MinecraftService>());
+services.AddSingleton<IGameInstaller>(sp => sp.GetRequiredService<MinecraftService>());
+services.AddSingleton<IGameLauncher>(sp => sp.GetRequiredService<MinecraftService>());
+services.AddSingleton<ILoaderVersionService>(sp => sp.GetRequiredService<MinecraftService>());
                 services.AddSingleton<IJavaService, JavaService>();
                 services.AddSingleton<IAuthenticationService, AuthenticationService>();
                 services.AddSingleton<ILauncherService, LauncherService>();

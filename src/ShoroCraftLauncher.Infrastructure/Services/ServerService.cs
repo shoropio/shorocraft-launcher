@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -19,7 +19,7 @@ public class ServerService : IServerService
     private const int MaxLogLines = 2000;
 
     private readonly IServerRepository _repository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameVersionCatalog _gameCatalog;
     private readonly IJavaService _javaService;
     private readonly ILogger<ServerService> _logger;
     private readonly ILogService? _logService;
@@ -33,7 +33,7 @@ public class ServerService : IServerService
 
     public ServerService(
         IServerRepository repository,
-        IMinecraftService minecraftService,
+        IGameVersionCatalog gameCatalog,
         IJavaService javaService,
         HttpClient httpClient,
         ILogger<ServerService> logger,
@@ -41,7 +41,7 @@ public class ServerService : IServerService
         IResumableDownloadService? resumableDownloadService = null)
     {
         _repository = repository;
-        _minecraftService = minecraftService;
+        _gameCatalog = gameCatalog;
         _javaService = javaService;
         _httpClient = httpClient;
         _logger = logger;
@@ -72,7 +72,7 @@ public class ServerService : IServerService
 
     public async Task<List<string>> GetAvailableVanillaVersionsAsync()
     {
-        var versions = await _minecraftService.FetchAvailableVersionsAsync().ConfigureAwait(false);
+        var versions = await _gameCatalog.FetchAvailableVersionsAsync().ConfigureAwait(false);
         return versions
             .Where(v => v.VersionType == "release")
             .Select(v => v.VersionId)
@@ -481,7 +481,7 @@ public class ServerService : IServerService
 
         var url = server.Type == ServerType.Paper
             ? await ResolvePaperJarUrlAsync(server.MinecraftVersion).ConfigureAwait(false)
-            : await _minecraftService.GetServerJarUrlAsync(server.MinecraftVersion).ConfigureAwait(false);
+            : await _gameCatalog.GetServerJarUrlAsync(server.MinecraftVersion).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(url))
             throw new Exception($"No se encontró el jar para {server.Type} {server.MinecraftVersion}.");

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
@@ -11,7 +11,7 @@ public class ShaderPackService : IShaderPackService
     private readonly IShaderPackRepository _repository;
     private readonly IProfileRepository _profileRepository;
     private readonly IModRepository _modRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogger<ShaderPackService> _logger;
     private readonly ILogService _logService;
     private readonly HttpClient _httpClient;
@@ -21,7 +21,7 @@ public class ShaderPackService : IShaderPackService
         IShaderPackRepository repository,
         IProfileRepository profileRepository,
         IModRepository modRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogger<ShaderPackService> logger,
         ILogService logService,
         HttpClient httpClient,
@@ -30,7 +30,7 @@ public class ShaderPackService : IShaderPackService
         _repository = repository;
         _profileRepository = profileRepository;
         _modRepository = modRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logger = logger;
         _logService = logService;
         _httpClient = httpClient;
@@ -103,9 +103,9 @@ public class ShaderPackService : IShaderPackService
         var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        return _minecraftService.GetShaderPacksDirectory(gameDir);
+        return _gameDirectories.GetShaderPacksDirectory(gameDir);
     }
 
     public async Task<bool> HasShaderSupportAsync(int profileId)
@@ -121,9 +121,9 @@ public class ShaderPackService : IShaderPackService
             return true;
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        var modsDir = _minecraftService.GetModsDirectory(gameDir);
+        var modsDir = _gameDirectories.GetModsDirectory(gameDir);
 
         if (!Directory.Exists(modsDir))
             return false;

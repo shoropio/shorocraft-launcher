@@ -17,7 +17,7 @@ public partial class ModService : IModService
     private readonly IModRepository _modRepository;
     private readonly IProfileRepository _profileRepository;
     private readonly ISettingsRepository _settingsRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ModSearchService _modSearchService;
     private readonly ILogger<ModService> _logger;
     private readonly ILogService _logService;
@@ -28,7 +28,7 @@ public partial class ModService : IModService
         IModRepository modRepository,
         IProfileRepository profileRepository,
         ISettingsRepository settingsRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ModSearchService modSearchService,
         ILogger<ModService> logger,
         ILogService logService,
@@ -38,7 +38,7 @@ public partial class ModService : IModService
         _modRepository = modRepository;
         _profileRepository = profileRepository;
         _settingsRepository = settingsRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _modSearchService = modSearchService;
         _logger = logger;
         _logService = logService;
@@ -167,9 +167,9 @@ public partial class ModService : IModService
         var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
             ?? throw new Exception($"Profile {profileId} not found");
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        return _minecraftService.GetModsDirectory(gameDir);
+        return _gameDirectories.GetModsDirectory(gameDir);
     }
 
     public async Task<(string? Name, string? MinecraftVersion, string? ModVersion)> ExtractModInfoAsync(string jarPath)

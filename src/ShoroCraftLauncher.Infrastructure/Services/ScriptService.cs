@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
 
@@ -8,20 +8,20 @@ public class ScriptService : IScriptService
 {
     private readonly IScriptRepository _repository;
     private readonly IProfileRepository _profileRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogger<ScriptService> _logger;
     private readonly ILogService _logService;
 
     public ScriptService(
         IScriptRepository repository,
         IProfileRepository profileRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogger<ScriptService> logger,
         ILogService logService)
     {
         _repository = repository;
         _profileRepository = profileRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logger = logger;
         _logService = logService;
     }
@@ -45,9 +45,9 @@ public class ScriptService : IScriptService
         }
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
-        var scriptsDir = Path.Combine(gameDir, "scripts", _minecraftService.SanitizeProfileFolderName(profile.Name));
+        var scriptsDir = Path.Combine(gameDir, "scripts", _gameDirectories.SanitizeProfileFolderName(profile.Name));
         Directory.CreateDirectory(scriptsDir);
 
         var fileName = Path.GetFileName(sourceFilePath);
@@ -133,7 +133,7 @@ public class ScriptService : IScriptService
 
         var backupDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ShoroCraftLauncher", "backups", _minecraftService.SanitizeProfileFolderName(profile.Name));
+            "ShoroCraftLauncher", "backups", _gameDirectories.SanitizeProfileFolderName(profile.Name));
         Directory.CreateDirectory(backupDir);
 
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");

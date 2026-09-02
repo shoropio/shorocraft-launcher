@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
@@ -26,7 +26,7 @@ public class ProfileService : IProfileService
     private readonly IGameMapRepository _gameMapRepo;
     private readonly IScriptRepository _scriptRepo;
     private readonly IModService _modService;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogService _logService;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private Profile? _selectedProfile;
@@ -49,7 +49,7 @@ public class ProfileService : IProfileService
         IGameMapRepository gameMapRepo,
         IScriptRepository scriptRepo,
         IModService modService,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogService logService)
     {
         _profileRepo = profileRepo;
@@ -59,7 +59,7 @@ public class ProfileService : IProfileService
         _gameMapRepo = gameMapRepo;
         _scriptRepo = scriptRepo;
         _modService = modService;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logService = logService;
     }
 
@@ -147,7 +147,7 @@ public class ProfileService : IProfileService
         using var operation = _logService?.BeginOperation("ProfileSync", "SyncProfileFiles", new { profile.Name });
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
         if (!Directory.Exists(gameDir))
@@ -156,11 +156,11 @@ public class ProfileService : IProfileService
             _logService?.Info("ProfileSync", "DirectoryRecreated", "La carpeta del perfil no existía; la recreé.", new { gameDir });
         }
 
-        var modsDir = _minecraftService.GetModsDirectory(gameDir);
+        var modsDir = _gameDirectories.GetModsDirectory(gameDir);
         var shadersDir = Path.Combine(gameDir, "shaderpacks");
         var resourcepacksDir = Path.Combine(gameDir, "resourcepacks");
-        var savesDir = _minecraftService.GetSavesDirectory(gameDir);
-        var scriptsDir = Path.Combine(gameDir, "scripts", _minecraftService.SanitizeProfileFolderName(profile.Name));
+        var savesDir = _gameDirectories.GetSavesDirectory(gameDir);
+        var scriptsDir = Path.Combine(gameDir, "scripts", _gameDirectories.SanitizeProfileFolderName(profile.Name));
 
         Directory.CreateDirectory(modsDir);
         Directory.CreateDirectory(shadersDir);
@@ -470,7 +470,7 @@ public class ProfileService : IProfileService
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
         var tempRoot = LauncherPaths.GetPath("temp_export_" + Guid.NewGuid().ToString("N"));
@@ -588,7 +588,7 @@ public class ProfileService : IProfileService
                 GameDirectory = string.Empty
             };
 
-            var newGameDir = _minecraftService.GetDefaultGameDirectory(name);
+            var newGameDir = _gameDirectories.GetDefaultGameDirectory(name);
             profileToImport.GameDirectory = newGameDir;
 
             Directory.CreateDirectory(newGameDir);
@@ -645,7 +645,7 @@ public class ProfileService : IProfileService
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
         var backupsDir = LauncherPaths.GetPath("backups", profile.Name);
@@ -679,7 +679,7 @@ public class ProfileService : IProfileService
 
             if (backupType.Equals("All", StringComparison.OrdinalIgnoreCase) || backupType.Equals("Worlds", StringComparison.OrdinalIgnoreCase))
             {
-                var savesSrc = _minecraftService.GetSavesDirectory(gameDir);
+                var savesSrc = _gameDirectories.GetSavesDirectory(gameDir);
                 if (Directory.Exists(savesSrc))
                 {
                     CopyDirectory(savesSrc, Path.Combine(tempDir, "saves"));
@@ -739,7 +739,7 @@ public class ProfileService : IProfileService
             ?? throw new Exception($"Profile {profileId} not found");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
         var tempDir = LauncherPaths.GetPath("temp_restore_" + Guid.NewGuid().ToString("N"));
@@ -767,7 +767,7 @@ public class ProfileService : IProfileService
             var savesSrc = Path.Combine(tempDir, "saves");
             if (Directory.Exists(savesSrc))
             {
-                var dest = _minecraftService.GetSavesDirectory(gameDir);
+                var dest = _gameDirectories.GetSavesDirectory(gameDir);
                 try { if (Directory.Exists(dest)) Directory.Delete(dest, true); } catch { }
                 CopyDirectory(savesSrc, dest);
             }

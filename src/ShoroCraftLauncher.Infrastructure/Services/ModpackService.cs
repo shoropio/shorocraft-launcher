@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ShoroCraftLauncher.Core.Enums;
@@ -12,7 +12,7 @@ public class ModpackService : IModpackService
 {
     private readonly IModRepository _modRepository;
     private readonly IProfileRepository _profileRepository;
-    private readonly IMinecraftService _minecraftService;
+    private readonly IGameDirectories _gameDirectories;
     private readonly ILogService _logService;
     private readonly ILogger<ModpackService> _logger;
     private readonly IResumableDownloadService _resumableDownloadService;
@@ -20,14 +20,14 @@ public class ModpackService : IModpackService
     public ModpackService(
         IModRepository modRepository,
         IProfileRepository profileRepository,
-        IMinecraftService minecraftService,
+        IGameDirectories gameDirectories,
         ILogService logService,
         ILogger<ModpackService> logger,
         IResumableDownloadService resumableDownloadService)
     {
         _modRepository = modRepository;
         _profileRepository = profileRepository;
-        _minecraftService = minecraftService;
+        _gameDirectories = gameDirectories;
         _logService = logService;
         _logger = logger;
         _resumableDownloadService = resumableDownloadService;
@@ -63,7 +63,7 @@ public class ModpackService : IModpackService
             ?? throw new Exception($"Perfil {profileId} no encontrado.");
 
         var gameDir = string.IsNullOrEmpty(profile.GameDirectory)
-            ? _minecraftService.GetDefaultGameDirectory(profile.Name)
+            ? _gameDirectories.GetDefaultGameDirectory(profile.Name)
             : profile.GameDirectory;
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"mrpack_{Guid.NewGuid():N}");
