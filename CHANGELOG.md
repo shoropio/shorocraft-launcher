@@ -6,6 +6,17 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.6.8] - 2026-09-02
+
+### 🐛 Correcciones
+- **Warnings "Unknown module" en Java 25**: `--enable-native-access` ahora usa solo `ALL-UNNAMED`; los módulos obsoletos (`org.lwjgl.*`, `com.sun.jna`) ya no aparecen ni en perfiles guardados previamente.
+- **Falsos `[ERROR]` de java.util.logging**: los mensajes `INFO:`/`INFORMACIÓN:` de mods como ReplayMod que van a stderr ahora se clasifican como `[WARN]` y no como errores en la consola.
+
+### ✨ Nuevo
+- **Frases melancólicas estilo Minecraft** en consola y mensajes de estado al crear, editar y eliminar perfiles, mundos y servidores (inspiradas en el legendario *"¿Estás seguro de que quieres eliminar este mundo para siempre? 'Para siempre' es mucho tiempo"*).
+
+---
+
 ## [1.6.7] - 2026-09-02
 
 ### 🐛 Correcciones

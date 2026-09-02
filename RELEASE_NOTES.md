@@ -1,5 +1,11 @@
 # Release Notes
 
+## 2026-09-02 — Release v1.6.8
+
+- Consola más limpia: eliminados los warnings `Unknown module` de `--enable-native-access` en Java 25 (ahora solo `ALL-UNNAMED`).
+- Los mensajes informativos de java.util.logging (p. ej. ReplayMod "INFORMACIÓN: Loading block connection mappings...") ya no se muestran como `[ERROR]`; se clasifican como `[WARN]`.
+- Nuevo: frases melancólicas al estilo de Minecraft en la consola al crear, editar y eliminar perfiles, mundos y servidores.
+
 ## 2026-09-02 — Release v1.6.7
 
 - Corregido `NullReferenceException` en `StopGameAsync` al detener el juego justo cuando el proceso terminaba por su cuenta (race condition con el evento `Exited`).
