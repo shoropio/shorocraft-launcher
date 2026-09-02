@@ -26,12 +26,13 @@ public partial class SettingsView : UserControl
         {
             _viewModel = vm;
             _viewModel.CurseForgeApiKeyChanged += OnCurseForgeApiKeyChanged;
-            OnCurseForgeApiKeyChanged(this, vm.CurseForgeApiKey);
+            OnCurseForgeApiKeyChanged(this, EventArgs.Empty);
         }
     }
 
-    private void OnCurseForgeApiKeyChanged(object? sender, string value)
+    private void OnCurseForgeApiKeyChanged(object? sender, EventArgs e)
     {
+        var value = _viewModel?.CurseForgeApiKey;
         _suppressUiUpdate = true;
         try { CurseForgeKeyBox.Password = value ?? string.Empty; }
         finally { _suppressUiUpdate = false; }

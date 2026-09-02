@@ -104,14 +104,14 @@ public class SettingsViewModel : BaseViewModel
     }
 
     private string _curseForgeApiKey = string.Empty;
-    public event EventHandler<string>? CurseForgeApiKeyChanged;
+    public event EventHandler? CurseForgeApiKeyChanged;
     public string CurseForgeApiKey
     {
         get => _curseForgeApiKey;
         set
         {
             if (SetProperty(ref _curseForgeApiKey, value))
-                CurseForgeApiKeyChanged?.Invoke(this, value);
+                CurseForgeApiKeyChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -119,7 +119,7 @@ public class SettingsViewModel : BaseViewModel
     {
         if (SetProperty(ref _curseForgeApiKey, key))
         {
-            CurseForgeApiKeyChanged?.Invoke(this, key);
+            CurseForgeApiKeyChanged?.Invoke(this, EventArgs.Empty);
             // Store API key securely in Windows Credential Locker
             try
             {
