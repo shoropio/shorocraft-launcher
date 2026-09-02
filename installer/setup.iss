@@ -1,9 +1,9 @@
-; Inno Setup Script
+﻿; Inno Setup Script
 ; Compila con Inno Setup (https://jrsoftware.org/isinfo.php)
 
 [Setup]
 AppName=ShoroCraft Launcher
-AppVersion=1.6.5.1
+AppVersion=1.6.6
 AppPublisher=Shoropio Corporation
 DefaultDirName={localappdata}\ShoroCraftLauncher
 DefaultGroupName=ShoroCraft Launcher
