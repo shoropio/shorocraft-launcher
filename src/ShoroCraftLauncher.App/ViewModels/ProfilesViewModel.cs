@@ -8,6 +8,7 @@ using ShoroCraftLauncher.App.Services;
 using ShoroCraftLauncher.Core.Enums;
 using ShoroCraftLauncher.Core.Interfaces;
 using ShoroCraftLauncher.Core.Models;
+using ShoroCraftLauncher.Infrastructure;
 
 namespace ShoroCraftLauncher.App.ViewModels;
 
@@ -251,7 +252,9 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
 
             // Set new profile FIRST to load form with correct data
             SelectedProfile = profile;
-            StatusMessage = $"Perfil '{name}' creado. Edita los detalles y haz clic en Guardar.";
+            var createPhrase = ConsolePhrases.PickCreate();
+            _logService.Info("Profile", "Created", $"Perfil '{name}' creado. {createPhrase}", new { profile.Id, profile.Name });
+            StatusMessage = $"Perfil '{name}' creado. {createPhrase} Edita los detalles y haz clic en Guardar.";
 
             // Then refresh list
             await LoadProfilesAsync();
@@ -301,9 +304,10 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             SelectedProfile.IsFullscreen = IsFullscreen;
 
             await _profileRepo.UpdateAsync(SelectedProfile);
-            _logService.Info("Profile", "Saved", "Perfil actualizado.", new { SelectedProfile.Id, SelectedProfile.Name, SelectedProfile.MinecraftVersion, SelectedProfile.Type });
+            var editPhrase = ConsolePhrases.PickEdit();
+            _logService.Info("Profile", "Saved", $"Perfil actualizado. {editPhrase}", new { SelectedProfile.Id, SelectedProfile.Name, SelectedProfile.MinecraftVersion, SelectedProfile.Type });
             await LoadProfilesAsync();
-            StatusMessage = "Perfil actualizado.";
+            StatusMessage = $"Perfil actualizado. {editPhrase}";
 
             if (!string.IsNullOrEmpty(oldVersion) && !string.IsNullOrEmpty(McVersion)
                 && !oldVersion.Equals(McVersion, StringComparison.OrdinalIgnoreCase)
@@ -342,7 +346,7 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         if (SelectedProfile == null) return;
 
         var confirm = DialogHelper.Confirm(
-            $"¿Estás seguro de que deseas eliminar el perfil '{SelectedProfile.Name}'? Esta acción no se puede deshacer.",
+            $"¿Estás seguro de que deseas eliminar el perfil '{SelectedProfile.Name}' para siempre? \"Para siempre\" es mucho tiempo... esta acción no se puede deshacer.",
             "Eliminar perfil");
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
@@ -350,10 +354,13 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
         IsBusy = true;
         try
         {
+            var deletedProfileName = SelectedProfile.Name;
+            var deletePhrase = ConsolePhrases.PickDelete();
             await _profileRepo.DeleteAsync(SelectedProfile.Id);
+            _logService.Warning("Profile", "Deleted", $"Perfil '{deletedProfileName}' eliminado para siempre. {deletePhrase}", new { deletedProfileName });
             await LoadProfilesAsync();
             ClearForm();
-            StatusMessage = "Perfil eliminado.";
+            StatusMessage = $"Perfil eliminado. {deletePhrase}";
         }
         catch (Exception ex)
         {
@@ -386,8 +393,10 @@ public class ProfilesViewModel : BaseViewModel, IDisposable
             };
 
             await _profileRepo.CreateAsync(duplicate);
+            var duplicatePhrase = ConsolePhrases.PickCreate();
+            _logService.Info("Profile", "Duplicated", $"Perfil duplicado como '{duplicate.Name}'. {duplicatePhrase}", new { duplicate.Id, duplicate.Name });
             await LoadProfilesAsync();
-            StatusMessage = "Perfil duplicado.";
+            StatusMessage = $"Perfil duplicado. {duplicatePhrase}";
         }
         catch (Exception ex)
         {

@@ -135,13 +135,13 @@ public class GameMapService : IGameMapService
         };
 
         await _repository.CreateAsync(map).ConfigureAwait(false);
-        _logService.Info("GameMapService", "AddMap", $"Mundo '{map.Name}' agregado.");
+        _logService.Info("GameMapService", "AddMap", $"Mundo '{map.Name}' agregado. {ConsolePhrases.PickCreate()}");
         return map;
     }
 
     public async Task RemoveMapAsync(GameMap map)
     {
-        _logService.Info("GameMapService", "RemoveMap", $"Eliminando mundo '{map.Name}'...");
+        _logService.Info("GameMapService", "RemoveMap", $"Eliminando mundo '{map.Name}' para siempre... \"Para siempre\" es mucho tiempo.");
 
         try
         {
@@ -163,7 +163,7 @@ public class GameMapService : IGameMapService
 
         if (map.Id > 0)
             await _repository.DeleteAsync(map.Id).ConfigureAwait(false);
-        _logService.Info("GameMapService", "RemoveMap", $"Mundo '{map.Name}' eliminado.");
+        _logService.Warning("GameMapService", "RemoveMap", $"Mundo '{map.Name}' eliminado. {ConsolePhrases.PickDelete()}");
     }
 
     public async Task<string> GetMapsFolderAsync(int profileId)

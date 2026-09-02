@@ -173,18 +173,21 @@ public partial class MinecraftService : IMinecraftService
            || ex is SocketException
            || ex is TimeoutException;
 
+    // Minecraft y Paper corren en el classpath (módulo sin nombre); basta con
+    // ALL-UNNAMED. Nombrar módulos como org.lwjgl hace que JVMs nuevas (ej. Java 25)
+    // adviertan "Unknown module" y ensucien la consola.
     private static string EnsureNativeAccessModules(string arguments)
     {
         const string current = "--enable-native-access=ALL-UNNAMED";
-        const string expanded = "--enable-native-access=ALL-UNNAMED,org.lwjgl,org.lwjgl.opengl,org.lwjgl.stb,com.sun.jna";
+        const string obsoleteExpanded = "--enable-native-access=ALL-UNNAMED,org.lwjgl,org.lwjgl.opengl,org.lwjgl.stb,com.sun.jna";
 
-        if (arguments.Contains(expanded, StringComparison.OrdinalIgnoreCase))
-            return arguments;
+        if (arguments.Contains(obsoleteExpanded, StringComparison.OrdinalIgnoreCase))
+            return arguments.Replace(obsoleteExpanded, current, StringComparison.OrdinalIgnoreCase);
 
         if (arguments.Contains(current, StringComparison.OrdinalIgnoreCase))
-            return arguments.Replace(current, expanded, StringComparison.OrdinalIgnoreCase);
+            return arguments;
 
-        return $"{expanded} {arguments}";
+        return $"{current} {arguments}";
     }
 
     #endregion

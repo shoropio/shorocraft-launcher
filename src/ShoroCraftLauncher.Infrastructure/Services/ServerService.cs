@@ -152,7 +152,7 @@ public class ServerService : IServerService
             _servers.Add(server);
         }
         ServersChanged?.Invoke();
-        _logService?.Info("ServerService", "Created", $"Servidor '{name}' creado en {directoryPath}.");
+        _logService?.Info("ServerService", "Created", $"Servidor '{name}' creado en {directoryPath}. {ConsolePhrases.PickCreate()}");
         return server;
     }
 
@@ -160,7 +160,7 @@ public class ServerService : IServerService
     {
         await StopAsync(server).ConfigureAwait(false);
 
-        _logService?.Info("ServerService", "Delete", $"Eliminando servidor '{server.Name}'...");
+        _logService?.Info("ServerService", "Delete", $"Eliminando servidor '{server.Name}' para siempre... \"Para siempre\" es mucho tiempo.");
 
         if (Directory.Exists(server.DirectoryPath))
         {
@@ -208,7 +208,7 @@ public class ServerService : IServerService
             _logHistory.Remove(server.Id);
         }
         ServersChanged?.Invoke();
-        _logService?.Info("ServerService", "Deleted", $"Servidor '{server.Name}' eliminado.");
+        _logService?.Warning("ServerService", "Deleted", $"Servidor '{server.Name}' eliminado. {ConsolePhrases.PickDelete()}");
     }
 
     public async Task<ServerLaunchResult> StartAsync(MinecraftServer server)

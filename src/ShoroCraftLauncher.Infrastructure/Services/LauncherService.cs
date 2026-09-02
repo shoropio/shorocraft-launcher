@@ -226,8 +226,19 @@ public class LauncherService : ILauncherService
 
     private static bool IsMinecraftStderrWarning(string line)
     {
-        return line.TrimStart().StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase);
+        var trimmed = line.TrimStart();
+        if (trimmed.StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // java.util.logging (JUL) escribe TODO a stderr, incluyendo niveles INFO/INFORMACIÓN
+        // (p. ej. ReplayMod: "sept 02, 2026 2:21:45 P. M. com.replaymod... INFORMACIÓN: ...").
+        // No son errores; búscalos como [WARN] en la consola.
+        return JulInfoRegex.IsMatch(trimmed);
     }
+
+    private static readonly System.Text.RegularExpressions.Regex JulInfoRegex = new(
+        @"^(INFO|INFORMACI[OÓ]N)\b|^.+ \d{1,2}:\d{2}:\d{2} [AP]\.\s?M\.\s+\S",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
 
     public async Task StopGameAsync()
     {
