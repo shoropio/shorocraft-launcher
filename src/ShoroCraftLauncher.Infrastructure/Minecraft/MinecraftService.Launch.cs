@@ -55,6 +55,7 @@ public partial class MinecraftService : IMinecraftService
         }
 
         onProgress?.Invoke(-1, $"Preparando lanzamiento de {targetVersion}...");
+        _logService?.Info("Launch", "TargetVersion", $"Versión objetivo: {targetVersion}");
 
         var session = accessToken.Equals("offline", StringComparison.OrdinalIgnoreCase)
             ? CmlLib.Core.Auth.MSession.CreateOfflineSession(username)
@@ -78,6 +79,7 @@ public partial class MinecraftService : IMinecraftService
         };
 
         var process = await InstallAndBuildWithRetryAsync(globalDir, targetVersion, launchOption, onProgress).ConfigureAwait(false);
+        onProgress?.Invoke(100, "Lanzamiento preparado. Arrancando el juego...");
         
         process.StartInfo.WorkingDirectory = gameDir;
         process.StartInfo.RedirectStandardOutput = true;
@@ -122,7 +124,10 @@ public partial class MinecraftService : IMinecraftService
                 if (shouldReport)
                 {
                     lastReportedPercent = percent;
-                    onProgress?.Invoke(percentage, $"Verificando archivos de Minecraft... {percent}% ({e.ProgressedTasks}/{e.TotalTasks})");
+                    if (percent >= 100)
+                        onProgress?.Invoke(100, $"Archivos de Minecraft verificados ({e.TotalTasks} tareas). Preparando proceso...");
+                    else
+                        onProgress?.Invoke(percentage, $"Verificando archivos de Minecraft... {percent}% ({e.ProgressedTasks}/{e.TotalTasks})");
                 }
             };
 

@@ -67,12 +67,16 @@ public class LauncherService : ILauncherService
         {
             _logger.LogInformation("Launching profile {ProfileName}", profile.Name);
             _logService?.Info("Launch", "PreflightStarted", "Validando perfil antes de iniciar.", new { profile.Name, profile.MinecraftVersion, profile.Type });
+            Log($"[INFO] Iniciando perfil '{profile.Name}' (Minecraft {profile.MinecraftVersion}, {profile.Type})...");
+            ProgressChanged?.Invoke(-1, "Validando perfil...");
 
             Directory.CreateDirectory(gameDir);
             _logService?.Debug("Launch", "GameDirectoryReady", "Directorio de juego listo.", new { gameDir });
             _logger.LogInformation("Repairing installation in {GameDir}", gameDir);
+            Log($"[INFO] Verificando la instalación en {gameDir}...");
             await _minecraftService.RepairInstallationAsync(gameDir).ConfigureAwait(false);
             _logger.LogInformation("Installation repair completed");
+            Log("[INFO] Verificación de instalación completada.");
 
             var javaPath = profile.JavaPath;
             if (string.IsNullOrEmpty(javaPath))
@@ -104,6 +108,9 @@ public class LauncherService : ILauncherService
             }
             _logger.LogInformation("Using Java path: {JavaPath}", javaPath);
             _logService?.Info("Java", "Selected", "Java seleccionado.", new { javaPath });
+            Log($"[INFO] Java seleccionado: {javaPath}");
+            Log("[INFO] Preparando archivos de Minecraft (descargando lo que falte)...");
+            ProgressChanged?.Invoke(-1, "Preparando lanzamiento...");
 
             var process = await _minecraftService.LaunchGameAsync(
                 profile, gameDir, javaPath,
@@ -155,6 +162,8 @@ public class LauncherService : ILauncherService
             var sanitizedArgs = LogService.Sanitize(process.Arguments);
             _logger.LogDebug("Starting process: {FileName} {Arguments}", process.FileName, sanitizedArgs);
             _logService?.Info("Launch", "ProcessStarting", "Iniciando proceso de Minecraft.", new { process.FileName, Arguments = sanitizedArgs });
+            Log("[INFO] Archivos listos. Iniciando Minecraft...");
+            ProgressChanged?.Invoke(100, "Iniciando Minecraft...");
             process.Start();
 
             _gameProcess = process;
@@ -222,16 +231,22 @@ public class LauncherService : ILauncherService
 
     public async Task StopGameAsync()
     {
-        if (_gameProcess is { HasExited: false })
+        // Capturar el proceso primero: el manejador Exited puede anular _gameProcess
+        // concurrentemente (race que causaba NullReferenceException).
+        var proc = _gameProcess;
+        if (proc is null) return;
+
+        _gameProcess = null;
+
+        if (!proc.HasExited)
         {
             _logger.LogInformation("Stopping game process");
             _logService?.Warning("Launch", "StopRequested", "Deteniendo Minecraft por solicitud del usuario.");
-            _gameProcess.Kill();
-            try { await _gameProcess.WaitForExitAsync().ConfigureAwait(false); } catch { }
-            var proc = _gameProcess;
-            _gameProcess = null;
-            proc.Dispose();
+            try { proc.Kill(); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to kill game process"); }
+            try { await proc.WaitForExitAsync().ConfigureAwait(false); } catch { }
             Log("Juego detenido por el usuario.");
         }
+
+        proc.Dispose();
     }
 }
