@@ -42,7 +42,7 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
             {
                 knownNames.AddRange(Directory.GetFiles(modsDir, "*.jar")
                     .Select(Path.GetFileNameWithoutExtension)
-                    .Where(name => !string.IsNullOrWhiteSpace(name))!);
+                    .Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!));
             }
 
             IsIrisSodiumInstalled = ContainsComponent(knownNames, "iris")
@@ -95,7 +95,7 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
             {
                 knownNames = knownNames.Concat(Directory.GetFiles(modsDir, "*.jar")
                     .Select(Path.GetFileNameWithoutExtension)
-                    .Where(name => !string.IsNullOrWhiteSpace(name))!);
+                    .Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!));
             }
 
             return ContainsComponent(knownNames, "controlify")
