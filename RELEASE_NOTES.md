@@ -1,5 +1,10 @@
 # Release Notes
 
+## 2026-09-03 — Release v1.7.0
+
+- Corregido el hover/selección en las listas de Shaders y Mapas: el resaltado ahora pertenece a la propia tarjeta del item (mismas dimensiones, borde y esquinas); ya no hay un rectángulo separado que sobresale del item.
+- Instalador corregido: ahora incluye de verdad la versión publicada (la release v1.6.9 instalaba una versión anterior por una carpeta de origen incorrecta).
+
 ## 2026-09-02 — Release v1.6.9
 
 - Nuevo botón **Respaldar** junto a cada mundo en la pestaña Mapas: crea un `.zip` con fecha de la carpeta del mundo en `backups/<perfil>/Worlds/`.

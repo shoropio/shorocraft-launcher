@@ -6,6 +6,14 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.7.0] - 2026-09-03
+
+### 🐛 Correcciones
+- **Hover/selección en listas de Shaders y Mapas**: el resaltado ahora se pinta en la propia tarjeta del item (nuevo estilo `HoverableCardBorder`); se eliminó el rectángulo del `ListBoxItem` que sobresalía y no coincidía con el tamaño del item. El área clickeable y el área visual coinciden exactamente.
+- **Instalador**: `setup.iss` ahora empaqueta desde `dist/publish` (antes usaba una carpeta `publish` vieja, lo que instalaba una versión anterior).
+
+---
+
 ## [1.6.9] - 2026-09-02
 
 ### ✨ Nuevo
