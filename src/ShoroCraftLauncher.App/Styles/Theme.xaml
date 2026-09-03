@@ -286,6 +286,8 @@
         </Setter>
     </Style>
 
+    <!-- Contenedor plano: el contenido (tarjeta) es quien pinta su propio hover/selección.
+         Este ListBoxItem nunca dibuja un rectángulo detrás del item. -->
     <Style TargetType="ListBoxItem" x:Key="FlushListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -296,31 +298,13 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="border"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Background="Transparent"
+                            BorderThickness="0"
                             Padding="{TemplateBinding Padding}"
                             Margin="{TemplateBinding Margin}">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                     </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{StaticResource CardBrush}" />
-                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
-                            <Setter TargetName="border" Property="BorderThickness" Value="1" />
-                        </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected" Value="True" />
-                                <Condition Property="IsMouseOver" Value="True" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}" />
-                        </MultiTrigger>
-                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

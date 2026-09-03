@@ -13,6 +13,20 @@
         <Setter Property="Effect" Value="{StaticResource CardShadow}" />
     </Style>
 
+    <!-- Tarjeta de item de lista que reacciona al hover/selección del ListBoxItem:
+         el resaltado se pinta en la misma tarjeta (mismo tamaño, borde y sombra),
+         nunca en un rectángulo separado detrás del item. -->
+    <Style x:Key="HoverableCardBorder" TargetType="Border" BasedOn="{StaticResource CardBorder}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                <Setter Property="Background" Value="{StaticResource HoverBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="FlatCardBorder" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource CardBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
