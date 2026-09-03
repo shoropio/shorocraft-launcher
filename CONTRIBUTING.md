@@ -12,7 +12,7 @@
 
 ```bash
 # 1. Fork y clonar
-git clone https://github.com/TU-USUARIO/shorocraft-launcher.git
+git clone https://github.com/shoropio/shorocraft-launcher.git
 cd shorocraft-launcher
 
 # 2. Crear rama desde main
