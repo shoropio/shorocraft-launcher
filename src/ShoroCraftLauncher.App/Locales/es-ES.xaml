@@ -87,6 +87,7 @@
     <system:String x:Key="Maps_OpenFolder">Abrir carpeta</system:String>
     <system:String x:Key="Maps_Refresh">Actualizar</system:String>
     <system:String x:Key="Maps_Delete">Eliminar</system:String>
+    <system:String x:Key="Maps_BackupOne">Respaldar</system:String>
 
     <!-- Mods -->
     <system:String x:Key="Mods_Profiles">Perfiles</system:String>

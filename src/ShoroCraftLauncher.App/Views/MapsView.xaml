@@ -80,6 +80,10 @@
                                                Style="{StaticResource CardSubtitle}" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="{DynamicResource Maps_BackupOne}" Style="{StaticResource SecondaryButton}"
+                                            Padding="10,5" FontSize="12" Margin="0,0,0,0"
+                                            Command="{Binding ElementName=root, Path=DataContext.BackupMapCommand}"
+                                            CommandParameter="{Binding}" />
                                     <Button Content="{DynamicResource Maps_Delete}" Style="{StaticResource DangerButton}"
                                             Padding="10,5" FontSize="12" Margin="10,0,0,0"
                                             Command="{Binding ElementName=root, Path=DataContext.RemoveMapCommand}"

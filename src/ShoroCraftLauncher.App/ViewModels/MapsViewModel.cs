@@ -37,6 +37,7 @@ public class MapsViewModel : BaseViewModel, IDisposable
     public ICommand OpenFolderCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand BackupWorldsCommand { get; }
+    public ICommand BackupMapCommand { get; }
 
     public MapsViewModel(
         IGameMapService mapService,
@@ -57,6 +58,7 @@ public class MapsViewModel : BaseViewModel, IDisposable
         OpenFolderCommand = new RelayCommand(async _ => await OpenFolder());
         RefreshCommand = new RelayCommand(async _ => { if (SelectedProfile != null) await LoadMapsAsync(SelectedProfile.Id); });
         BackupWorldsCommand = new RelayCommand(async _ => await BackupWorlds());
+        BackupMapCommand = new RelayCommand(async p => await BackupMap(p));
 
         SelectedProfile = _profileService.SelectedProfile ?? Profiles.FirstOrDefault();
     }
@@ -168,6 +170,29 @@ public class MapsViewModel : BaseViewModel, IDisposable
             StatusMessage = $"Error al crear respaldo: {ex.Message}";
         }
         IsBusy = false;
+    }
+
+    private async Task BackupMap(object? map)
+    {
+        if (map is not GameMap gameMap) return;
+
+        IsBusy = true;
+        try
+        {
+            var zipPath = await _mapService.BackupMapAsync(gameMap);
+            StatusMessage = $"Respaldo de '{gameMap.Name}' creado: {Path.GetFileName(zipPath)}";
+            _logService.Info("Maps", "BackupCreated", StatusMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to backup map");
+            StatusMessage = $"Error al respaldar el mundo: {ex.Message}";
+            _logService.Error("Maps", "BackupFailed", $"Error al respaldar el mundo '{gameMap.Name}'.", ex);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async Task OpenFolder()

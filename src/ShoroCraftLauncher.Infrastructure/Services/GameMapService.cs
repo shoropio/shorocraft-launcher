@@ -166,6 +166,38 @@ public class GameMapService : IGameMapService
         _logService.Warning("GameMapService", "RemoveMap", $"Mundo '{map.Name}' eliminado. {ConsolePhrases.PickDelete()}");
     }
 
+    public async Task<string> BackupMapAsync(GameMap map)
+    {
+        if (!Directory.Exists(map.FilePath))
+            throw new Exception($"La carpeta del mundo '{map.Name}' no existe.");
+
+        var profile = await _profileRepository.GetByIdAsync(map.ProfileId).ConfigureAwait(false)
+            ?? throw new Exception($"Perfil {map.ProfileId} no encontrado.");
+
+        var backupsDir = LauncherPaths.GetPath("backups", profile.Name, "Worlds");
+        Directory.CreateDirectory(backupsDir);
+
+        var safeName = string.Concat(map.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+        var zipPath = Path.Combine(backupsDir, $"{safeName}_{DateTime.Now:yyyyMMdd-HHmmss}.zip");
+
+        _logService.Info("GameMapService", "BackupMap", $"Creando respaldo del mundo '{map.Name}'...", new { zipPath });
+
+        await Task.Run(() =>
+        {
+            using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+            var root = map.FilePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var prefix = Path.GetFileName(root) + "/";
+            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                var entryName = prefix + Path.GetRelativePath(root, file).Replace(Path.DirectorySeparatorChar, '/');
+                zip.CreateEntryFromFile(file, entryName, CompressionLevel.Fastest);
+            }
+        }).ConfigureAwait(false);
+
+        _logService.Info("GameMapService", "BackupMap", $"Respaldo del mundo '{map.Name}' creado en {zipPath}. Una foto instantánea para la eternidad.");
+        return zipPath;
+    }
+
     public async Task<string> GetMapsFolderAsync(int profileId)
     {
         var profile = await _profileRepository.GetByIdAsync(profileId).ConfigureAwait(false)
