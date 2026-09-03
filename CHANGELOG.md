@@ -8,7 +8,7 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.7.0] - 2026-09-03
 
-### 🐛 Correcciones
+### Correcciones
 - **Hover/selección en listas de Shaders y Mapas**: el resaltado ahora se pinta en la propia tarjeta del item (nuevo estilo `HoverableCardBorder`); se eliminó el rectángulo del `ListBoxItem` que sobresalía y no coincidía con el tamaño del item. El área clickeable y el área visual coinciden exactamente.
 - **Instalador**: `setup.iss` ahora empaqueta desde `dist/publish` (antes usaba una carpeta `publish` vieja, lo que instalaba una versión anterior).
 
@@ -16,45 +16,45 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.6.9] - 2026-09-02
 
-### ✨ Nuevo
+### Nuevo
 - **Respaldo individual por mundo**: cada mundo en la pestaña Mapas tiene ahora un botón "Respaldar" que comprime su carpeta completa a `backups/<perfil>/Worlds/<nombre>_<fecha>.zip`, con textos en español e inglés.
 
 ---
 
 ## [1.6.8] - 2026-09-02
 
-### 🐛 Correcciones
+### Correcciones
 - **Warnings "Unknown module" en Java 25**: `--enable-native-access` ahora usa solo `ALL-UNNAMED`; los módulos obsoletos (`org.lwjgl.*`, `com.sun.jna`) ya no aparecen ni en perfiles guardados previamente.
 - **Falsos `[ERROR]` de java.util.logging**: los mensajes `INFO:`/`INFORMACIÓN:` de mods como ReplayMod que van a stderr ahora se clasifican como `[WARN]` y no como errores en la consola.
 
-### ✨ Nuevo
+### Nuevo
 - **Frases melancólicas estilo Minecraft** en consola y mensajes de estado al crear, editar y eliminar perfiles, mundos y servidores (inspiradas en el legendario *"¿Estás seguro de que quieres eliminar este mundo para siempre? 'Para siempre' es mucho tiempo"*).
 
 ---
 
 ## [1.6.7] - 2026-09-02
 
-### 🐛 Correcciones
+### Correcciones
 - **Race condition en `StopGameAsync`**: detener el juego justo cuando el proceso terminaba por su cuenta causaba `NullReferenceException`; ahora la referencia del proceso se captura antes de detenerlo.
 - **API de Paper rota**: `api.papermc.io` devuelve 403; la API v3 migró a `fill.papermc.io` y el launcher ya no puede listar versiones ni descargar el jar sin este cambio. URLs actualizadas.
 - Los errores al obtener versiones o la URL de descarga de Paper ahora aparecen en la consola con el mensaje real en lugar de fallar silenciosamente.
 
-### ✨ Mejoras
+### Mejoras
 - Consola y barra de progreso del lanzamiento más informativas: se reportan todas las fases (inicio del perfil, verificación de la instalación, Java seleccionado, preparación de archivos, verificación completada e inicio del proceso).
 - Consola del servidor más informativa al arrancar: preparación, verificación del jar, Java utilizado y RAM/puerto asignados.
 
-### 🧪 Tests
+### Tests
 - Harness de integración en vivo en `TestCml`: crea e instala un perfil Fabric, lanza Minecraft con sesión offline, crea un servidor Paper, lo inicia hasta `Done`, ejecuta un comando y lo detiene limpiamente.
 
 ---
 
 ## [1.4.1] - 2026-08-17
 
-### ✨ Nuevo
+### Nuevo
 - Botón "Fabric + Iris + Sodium" en el dashboard: crea un perfil Fabric con Iris (shaders) y Sodium (rendimiento) preinstalados con un solo clic. El botón se deshabilita y muestra "Iris + Sodium instalado" cuando los mods ya están presentes en el perfil activo.
 - Reporte de código de salida al cerrar el juego: si Minecraft termina con error (código ≠ 0), el status bar muestra un mensaje con el código y sugiere revisar la consola.
 
-### 🔧 Correcciones
+### Correcciones
 - Sidebar colapsable ahora funciona correctamente: el ancho de la columna cambia entre 64 px (colapsado) y 240 px (expandido) vía code-behind, reemplazando el DataTrigger roto en `ColumnDefinition` (que no tiene `DataContext` por heredar de `DefinitionBase`).
 - Fondo blanco intermitente al buscar shaders: los Grids raíz y de contenido en `ShaderPacksView` ahora tienen `BackgroundBrush` explícito para evitar destellos durante la carga.
 - Fondo blanco en Mods, Resource Packs y Maps: mismas correcciones de `BackgroundBrush` en las vistas afectadas.
@@ -65,7 +65,7 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 - **Versión del juego en la barra superior**: ahora resuelve `latest` a la versión real (ej. `26.2`) en lugar de mostrar el literal `latest`.
 - **Fondo blanco en shaders al buscar**: eliminado `IsEnabled` del Grid de contenido (causaba overlay blanco por estado disabled); ahora se deshabilitan botones individuales durante carga.
 
-### 🏗️ Refactorización
+### Refactorización
 - `LauncherPaths`: clase estática para centralizar rutas de `%LocalAppData%\ShoroCraftLauncher` (reemplaza concatenaciones repetidas en `ProfileService` y `ServerService`).
 - `TestPaths`: helper para aislamiento de tests con directorios temporales deterministas y scopes de data root.
 - `GameExited` ahora propagsa el código de salida del proceso (de `Action` a `Action<int>`).
@@ -75,17 +75,17 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.4.0] - 2026-08-11
 
-### ✨ Nuevo
+### Nuevo
 - Sistema de descargas reanudables para redes lentas o inestables: las descargas grandes (jar de servidor, cliente y librerías de Minecraft, instalador de actualización, modpacks, mods y shaders) se guardan en un archivo `.part` y, si la conexión se interrumpe, se reanudan desde donde iban mediante peticiones HTTP `Range` en lugar de empezar de cero.
 - Reintentos automáticos (hasta 5 intentos) con espera progresiva y timeout de inactividad por lectura (60 s) que aborta descargas que se quedan sin datos y las retoma.
 - Verificación opcional de tamaño y hash SHA-1 al completar la descarga (usada en la importación de modpacks).
 
-### 📦 Empaquetado
+### Empaquetado
 - Firma Authenticode del instalador y del ejecutable con un certificado self-signed (SHA-256 + timestamp DigiCert). El desinstalador también queda firmado (`SignedUninstaller`). En equipos sin el certificado en el almacén de confianza el editor aparecerá como "desconocido". Script de firma en `installer/sign.ps1` y configuración en `installer/setup.iss` (definición vía `ISCC /Ssigntool=...`).
 
 ## [1.3.1] - 2026-08-09
 
-### 🔧 Correcciones
+###  Correcciones
 - Al iniciar un servidor, el launcher detecta y detiene procesos Java huérfanos de sesiones anteriores (vía `server.pid`) que retenían `logs/latest.log` y `session.lock`, evitando el fallo de arranque del servidor.
 - Los servidores en ejecución se detienen correctamente al cerrar el launcher, evitando que queden procesos huérfanos.
 - La consola (principal y de servidores) tiene padding superior y lateral de 12 px para que el texto no quede pegado a los bordes.
@@ -93,65 +93,65 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.3.0] - 2026-08-08
 
-### ✨ Nuevo
+### Nuevo
 - Módulo de servidores: nueva sección "Servidores" en la barra lateral para crear y gestionar servidores Vanilla y Paper desde el launcher.
 - El launcher descarga automáticamente el jar del servidor (con barra de progreso), genera `eula.txt` y `server.properties`, e inicia el proceso Java con consola interactiva: comandos, detener, reiniciar, despertar y copiar la consola.
 - La pausa automática por servidor vacío se deshabilita (`pause-when-empty-seconds=0`) para que la consola siempre responda.
 
 ## [1.2.1] - 2026-08-08
 
-### 🔧 Correcciones
+### Correcciones
 - El botón "Buscar actualizaciones" en Ajustes → Mantenimiento ahora consulta el repositorio GitHub de verdad y ofrece instalar la nueva versión; antes siempre respondía "No hay actualizaciones disponibles" (implementación simulada).
 
 ## [1.2.0] - 2026-08-08
 
-### ✨ Nuevo
+### Nuevo
 - Notificaciones de actualizaciones de Minecraft: banner en el dashboard que avisa cuando el perfil Vanilla usa una versión anterior a la más reciente, con opciones "Instalar" y "Ignorar"; la última versión notificada se guarda para no repetir el aviso.
 
 ## [1.1.1] - 2026-08-08
 
-### 🔧 Correcciones
+### Correcciones
 - La versión mostrada en Ajustes y enviada al juego (`minecraft.launcher.version`) ahora se lee del ensamblado, por lo que refleja la versión real del launcher en lugar del valor fijo "1.0.0".
 
 ## [1.1.0] - 2026-08-07
 
-### ✨ Nuevo
+### Nuevo
 - Actualizador automático del launcher: detecta nueva versión, descarga el instalador y reinicia la aplicación con un banner en el dashboard.
 - Mundos por perfil: extracción de mundos `.zip`/`.mcworld` directamente a la carpeta `saves`, escaneo de mundos existentes en disco, preview de `icon.png` y botón "Respaldo de mundos".
 - Importación de modpacks Modrinth (`.mrpack`): descarga y verificación SHA-1 de mods, respeta `env.client`, aplica `overrides/` y registra los mods en la base de datos.
 - Soporte de NeoForge: instalación del loader, detección de versión más reciente, filtrado de mods por loader en CurseForge y botón "Instalar NeoForge".
 - Cuenta Microsoft online: restauración automática de la sesión al arrancar (login silencioso) y botón "Cerrar sesión".
 
-### 🔧 Correcciones
+### Correcciones
 - Corregido crash de arranque (`AccessViolationException`) causado por el P/Invoke a `CredEnumerateW` al enumerar credenciales de Windows; el logout ahora usa `JELoginHandler.Signout()`.
 - El cierre del cuadro de inicio de sesión Microsoft ya no se registra como error: se muestra el mensaje "Inicio de sesión Microsoft cancelado" sin stack trace.
 - Reducido el ruido en consola al fallar el login silencioso (sin sesión guardada).
 
 ## [1.0.2] - 2026-05-22
 
-### ✨ Nuevo
+### Nuevo
 - Mejoras de UX en Perfiles y Mods: estados de carga más claros, confirmaciones de eliminación y mensajes de éxito/errores más comprensibles.
 - Indicadores de carga en la vista de Perfiles y en la gestión de Mods.
 - Release empaquetado de nuevo con instalador Windows actualizado.
 
-### 🔧 Correcciones
+### Correcciones
 - Bloqueo de acciones mientras se ejecuta una operación para evitar estados inconsistentes.
 - Mensajes de error más claros para exportación/importación de perfiles y búsqueda/instalación de mods.
 - Confirmaciones añadidas al eliminar perfiles, mods y copias de seguridad.
 
 ## [1.0.1] - 2026-05-21
 
-### ✨ Nuevo
+### Nuevo
 - Interfaz de usuario actualizada: botones de Iris+Sodium y OptiFine disponibles directamente en el dashboard.
 - Instalador Windows generado y empaquetado con Inno Setup.
 
-### 🔧 Correcciones
+### Correcciones
 - Mejorado el manejo del estado de descarga/progreso para que no quede información obsoleta tras iniciar el juego.
 - Ajustado el flujo de release para subir assets `.exe` y `.zip` a GitHub.
 
 ## [1.0.0] - 2026-05-12
 
-### ✨ Nuevo
+### Nuevo
 
 #### Autenticación
 - Integración completa con Microsoft OAuth2 via `CmlLib.Core.Auth.Microsoft`
@@ -196,14 +196,14 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Slider de RAM con estilo moderno (`ModernSlider`)
 - Toggle switches para activar/desactivar mods
 
-### 🏗️ Arquitectura
+### Arquitectura
 - Patrón MVVM con separación estricta de capas (Core/Data/Infrastructure/App)
 - Inyección de Dependencias con `Microsoft.Extensions.Hosting`
 - Base de datos SQLite con Entity Framework Core
 - Logging con Serilog (archivo rotativo + consola)
 - Repositorio genérico para acceso a datos
 
-### 🔧 Correcciones
+### Correcciones
 - Corregido error `Track.DecreaseRepeatButton` en el Slider (usaba `Button` en lugar de `RepeatButton`)
 - Corregido error `StaticResource SearchTextBox` no encontrado al abrir la vista de Mods
 - Corregido desbordamiento de `Grid.Row="3"` con solo 3 RowDefinitions declaradas
@@ -214,7 +214,7 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [0.9.0] - 2026-05-11 *(Pre-release)*
 
-### ✨ Nuevo
+### Nuevo
 - Arquitectura inicial MVVM con 5 proyectos (App, Core, Data, Infrastructure, Tests)
 - Vistas principales: Dashboard, Perfiles, Mods, Texturas, Shaders, Consola, Ajustes
 - Lanzamiento de Minecraft con `CmlLib.Core`
