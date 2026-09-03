@@ -1,6 +1,6 @@
 # Guía de Contribución
 
-¡Gracias por tu interés en contribuir a ShoroCraft Launcher! 🎮
+¡Gracias por tu interés en contribuir a ShoroCraft Launcher!
 
 ## Antes de empezar
 
