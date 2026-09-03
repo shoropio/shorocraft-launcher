@@ -6,6 +6,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.6.9] - 2026-09-02
+
+### ✨ Nuevo
+- **Respaldo individual por mundo**: cada mundo en la pestaña Mapas tiene ahora un botón "Respaldar" que comprime su carpeta completa a `backups/<perfil>/Worlds/<nombre>_<fecha>.zip`, con textos en español e inglés.
+
+---
+
 ## [1.6.8] - 2026-09-02
 
 ### 🐛 Correcciones

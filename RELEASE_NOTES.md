@@ -1,5 +1,9 @@
 # Release Notes
 
+## 2026-09-02 — Release v1.6.9
+
+- Nuevo botón **Respaldar** junto a cada mundo en la pestaña Mapas: crea un `.zip` con fecha de la carpeta del mundo en `backups/<perfil>/Worlds/`.
+
 ## 2026-09-02 — Release v1.6.8
 
 - Consola más limpia: eliminados los warnings `Unknown module` de `--enable-native-access` en Java 25 (ahora solo `ALL-UNNAMED`).
